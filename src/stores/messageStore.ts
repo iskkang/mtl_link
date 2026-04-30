@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import type { MessageWithSender, Attachment } from '../types/chat'
+import type { MessageWithSender, Attachment, ReplyRef } from '../types/chat'
 
 interface MessageStore {
   messagesByRoom:  Record<string, MessageWithSender[]>
@@ -14,17 +14,19 @@ interface MessageStore {
   refetchSinceLastSeen: (roomId: string) => Promise<void>
 }
 
-const MSG_SELECT = `
+export const MSG_SELECT = `
   *,
   sender:profiles!sender_id(id, name, avatar_url),
-  attachments:message_attachments(*)
+  attachments:message_attachments(*),
+  reply_message:messages!reply_to_id(id, content, deleted_at, sender:profiles!sender_id(id, name))
 ` as const
 
-function normaliseMsgs(raw: unknown[]): MessageWithSender[] {
+export function normaliseMsgs(raw: unknown[]): MessageWithSender[] {
   return (raw as MessageWithSender[]).map(m => ({
     ...m,
-    _status: 'sent' as const,
-    attachments: (m.attachments as Attachment[] | null) ?? [],
+    _status:       'sent' as const,
+    attachments:   (m.attachments as Attachment[] | null) ?? [],
+    reply_message: (m.reply_message as ReplyRef | null) ?? null,
   }))
 }
 
@@ -73,11 +75,17 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   upsertMessage: (roomId, incoming) => set(s => {
     const list = s.messagesByRoom[roomId] ?? []
 
-    // 1) DB id 일치 → merge (attachment 유지)
+    // 1) DB id 일치 → merge (attachment, sender, reply_message 유지)
     const idIdx = list.findIndex(m => m.id === incoming.id)
     if (idIdx >= 0) {
       const next = [...list]
-      next[idIdx] = { ...next[idIdx], ...incoming, attachments: next[idIdx].attachments }
+      next[idIdx] = {
+        ...next[idIdx],
+        ...incoming,
+        attachments:   next[idIdx].attachments,
+        sender:        incoming.sender        ?? next[idIdx].sender,
+        reply_message: incoming.reply_message ?? next[idIdx].reply_message,
+      }
       return { messagesByRoom: { ...s.messagesByRoom, [roomId]: next } }
     }
 

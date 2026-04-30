@@ -5,15 +5,17 @@ import { formatDateSeparator, isSameDayStr } from '../../lib/date'
 import type { MessageWithSender } from '../../types/chat'
 
 interface Props {
-  messages:      MessageWithSender[]
-  loading:       boolean
-  hasMore:       boolean
-  currentUserId: string
-  isGroupRoom:   boolean
-  onLoadMore:    () => void
+  messages:          MessageWithSender[]
+  loading:           boolean
+  hasMore:           boolean
+  currentUserId:     string
+  isGroupRoom:       boolean
+  onLoadMore:        () => void
+  onReply:           (msg: MessageWithSender) => void
+  onScrollToMessage: (messageId: string) => void
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, onLoadMore }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, onLoadMore, onReply, onScrollToMessage }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLenRef = useRef(0)
@@ -80,7 +82,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
         const showDate = !prev || !isSameDayStr(prev.created_at, msg.created_at)
 
         return (
-          <div key={msg._localId ?? msg.id}>
+          <div key={msg._localId ?? msg.id} data-message-id={msg.id}>
             {showDate && (
               <div className="flex justify-center my-3">
                 <span className="text-[11px] px-3 py-1 rounded-full
@@ -106,6 +108,8 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 isOwn={msg.sender_id === currentUserId}
                 showSenderInfo={isGroupRoom}
                 prevMessage={prev}
+                onReply={() => onReply(msg)}
+                onScrollToMessage={onScrollToMessage}
               />
             )}
           </div>

@@ -5,6 +5,7 @@ import { markAsRead } from '../services/roomService'
 import { sendTextMessage } from '../services/messageService'
 import { useRealtimeMessages } from './useRealtimeMessages'
 import { useAuth } from './useAuth'
+import type { ReplyRef } from '../types/chat'
 
 export function useMessages(roomId: string | null) {
   const store = useMessageStore()
@@ -37,7 +38,8 @@ export function useMessages(roomId: string | null) {
     messages: roomId ? (store.messagesByRoom[roomId] ?? []) : [],
     loading:  roomId ? (store.loadingByRoom[roomId] ?? false) : false,
     hasMore:  roomId ? (store.hasMoreByRoom[roomId] ?? false) : false,
-    send:     (content: string) => sendTextMessage(roomId!, content, profile?.preferred_language),
+    send: (content: string, replyToId?: string | null, replyMessage?: ReplyRef | null) =>
+      sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage),
     loadMore,
   }
 }

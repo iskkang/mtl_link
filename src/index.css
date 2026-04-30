@@ -53,6 +53,17 @@
   animation: spin 0.7s linear infinite;
 }
 
+/* ── 메시지 하이라이트 (인용 클릭 후 원본으로 스크롤) ──────── */
+@keyframes highlight-pulse {
+  0%   { background-color: transparent; }
+  25%  { background-color: rgba(45, 212, 191, 0.2); }
+  100% { background-color: transparent; }
+}
+.highlight-pulse {
+  animation: highlight-pulse 1.5s ease-in-out;
+  border-radius: 0.5rem;
+}
+
 /* ── 로그인 페이지 배경 패턴 ─────────────────────────────── */
 .login-bg-light {
   background-color: #eef3fa;

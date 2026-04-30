@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mic, Globe, AlertCircle, Clock } from 'lucide-react'
+import { Mic, Globe, AlertCircle, Clock, Reply } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -7,6 +7,7 @@ import { LinkPreviewCard } from './LinkPreviewCard'
 import { MessageMenu } from './MessageMenu'
 import { MessageEditInput } from './MessageEditInput'
 import { DeleteMessageModal } from './DeleteMessageModal'
+import { QuotedMessage } from './QuotedMessage'
 import { linkifyText } from '../../lib/linkify'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,17 +17,19 @@ import { editMessage, softDeleteMessage } from '../../services/messageService'
 import type { MessageWithSender } from '../../types/chat'
 
 interface Props {
-  message:        MessageWithSender
-  isOwn:          boolean
-  showSenderInfo: boolean
-  prevMessage?:   MessageWithSender | null
+  message:            MessageWithSender
+  isOwn:              boolean
+  showSenderInfo:     boolean
+  prevMessage?:       MessageWithSender | null
+  onReply?:           () => void
+  onScrollToMessage?: (messageId: string) => void
 }
 
 function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
@@ -109,9 +112,18 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
         </div>
       )}
 
-      {/* ⋯ 메뉴 (호버 시, 내 메시지만, 발신 측에 배치) */}
+      {/* 액션 버튼 (호버 시) - own: 버블 왼쪽, received: 버블 오른쪽(DOM 마지막) */}
       {isOwn && (hovered || deleteOpen || editing) && !editing && (
-        <div className="self-end mb-1 flex-shrink-0">
+        <div className="self-end mb-1 flex-shrink-0 flex items-center gap-0.5">
+          <button
+            onClick={onReply}
+            title={t('msgReply')}
+            className="p-1 rounded-full text-gray-400 dark:text-[#8696a0]
+                       hover:bg-gray-100 dark:hover:bg-surface-hover hover:text-gray-600
+                       dark:hover:text-[#aebac1] transition-colors"
+          >
+            <Reply size={14} />
+          </button>
           <MessageMenu
             canEdit={canEdit}
             canDelete={canDelete}
@@ -144,6 +156,14 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
           {/* 첨부파일 */}
           {message.attachments && message.attachments.length > 0 && (
             <AttachmentPreview attachments={message.attachments} />
+          )}
+
+          {/* 인용 메시지 */}
+          {!editing && message.reply_message && (
+            <QuotedMessage
+              reply={message.reply_message}
+              onClick={() => message.reply_to_id && onScrollToMessage?.(message.reply_to_id)}
+            />
           )}
 
           {/* 인라인 수정 모드 */}
@@ -257,6 +277,21 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
           </div>
         )}
       </div>
+
+      {/* 수신 메시지 답장 버튼 (버블 오른쪽) */}
+      {!isOwn && hovered && (
+        <div className="self-end mb-1 flex-shrink-0">
+          <button
+            onClick={onReply}
+            title={t('msgReply')}
+            className="p-1 rounded-full text-gray-400 dark:text-[#8696a0]
+                       hover:bg-gray-100 dark:hover:bg-surface-hover hover:text-gray-600
+                       dark:hover:text-[#aebac1] transition-colors"
+          >
+            <Reply size={14} />
+          </button>
+        </div>
+      )}
 
       {/* 삭제 확인 모달 */}
       {deleteOpen && (

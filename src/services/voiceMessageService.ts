@@ -57,8 +57,9 @@ export async function sendVoiceTranslatedMessage({
 
   useMessageStore.getState().upsertMessage(roomId, {
     ...data,
-    _status:     'sent',
-    sender:      null,
-    attachments: [],
+    _status:       'sent',
+    sender:        null,
+    attachments:   [],
+    reply_message: null,
   })
 }

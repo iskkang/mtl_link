@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { useMessageStore } from '../stores/messageStore'
+import { useMessageStore, MSG_SELECT, normaliseMsgs } from '../stores/messageStore'
 import type { Message, Attachment } from '../types/chat'
 
 export function useRealtimeMessages(roomId: string | null) {
@@ -15,14 +15,23 @@ export function useRealtimeMessages(roomId: string | null) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-        payload => {
+        async payload => {
           const msg = payload.new as Message
+          // Optimistically show with partial data
           upsertMessage(roomId, {
             ...msg,
-            _status:     'sent',
-            sender:      null,
-            attachments: [],
+            _status:       'sent',
+            sender:        null,
+            attachments:   [],
+            reply_message: null,
           })
+          // Fetch full data with joins (sender, reply_message)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data } = await (supabase.from('messages') as any)
+            .select(MSG_SELECT)
+            .eq('id', msg.id)
+            .single()
+          if (data) upsertMessage(roomId, normaliseMsgs([data])[0])
         },
       )
       .on(
@@ -37,9 +46,10 @@ export function useRealtimeMessages(roomId: string | null) {
           const msg = payload.new as Message
           upsertMessage(roomId, {
             ...msg,
-            _status:     'sent',
-            sender:      null,
-            attachments: [],
+            _status:       'sent',
+            sender:        null,
+            attachments:   [],
+            reply_message: null,
           })
         },
       )

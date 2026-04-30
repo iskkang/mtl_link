@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { useMessageStore } from '../stores/messageStore'
 import { validateFiles } from '../lib/fileValidation'
+import type { ReplyRef } from '../types/chat'
 
 // ─── 텍스트 메시지 (Optimistic UI) ──────────────────────────────
 
@@ -8,6 +9,8 @@ export async function sendTextMessage(
   roomId: string,
   content: string,
   sourceLanguage?: string,
+  replyToId?: string | null,
+  replyMessage?: ReplyRef | null,
 ): Promise<void> {
   const trimmed = content.trim()
   if (!trimmed) throw new Error('메시지가 비어있습니다')
@@ -32,11 +35,13 @@ export async function sendTextMessage(
     source_language:      srcLang,
     target_language:      null,
     translation_provider: null,
+    reply_to_id:          replyToId ?? null,
     created_at:           now,
     edited_at:            null,
     deleted_at:           null,
     sender:               null,
     attachments:          [],
+    reply_message:        replyMessage ?? null,
   })
 
   try {
@@ -48,6 +53,7 @@ export async function sendTextMessage(
         message_type:    'text',
         content:         trimmed,
         source_language: srcLang,
+        reply_to_id:     replyToId ?? null,
       })
       .select()
       .single()
@@ -55,10 +61,11 @@ export async function sendTextMessage(
 
     useMessageStore.getState().upsertMessage(roomId, {
       ...data,
-      _localId:    localId,
-      _status:     'sent',
-      sender:      null,
-      attachments: [],
+      _localId:      localId,
+      _status:       'sent',
+      sender:        null,
+      attachments:   [],
+      reply_message: replyMessage ?? null,
     })
   } catch (err) {
     useMessageStore.getState().updateStatus(roomId, localId, 'failed')
@@ -119,9 +126,10 @@ export async function sendFileMessage(roomId: string, files: File[], caption?: s
     // Realtime이 메시지를 먼저 받아도 괜찮도록 store에 즉시 추가
     useMessageStore.getState().upsertMessage(roomId, {
       ...msg,
-      _status:     'sending',
-      sender:      null,
-      attachments: [],
+      _status:       'sending',
+      sender:        null,
+      attachments:   [],
+      reply_message: null,
     })
 
     // 2. 파일 병렬 업로드

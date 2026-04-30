@@ -145,6 +145,10 @@ const resources = {
       deleteRoomConfirm:  '삭제',
       deleteRoomCancel:   '취소',
       deleteRoomToast:    '방이 삭제되었습니다',
+      // ── 답장 인용 ────────────────────────────────────────────
+      msgReply:           '답장',
+      replyingTo:         '{{name}}에게 답장',
+      msgDeletedRef:      '삭제된 메시지',
     },
   },
 
@@ -261,6 +265,9 @@ const resources = {
       deleteRoomConfirm:  'Delete',
       deleteRoomCancel:   'Cancel',
       deleteRoomToast:    'Room has been deleted',
+      msgReply:           'Reply',
+      replyingTo:         'Replying to {{name}}',
+      msgDeletedRef:      'Original message deleted',
     },
   },
 
@@ -377,6 +384,9 @@ const resources = {
       deleteRoomConfirm:  'Удалить',
       deleteRoomCancel:   'Отмена',
       deleteRoomToast:    'Чат удалён',
+      msgReply:           'Ответить',
+      replyingTo:         'Ответ {{name}}',
+      msgDeletedRef:      'Сообщение удалено',
     },
   },
 
@@ -493,6 +503,9 @@ const resources = {
       deleteRoomConfirm:  'O\'chirish',
       deleteRoomCancel:   'Bekor qilish',
       deleteRoomToast:    'Chat o\'chirildi',
+      msgReply:           'Javob berish',
+      replyingTo:         '{{name}}ga javob',
+      msgDeletedRef:      'Xabar o\'chirildi',
     },
   },
 
@@ -609,6 +622,9 @@ const resources = {
       deleteRoomConfirm:  '删除',
       deleteRoomCancel:   '取消',
       deleteRoomToast:    '聊天已删除',
+      msgReply:           '回复',
+      replyingTo:         '回复 {{name}}',
+      msgDeletedRef:      '原消息已删除',
     },
   },
 
@@ -725,6 +741,9 @@ const resources = {
       deleteRoomConfirm:  '削除',
       deleteRoomCancel:   'キャンセル',
       deleteRoomToast:    'ルームを削除しました',
+      msgReply:           '返信',
+      replyingTo:         '{{name}}へ返信',
+      msgDeletedRef:      'メッセージは削除されました',
     },
   },
 }

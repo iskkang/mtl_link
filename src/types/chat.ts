@@ -7,10 +7,19 @@ export type Message              = Database['public']['Tables']['messages']['Row
 export type Attachment           = Database['public']['Tables']['message_attachments']['Row']
 export type TranslationPreference = Database['public']['Tables']['translation_preferences']['Row']
 
+/** 인용 답장 원본 메시지 참조 */
+export interface ReplyRef {
+  id:         string
+  content:    string | null
+  deleted_at: string | null
+  sender:     Pick<Profile, 'id' | 'name'> | null
+}
+
 /** 메시지 + 발신자 프로필 + 첨부파일 (UI 렌더링용) */
 export interface MessageWithSender extends Message {
-  sender:     Pick<Profile, 'id' | 'name' | 'avatar_url'> | null
-  attachments: Attachment[]
+  sender:        Pick<Profile, 'id' | 'name' | 'avatar_url'> | null
+  attachments:   Attachment[]
+  reply_message: ReplyRef | null
   /** Optimistic UI용 로컬 ID */
   _localId?: string
   /** 전송 상태 */

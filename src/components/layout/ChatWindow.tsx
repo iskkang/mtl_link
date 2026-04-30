@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Sun, Moon, MessageCircle, ArrowLeft, Users, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -16,6 +16,8 @@ import { TranslationLanguageModal } from '../chat/TranslationLanguageModal'
 import { RoomMenu } from '../chat/RoomMenu'
 import { LeaveRoomModal } from '../chat/LeaveRoomModal'
 import { DeleteRoomModal } from '../chat/DeleteRoomModal'
+import { ReplyPreview } from '../chat/ReplyPreview'
+import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
 interface Props {
   roomId:          string | null
@@ -37,10 +39,12 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const [translationOpen, setTranslationOpen] = useState(false)
   const [leaveOpen,       setLeaveOpen]       = useState(false)
   const [deleteOpen,      setDeleteOpen]      = useState(false)
+  const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
 
-  // 방이 바뀌면 draft 초기화 + 번역 언어 재조회
+  // 방이 바뀌면 draft/reply 초기화 + 번역 언어 재조회
   useEffect(() => {
     setDraft('')
+    setReplyTo(null)
     setTargetLanguage(null)
     if (!roomId) return
 
@@ -62,6 +66,23 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const peer = room && !isGroup
     ? room.members.find(m => m.id !== currentUserId) ?? null
     : null
+
+  const handleSend = useCallback(async (content: string) => {
+    const current = replyTo
+    setReplyTo(null)
+    const ref: ReplyRef | null = current
+      ? { id: current.id, content: current.content, deleted_at: current.deleted_at, sender: current.sender }
+      : null
+    await send(content, current?.id ?? null, ref)
+  }, [replyTo, send])
+
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('highlight-pulse')
+    setTimeout(() => el.classList.remove('highlight-pulse'), 1500)
+  }, [])
 
   const handleLeave = async () => {
     if (!roomId) return
@@ -184,6 +205,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
             currentUserId={currentUserId}
             isGroupRoom={isGroup}
             onLoadMore={loadMore}
+            onReply={setReplyTo}
+            onScrollToMessage={scrollToMessage}
           />
           <MessageActionBar
             roomId={roomId}
@@ -192,10 +215,16 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
             targetLanguage={targetLanguage}
             onOpenTranslationModal={() => setTranslationOpen(true)}
           />
+          {replyTo && (
+            <ReplyPreview
+              replyTo={replyTo}
+              onCancel={() => setReplyTo(null)}
+            />
+          )}
           <MessageInput
             value={draft}
             onChange={setDraft}
-            onSend={send}
+            onSend={handleSend}
           />
         </DragDropZone>
       ) : (

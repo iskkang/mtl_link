@@ -181,6 +181,7 @@ export type Database = {
           source_language:      SupportedLanguage | null
           target_language:      SupportedLanguage | null
           translation_provider: 'claude' | 'openai' | 'google' | 'deepl' | null
+          reply_to_id:          string | null
           created_at:           string
           edited_at:            string | null
           deleted_at:           string | null
@@ -195,6 +196,7 @@ export type Database = {
           source_language?:      SupportedLanguage | null
           target_language?:      SupportedLanguage | null
           translation_provider?: 'claude' | 'openai' | 'google' | 'deepl' | null
+          reply_to_id?:          string | null
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null
@@ -209,6 +211,7 @@ export type Database = {
           source_language?:      SupportedLanguage | null
           target_language?:      SupportedLanguage | null
           translation_provider?: 'claude' | 'openai' | 'google' | 'deepl' | null
+          reply_to_id?:          string | null
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null
