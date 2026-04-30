@@ -6,6 +6,7 @@ interface RoomStore {
   loading:     boolean
   error:       string | null
 
+  reset:                () => void
   setRooms:             (rooms: RoomListItem[]) => void
   setLoading:           (v: boolean) => void
   setError:             (e: string | null) => void
@@ -21,6 +22,7 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
   loading: false,
   error:   null,
 
+  reset:      ()      => set({ rooms: [], loading: false, error: null }),
   setRooms:   (rooms) => set({ rooms }),
   setLoading: (v)     => set({ loading: v }),
   setError:   (e)     => set({ error: e }),

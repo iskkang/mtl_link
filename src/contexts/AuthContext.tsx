@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { useRoomStore } from '../stores/roomStore'
 import type { Profile } from '../types/chat'
 
 interface AuthContextValue {
@@ -64,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
           }, 0)
         } else {
+          // 로그아웃 또는 세션 만료 시 stale 데이터 제거
+          useRoomStore.getState().reset()
           setProfile(null)
           setLoading(false)
         }
@@ -82,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    useRoomStore.getState().reset()
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
