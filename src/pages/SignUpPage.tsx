@@ -155,7 +155,7 @@ export default function SignUpPage() {
           onClick={toggle}
           className="p-2 rounded-lg bg-white/70 dark:bg-white/10 text-gray-600 dark:text-gray-300
                      hover:bg-white dark:hover:bg-white/20 backdrop-blur-sm transition-all duration-200"
-          aria-label="테마 전환"
+          aria-label={t('themeToggle')}
         >
           {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
@@ -231,7 +231,7 @@ export default function SignUpPage() {
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5 uppercase tracking-wider">
                   {t('department')} *
                 </label>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">근무하는 지역</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">{t('deptHelp')}</p>
                 <select className="mtl-input" {...register('department')}>
                   <option value="">—</option>
                   {DEPT_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -251,7 +251,7 @@ export default function SignUpPage() {
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5 uppercase tracking-wider">
                 {t('preferredLang')} *
               </label>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">메시지를 받고 싶은 언어</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">{t('langHelp')}</p>
               <select className="mtl-input" {...register('preferred_language')}>
                 {SUPPORTED_LANGS.map(l => (
                   <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
