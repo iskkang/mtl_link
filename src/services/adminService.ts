@@ -2,10 +2,11 @@ import { supabase } from '../lib/supabase'
 import type { Profile } from '../types/chat'
 
 export interface CreateUserInput {
-  email:       string
-  name:        string
-  department?: string
-  position?:   string
+  email:              string
+  name:               string
+  department?:        string
+  position?:          string
+  preferred_language?: string
 }
 
 export interface CreateUserResult {

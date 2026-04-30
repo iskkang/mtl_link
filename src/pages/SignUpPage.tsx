@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../lib/i18n'
 
-const DEPT_OPTIONS = ['HQ', 'UZ', 'RU', 'JP', 'CN', 'KG', 'VN']
+const DEPT_OPTIONS = ['HQ', 'UZ', 'RU', 'JP', 'CN', 'KG', 'VN', 'OTHER']
 
 export default function SignUpPage() {
   const { t, i18n } = useTranslation()
@@ -228,9 +228,10 @@ export default function SignUpPage() {
             {/* 소속 / 직급 */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5 uppercase tracking-wider">
                   {t('department')} *
                 </label>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">근무하는 지역</p>
                 <select className="mtl-input" {...register('department')}>
                   <option value="">—</option>
                   {DEPT_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -247,9 +248,10 @@ export default function SignUpPage() {
 
             {/* 선호 언어 */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                {t('preferredLang')}
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5 uppercase tracking-wider">
+                {t('preferredLang')} *
               </label>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">메시지를 받고 싶은 언어</p>
               <select className="mtl-input" {...register('preferred_language')}>
                 {SUPPORTED_LANGS.map(l => (
                   <option key={l.code} value={l.code}>{l.flag} {l.label}</option>

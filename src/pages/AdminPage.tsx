@@ -5,6 +5,7 @@ import {
   ShieldCheck, ShieldOff, UserX, UserCheck,
   Copy, Check, X, Search, ChevronDown,
 } from 'lucide-react'
+import { SUPPORTED_LANGS } from '../lib/i18n'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../hooks/useAuth'
 import { Avatar } from '../components/ui/Avatar'
@@ -20,7 +21,7 @@ import {
 } from '../services/adminService'
 import type { Profile } from '../types/chat'
 
-const DEPT_OPTIONS = ['운항팀', '영업팀', '재무팀', '관리팀', '기술팀', '']
+const DEPT_OPTIONS = ['HQ', 'UZ', 'RU', 'JP', 'CN', 'KG', 'VN', 'OTHER']
 
 // ─── AdminPage ─────────────────────────────────────────────────────────────
 
@@ -391,7 +392,7 @@ function AddUserModal({
   onClose:   () => void
 }) {
   const [form, setForm] = useState<CreateUserInput>({
-    email: '', name: '', department: '', position: '',
+    email: '', name: '', department: '', position: '', preferred_language: 'ko',
   })
   const [submitting, setSubmitting]  = useState(false)
   const [error,      setError]       = useState<string | null>(null)
@@ -405,10 +406,11 @@ function AddUserModal({
     setError(null)
     try {
       const res = await createUser({
-        email:      form.email.trim(),
-        name:       form.name.trim(),
-        department: form.department?.trim() || undefined,
-        position:   form.position?.trim()   || undefined,
+        email:              form.email.trim(),
+        name:               form.name.trim(),
+        department:         form.department?.trim()         || undefined,
+        position:           form.position?.trim()           || undefined,
+        preferred_language: form.preferred_language?.trim() || 'ko',
       })
       setResult(res)
     } catch (err) {
@@ -538,10 +540,10 @@ function AddUserModal({
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="부서">
+              <Field label="부서 · 근무 지역">
                 <select value={form.department} onChange={set('department')} className={inputCls}>
                   <option value="">선택 안 함</option>
-                  {DEPT_OPTIONS.filter(Boolean).map(d => (
+                  {DEPT_OPTIONS.map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
@@ -557,6 +559,18 @@ function AddUserModal({
                 />
               </Field>
             </div>
+
+            <Field label="선호 언어 · 메시지를 받고 싶은 언어">
+              <select
+                value={form.preferred_language}
+                onChange={set('preferred_language')}
+                className={inputCls}
+              >
+                {SUPPORTED_LANGS.map(l => (
+                  <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+                ))}
+              </select>
+            </Field>
 
             {error && (
               <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20

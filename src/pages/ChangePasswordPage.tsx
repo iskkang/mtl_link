@@ -1,46 +1,48 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../contexts/ThemeContext'
 
-const schema = z
-  .object({
-    password: z
-      .string()
-      .min(8, '8자 이상이어야 합니다')
-      .regex(/[A-Z]/, '대문자를 포함해야 합니다')
-      .regex(/[a-z]/, '소문자를 포함해야 합니다')
-      .regex(/[0-9]/, '숫자를 포함해야 합니다')
-      .regex(/[^A-Za-z0-9]/, '특수문자를 포함해야 합니다'),
-    confirm: z.string(),
-  })
-  .refine(d => d.password === d.confirm, {
-    message: '비밀번호가 일치하지 않습니다',
-    path: ['confirm'],
-  })
-
-type FormValues = z.infer<typeof schema>
-
-const REQUIREMENTS = [
-  { label: '8자 이상',    test: (v: string) => v.length >= 8 },
-  { label: '대문자 포함', test: (v: string) => /[A-Z]/.test(v) },
-  { label: '소문자 포함', test: (v: string) => /[a-z]/.test(v) },
-  { label: '숫자 포함',   test: (v: string) => /[0-9]/.test(v) },
-  { label: '특수문자 포함', test: (v: string) => /[^A-Za-z0-9]/.test(v) },
-]
+type FormValues = { password: string; confirm: string }
 
 export default function ChangePasswordPage() {
+  const { t } = useTranslation()
   const { user, refreshProfile } = useAuth()
   const { mode } = useTheme()
   const navigate = useNavigate()
   const [showPw,      setShowPw]      = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+
+  const schema = useMemo(() =>
+    z.object({
+      password: z
+        .string()
+        .min(8, t('errMin8'))
+        .regex(/[A-Z]/, t('errUpper'))
+        .regex(/[a-z]/, t('errLower'))
+        .regex(/[0-9]/, t('errNumber'))
+        .regex(/[^A-Za-z0-9]/, t('errSpecial')),
+      confirm: z.string(),
+    }).refine(d => d.password === d.confirm, {
+      message: t('changePwMismatch'),
+      path: ['confirm'],
+    }),
+  [t])
+
+  const REQUIREMENTS = useMemo(() => [
+    { label: t('reqMin8'),    test: (v: string) => v.length >= 8 },
+    { label: t('reqUpper'),   test: (v: string) => /[A-Z]/.test(v) },
+    { label: t('reqLower'),   test: (v: string) => /[a-z]/.test(v) },
+    { label: t('reqNumber'),  test: (v: string) => /[0-9]/.test(v) },
+    { label: t('reqSpecial'), test: (v: string) => /[^A-Za-z0-9]/.test(v) },
+  ], [t])
 
   const {
     register,
@@ -55,11 +57,9 @@ export default function ChangePasswordPage() {
     if (!user) return
     setServerError(null)
     try {
-      // 1. Supabase Auth 비밀번호 업데이트
       const { error: authError } = await supabase.auth.updateUser({ password: values.password })
       if (authError) throw authError
 
-      // 2. 프로필 must_change_password 플래그 해제
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ must_change_password: false })
@@ -69,7 +69,7 @@ export default function ChangePasswordPage() {
       await refreshProfile()
       navigate('/', { replace: true })
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : '비밀번호 변경에 실패했습니다.')
+      setServerError(err instanceof Error ? err.message : t('changePwError'))
     }
   }
 
@@ -86,10 +86,10 @@ export default function ChangePasswordPage() {
               <ShieldCheck size={24} className="text-mtl-cyan" />
             </div>
             <h1 className="font-display text-2xl font-bold text-mtl-navy dark:text-mtl-mist tracking-wide">
-              비밀번호 변경
+              {t('changePwTitle')}
             </h1>
             <p className="mt-2 text-xs text-center text-gray-400 dark:text-gray-500 leading-relaxed">
-              최초 로그인 시 새 비밀번호를 설정해야 합니다.
+              {t('changePwSubtitle')}
             </p>
           </div>
 
@@ -97,14 +97,14 @@ export default function ChangePasswordPage() {
             {/* 새 비밀번호 */}
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                새 비밀번호
+                {t('changePwNew')}
               </label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   autoComplete="new-password"
                   className="mtl-input pr-10"
-                  placeholder="새 비밀번호"
+                  placeholder={t('changePwNew')}
                   {...register('password')}
                 />
                 <button
@@ -112,7 +112,7 @@ export default function ChangePasswordPage() {
                   onClick={() => setShowPw(p => !p)}
                   className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   tabIndex={-1}
-                  aria-label={showPw ? '비밀번호 숨기기' : '비밀번호 표시'}
+                  aria-label={showPw ? t('changePwNew') : t('changePwNew')}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -140,14 +140,14 @@ export default function ChangePasswordPage() {
             {/* 비밀번호 확인 */}
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                비밀번호 확인
+                {t('changePwConfirm')}
               </label>
               <div className="relative">
                 <input
                   type={showConfirm ? 'text' : 'password'}
                   autoComplete="new-password"
                   className="mtl-input pr-10"
-                  placeholder="비밀번호 재입력"
+                  placeholder={t('changePwConfirm')}
                   {...register('confirm')}
                 />
                 <button
@@ -155,7 +155,7 @@ export default function ChangePasswordPage() {
                   onClick={() => setShowConfirm(p => !p)}
                   className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   tabIndex={-1}
-                  aria-label={showConfirm ? '비밀번호 숨기기' : '비밀번호 표시'}
+                  aria-label={t('changePwConfirm')}
                 >
                   {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -184,9 +184,9 @@ export default function ChangePasswordPage() {
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  변경 중…
+                  {t('changePwSubmitting')}
                 </span>
-              ) : '비밀번호 변경'}
+              ) : t('changePwSubmit')}
             </button>
           </form>
         </div>

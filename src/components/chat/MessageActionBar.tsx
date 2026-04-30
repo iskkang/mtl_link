@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Smile, Paperclip, Globe } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { EmojiPickerPopup } from '../emoji/EmojiPickerPopup'
 import { VoiceRecorderButton } from '../voice/VoiceRecorderButton'
 import { validateFiles } from '../../lib/fileValidation'
@@ -24,6 +25,7 @@ export function MessageActionBar({
   roomId, disabled, onEmojiSelect, onError,
   targetLanguage, onOpenTranslationModal,
 }: Props) {
+  const { t } = useTranslation()
   const [emojiOpen,     setEmojiOpen]     = useState(false)
   const [fileUploading, setFileUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -56,7 +58,7 @@ export function MessageActionBar({
       {/* ── 이모지 ──────────────────────────────── */}
       <div className="relative">
         <ActionBtn
-          label="이모지"
+          label={t('emojiBtn')}
           disabled={disabled}
           active={emojiOpen}
           onClick={() => setEmojiOpen(v => !v)}
@@ -74,7 +76,7 @@ export function MessageActionBar({
 
       {/* ── 파일 첨부 ──────────────────────────── */}
       <ActionBtn
-        label="파일 첨부"
+        label={t('attachBtn')}
         disabled={disabled || fileUploading}
         loading={fileUploading}
         onClick={() => fileInputRef.current?.click()}
@@ -103,7 +105,7 @@ export function MessageActionBar({
         type="button"
         onClick={onOpenTranslationModal}
         disabled={disabled}
-        title="번역 언어 설정"
+        title={t('translationSetting')}
         className={`ml-1 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
                     transition-colors border
                     ${activeTranslation
@@ -111,12 +113,12 @@ export function MessageActionBar({
                       : 'border-gray-200 dark:border-[#374045] text-gray-400 dark:text-[#8696a0] hover:bg-gray-100 dark:hover:bg-surface-hover'
                     }
                     disabled:opacity-40 disabled:cursor-not-allowed`}
-        aria-label="번역 언어 설정"
+        aria-label={t('translationSetting')}
       >
         <Globe size={11} />
         {activeTranslation
           ? (LANG_LABELS[targetLanguage!] ?? targetLanguage!.toUpperCase())
-          : '번역 설정'
+          : t('translationBtn')
         }
       </button>
     </div>

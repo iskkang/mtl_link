@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Sun, Moon, MessageCircle, ArrowLeft, Users, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessages } from '../../hooks/useMessages'
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function ChatWindow({ roomId, onBack }: Props) {
+  const { t } = useTranslation()
   const { mode, toggle } = useTheme()
   const { user } = useAuth()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
@@ -70,7 +72,7 @@ export function ChatWindow({ roomId, onBack }: Props) {
               className="md:hidden p-1.5 rounded-full flex-shrink-0
                          hover:bg-gray-100 dark:hover:bg-surface-hover
                          text-gray-500 dark:text-[#aebac1] transition-colors"
-              aria-label="뒤로가기"
+              aria-label={t('backBtn')}
             >
               <ArrowLeft size={20} />
             </button>
@@ -92,7 +94,7 @@ export function ChatWindow({ roomId, onBack }: Props) {
                   {displayName}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-[#8696a0]">
-                  {isGroup ? `멤버 ${memberCount}명` : '온라인'}
+                  {isGroup ? t('memberCount', { count: memberCount }) : t('onlineStatus')}
                 </p>
               </div>
             </div>
@@ -107,7 +109,7 @@ export function ChatWindow({ roomId, onBack }: Props) {
                 <p className="text-sm font-semibold text-gray-900 dark:text-[#e9edef]">
                   MTL Shipping Agency
                 </p>
-                <p className="text-xs text-gray-400 dark:text-[#8696a0]">사내 메신저</p>
+                <p className="text-xs text-gray-400 dark:text-[#8696a0]">{t('companySubtitle')}</p>
               </div>
             </div>
           )}
@@ -121,7 +123,7 @@ export function ChatWindow({ roomId, onBack }: Props) {
                      text-gray-500 dark:text-[#aebac1]
                      transition-colors"
           aria-label="테마 전환"
-          title={mode === 'dark' ? '라이트 모드' : '다크 모드'}
+          title={t('themeToggle')}
         >
           {mode === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
         </button>
@@ -164,7 +166,7 @@ export function ChatWindow({ roomId, onBack }: Props) {
           />
         </DragDropZone>
       ) : (
-        <EmptyState />
+        <EmptyState t={t} />
       )}
 
       {/* ── 번역 언어 설정 모달 ─────────────────────── */}
@@ -182,7 +184,7 @@ export function ChatWindow({ roomId, onBack }: Props) {
 }
 
 /* ── 방 미선택 빈 상태 ──────────────────────────── */
-function EmptyState() {
+function EmptyState({ t }: { t: (k: string) => string }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8 select-none
                     bg-[#efeae2] dark:bg-surface-chat"
@@ -200,10 +202,10 @@ function EmptyState() {
           MTL LINK
         </h2>
         <p className="text-sm text-gray-400 dark:text-[#8696a0] mb-1">
-          MTL Shipping Agency 사내 메신저
+          MTL Shipping Agency {t('companySubtitle')}
         </p>
-        <p className="text-xs text-gray-300 dark:text-[#556e78] mt-2 leading-relaxed">
-          좌측 목록에서 채팅방을 선택하거나<br />새 채팅을 시작해 보세요
+        <p className="text-xs text-gray-300 dark:text-[#556e78] mt-2 leading-relaxed whitespace-pre-line">
+          {t('welcomeDesc')}
         </p>
         <div className="mt-8 flex items-center gap-3 text-gray-200 dark:text-[#2a3942]">
           <span className="h-px w-16 bg-current" />
@@ -211,7 +213,7 @@ function EmptyState() {
           <span className="h-px w-16 bg-current" />
         </div>
         <p className="mt-4 text-[11px] text-gray-300 dark:text-[#374045]">
-          메시지는 Supabase로 안전하게 암호화됩니다
+          {t('encryptedNotice')}
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
 import { Send } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { getUserFriendlyMessage } from '../../lib/errors'
 
 interface Props {
@@ -13,6 +14,7 @@ const MAX_LEN = 4000
 const WARN_AT = 3500
 
 export function MessageInput({ value, onChange, onSend, disabled }: Props) {
+  const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
   const [error,     setError]     = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -76,7 +78,7 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
             ref={textareaRef}
             value={value}
             disabled={disabled || sending}
-            placeholder={disabled ? '채팅방을 선택하세요' : '메시지 입력… (Enter: 전송 / Shift+Enter: 줄바꿈)'}
+            placeholder={disabled ? t('selectRoomHint') : t('msgPlaceholder')}
             rows={1}
             maxLength={MAX_LEN + 100}
             className="
@@ -114,7 +116,7 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
             disabled:opacity-30 disabled:cursor-not-allowed
             transition-all duration-200
           "
-          aria-label="전송"
+          aria-label={t('attachBtn')}
         >
           {sending
             ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
