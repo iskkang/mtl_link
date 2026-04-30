@@ -4,7 +4,7 @@ const CORS_HEADERS = {
 }
 
 const RESEND_API = 'https://api.resend.com/emails'
-const FROM_EMAIL = 'onboarding@resend.dev'  // 임시 — DNS 인증 후 noreply@mtlb.co.kr 로 교체
+const FROM_EMAIL = 'noreply@send.mtlb.co.kr'
 const APP_NAME   = 'MTL Link'
 
 Deno.serve(async (req: Request) => {
