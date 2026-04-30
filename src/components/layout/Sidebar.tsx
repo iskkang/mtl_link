@@ -6,6 +6,7 @@ import { Avatar } from '../ui/Avatar'
 import { RoomList } from '../chat/RoomList'
 import { FriendsList } from '../chat/FriendsList'
 import { SidebarTabs, type SidebarTab } from '../chat/SidebarTabs'
+import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 
 interface Props {
   selectedRoomId: string | null
@@ -113,6 +114,7 @@ export function Sidebar({
               </p>
             )}
           </div>
+          <LanguageSwitcher />
           <button
             onClick={signOut}
             className="p-2 rounded-full
