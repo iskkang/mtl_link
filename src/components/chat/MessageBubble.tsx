@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Mic, Globe, AlertCircle, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -13,19 +12,18 @@ import type { MessageWithSender } from '../../types/chat'
 interface Props {
   message:        MessageWithSender
   isOwn:          boolean
-  showSenderInfo: boolean   // 그룹방에서만 true
+  showSenderInfo: boolean
   prevMessage?:   MessageWithSender | null
 }
 
 export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
-  const [showOriginal, setShowOriginal] = useState(false)
 
   const myLanguage = profile?.preferred_language ?? 'ko'
 
   const { translatedText, isTranslating, isTranslatable } =
-    useMessageTranslation(message, myLanguage, isOwn)
+    useMessageTranslation(message, myLanguage)
 
   if (message.deleted_at) {
     return (
@@ -41,21 +39,11 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
   const isFailed  = message._status === 'failed'
   const isSending = message._status === 'sending'
 
-  // Display text logic:
-  // - voice: showOriginal = show original speech, !showOriginal = show translation
-  // - text auto: showOriginal = show original, !showOriginal = show translation (fallback to original)
-  let display: string | null
-  if (isVoice) {
-    display = showOriginal && message.content_original
-      ? message.content_original
-      : message.content
-  } else if (isTranslatable && translatedText) {
-    display = showOriginal ? message.content : translatedText
-  } else {
-    display = message.content
-  }
+  // 2-panel conditions
+  const voiceTwoPanel = isVoice && !!message.content_original
+  const textTwoPanel  = isTranslatable && !!translatedText
+  const showTwoPanel  = voiceTwoPanel || textTwoPanel
 
-  // 같은 발신자의 연속 메시지: 아바타/이름 숨김
   const isContinuation = !!prevMessage &&
     prevMessage.sender_id === message.sender_id &&
     !prevMessage.deleted_at &&
@@ -103,48 +91,55 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
           )}
 
           {/* 메시지 본문 */}
-          {display && (
-            <span>
-              {linkifyText(display).map((part, i) =>
-                typeof part === 'string'
-                  ? <span key={i}>{part}</span>
-                  : (
-                    <a
-                      key={i}
-                      href={part.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline text-blue-600 dark:text-blue-400 break-all"
-                    >
-                      {part.href}
-                    </a>
-                  ),
-              )}
-            </span>
-          )}
-
-          {/* 번역 중 인디케이터 (버블 안) */}
-          {isTranslating && (
-            <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-[#8696a0]">
-              <span className="w-2.5 h-2.5 border border-current/30 border-t-current rounded-full animate-spin" />
-              {t('translating')}
-            </span>
-          )}
-
-          {/* 음성번역: 원문/번역 구분선 */}
-          {isVoice && showOriginal && message.content_original && (
-            <div className="mt-2 pt-2 border-t border-black/10 dark:border-white/10 text-xs opacity-80">
-              <div className="text-[10px] font-semibold mb-0.5 opacity-60 uppercase tracking-wider">
-                {t('msgShowTranslated')}
-              </div>
-              <div>{message.content}</div>
+          {showTwoPanel ? (
+            <div className="space-y-1">
+              {/* 원본: italic, 작게, 회색 */}
+              <p className="text-xs italic text-gray-400 dark:text-white/50 leading-relaxed whitespace-pre-wrap break-words">
+                {isVoice ? message.content_original : message.content}
+              </p>
+              {/* 구분선 */}
+              <div className="border-t border-black/10 dark:border-white/15" />
+              {/* 번역: normal, 기본 색 */}
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                {isVoice ? message.content : translatedText}
+              </p>
             </div>
+          ) : (
+            <>
+              {message.content && (
+                <span>
+                  {linkifyText(message.content).map((part, i) =>
+                    typeof part === 'string'
+                      ? <span key={i}>{part}</span>
+                      : (
+                        <a
+                          key={i}
+                          href={part.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-blue-600 dark:text-blue-400 break-all"
+                        >
+                          {part.href}
+                        </a>
+                      ),
+                  )}
+                </span>
+              )}
+
+              {/* 번역 중 인디케이터 */}
+              {isTranslating && (
+                <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-[#8696a0]">
+                  <span className="w-2.5 h-2.5 border border-current/30 border-t-current rounded-full animate-spin" />
+                  {t('translating')}
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        {/* 링크 미리보기 */}
-        {!isFailed && !isSending && message.room_id && display && (() => {
-          const parts = linkifyText(display)
+        {/* 링크 미리보기 (원본 텍스트 기준) */}
+        {!isFailed && !isSending && message.room_id && message.content && (() => {
+          const parts = linkifyText(message.content)
           const firstLink = parts.find((p): p is { href: string } => typeof p !== 'string')
           if (!firstLink) return null
           return (
@@ -172,45 +167,21 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
 
           {/* 음성 번역 배지 */}
           {isVoice && !isFailed && !isSending && (
-            <>
-              <button
-                onClick={() => setShowOriginal(v => !v)}
-                className="text-[10px] px-1.5 py-0.5 rounded-full
-                           border border-gray-300 dark:border-[#556e78]
-                           text-gray-500 dark:text-[#8696a0]
-                           hover:text-gray-700 dark:hover:text-[#e9edef]
-                           transition-colors"
-              >
-                {showOriginal ? t('msgShowTranslated') : t('msgShowOriginal')}
-              </button>
-              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
-                <Mic size={9} />
-                {message.source_language?.toUpperCase()}
-                {message.target_language && (
-                  <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
-                )}
-              </span>
-            </>
+            <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+              <Mic size={9} />
+              {message.source_language?.toUpperCase()}
+              {message.target_language && (
+                <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
+              )}
+            </span>
           )}
 
           {/* 자동 텍스트 번역 배지 */}
           {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && (
-            <>
-              <button
-                onClick={() => setShowOriginal(v => !v)}
-                className="text-[10px] px-1.5 py-0.5 rounded-full
-                           border border-gray-300 dark:border-[#556e78]
-                           text-gray-500 dark:text-[#8696a0]
-                           hover:text-gray-700 dark:hover:text-[#e9edef]
-                           transition-colors"
-              >
-                {showOriginal ? t('msgShowTranslated') : t('msgShowOriginal')}
-              </button>
-              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
-                <Globe size={9} />
-                {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
-              </span>
-            </>
+            <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+              <Globe size={9} />
+              {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
+            </span>
           )}
 
           <time

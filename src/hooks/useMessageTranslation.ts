@@ -23,7 +23,6 @@ interface TranslationState {
 export function useMessageTranslation(
   message: MessageWithSender,
   myLanguage: string,
-  isOwn: boolean,
 ): TranslationState {
   const [translatedText, setTranslatedText] = useState<string | null>(() => {
     // Hydrate from cache immediately on mount
@@ -40,7 +39,6 @@ export function useMessageTranslation(
 
   const srcLang  = message.source_language
   const isTranslatable =
-    !isOwn &&
     message.message_type === 'text' &&
     message._status === 'sent' &&
     !!message.content &&
