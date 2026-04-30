@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-mtl-ocean text-gray-900 dark:text-gray-100;
+    font-family: 'Barlow', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    margin: 0;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 씬 스크롤바 */
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400 dark:bg-gray-500; }
+}
+
+/* ── 카드 진입 애니메이션 ─────────────────────────────────── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.animate-card-in {
+  animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── 스피너 ───────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  @apply border-t-mtl-cyan border-r-mtl-cyan/30;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── 로그인 페이지 배경 패턴 ─────────────────────────────── */
+.login-bg-light {
+  background-color: #eef3fa;
+  background-image:
+    radial-gradient(circle at 15% 85%, rgba(26, 58, 107, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 85% 15%, rgba(41, 174, 232, 0.06) 0%, transparent 50%);
+}
+.login-bg-dark {
+  background-color: #0d1b2a;
+  background-image:
+    radial-gradient(ellipse at 20% 80%, rgba(26, 58, 107, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 10%, rgba(19, 35, 56, 0.70) 0%, transparent 55%);
+}
+
+/* ── 카드 상단 그라디언트 바 ─────────────────────────────── */
+.card-accent-bar {
+  height: 3px;
+  background: linear-gradient(90deg, #1a3a6b 0%, #29aee8 50%, #e84b35 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+/* ── 인풋 필드 공통 ──────────────────────────────────────── */
+.mtl-input {
+  @apply w-full px-4 py-2.5 rounded-lg text-sm
+         bg-white dark:bg-mtl-slate
+         border border-gray-200 dark:border-gray-700
+         text-gray-900 dark:text-gray-100
+         placeholder-gray-400 dark:placeholder-gray-500
+         focus:outline-none focus:ring-2 focus:ring-mtl-cyan/40
+         focus:border-mtl-cyan dark:focus:border-mtl-cyan
+         transition-all duration-200;
+}
+
+@layer utilities {
+  .font-display { font-family: 'Barlow Condensed', 'Apple SD Gothic Neo', sans-serif; }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 transparent;
+  }
+}
