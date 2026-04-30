@@ -22,6 +22,7 @@ export interface RoomListItem extends Room {
   members:      Pick<Profile, 'id' | 'name' | 'avatar_url'>[]
   unread_count: number
   is_pinned:    boolean
+  is_muted:     boolean
   last_read_at: string | null
 }
 

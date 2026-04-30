@@ -8,7 +8,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
   // 1. 내가 속한 방 멤버십
   const { data: myMems, error: e1 } = await supabase
     .from('room_members')
-    .select('room_id, is_pinned, last_read_at')
+    .select('room_id, is_pinned, is_muted, last_read_at')
     .eq('user_id', user.id)
   if (e1) throw e1
   if (!myMems?.length) return []
@@ -68,10 +68,11 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
 
   return rooms.map(room => ({
     ...room,
-    members:       membersByRoom[room.id] ?? [],
-    is_pinned:     myMemMap[room.id]?.is_pinned ?? false,
-    last_read_at:  myMemMap[room.id]?.last_read_at ?? null,
-    unread_count:  unreadMap[room.id] ?? 0,
+    members:      membersByRoom[room.id] ?? [],
+    is_pinned:    myMemMap[room.id]?.is_pinned  ?? false,
+    is_muted:     myMemMap[room.id]?.is_muted   ?? false,
+    last_read_at: myMemMap[room.id]?.last_read_at ?? null,
+    unread_count: unreadMap[room.id] ?? 0,
   }))
 }
 

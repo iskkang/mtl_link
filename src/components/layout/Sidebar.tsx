@@ -7,19 +7,24 @@ import { RoomList } from '../chat/RoomList'
 import { FriendsList } from '../chat/FriendsList'
 import { SidebarTabs, type SidebarTab } from '../chat/SidebarTabs'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
+import { NotificationToggle } from '../ui/NotificationToggle'
 
 interface Props {
-  selectedRoomId: string | null
-  onSelectRoom:   (id: string) => void
-  onNewChat:      () => void
-  activeTab:      SidebarTab
-  onTabChange:    (tab: SidebarTab) => void
-  onSelectFriend: (userId: string) => void
+  selectedRoomId:  string | null
+  onSelectRoom:    (id: string) => void
+  onNewChat:       () => void
+  activeTab:       SidebarTab
+  onTabChange:     (tab: SidebarTab) => void
+  onSelectFriend:  (userId: string) => void
+  totalUnread:     number
+  notifEnabled:    boolean
+  onToggleNotif:   () => void
 }
 
 export function Sidebar({
   selectedRoomId, onSelectRoom, onNewChat,
   activeTab, onTabChange, onSelectFriend,
+  totalUnread, notifEnabled, onToggleNotif,
 }: Props) {
   const { t } = useTranslation()
   const { profile, user, signOut } = useAuth()
@@ -53,7 +58,7 @@ export function Sidebar({
       </header>
 
       {/* ── 탭 ───────────────────────────────────────── */}
-      <SidebarTabs active={activeTab} onChange={onTabChange} />
+      <SidebarTabs active={activeTab} onChange={onTabChange} totalUnread={totalUnread} />
 
       {/* ── 채팅 탭 ──────────────────────────────────── */}
       {activeTab === 'chat' && (
@@ -114,6 +119,7 @@ export function Sidebar({
               </p>
             )}
           </div>
+          <NotificationToggle enabled={notifEnabled} onToggle={onToggleNotif} />
           <LanguageSwitcher />
           <button
             onClick={signOut}

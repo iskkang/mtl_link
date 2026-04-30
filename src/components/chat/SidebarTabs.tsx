@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 export type SidebarTab = 'chat' | 'friends'
 
 interface Props {
-  active:   SidebarTab
-  onChange: (tab: SidebarTab) => void
+  active:      SidebarTab
+  onChange:    (tab: SidebarTab) => void
+  totalUnread?: number
 }
 
-export function SidebarTabs({ active, onChange }: Props) {
+export function SidebarTabs({ active, onChange, totalUnread = 0 }: Props) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-shrink-0 bg-white dark:bg-surface-panel
@@ -17,6 +18,7 @@ export function SidebarTabs({ active, onChange }: Props) {
         const isActive = active === tab
         const Icon     = tab === 'chat' ? MessageSquare : Users
         const label    = tab === 'chat' ? t('tabChat') : t('tabFriends')
+        const badge    = tab === 'chat' && totalUnread > 0 ? totalUnread : 0
         return (
           <button
             key={tab}
@@ -31,6 +33,13 @@ export function SidebarTabs({ active, onChange }: Props) {
           >
             <Icon size={15} />
             {label}
+            {badge > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full
+                               bg-red-500 text-white text-[10px] font-bold
+                               flex items-center justify-center leading-none">
+                {badge > 99 ? '99+' : badge}
+              </span>
+            )}
           </button>
         )
       })}
