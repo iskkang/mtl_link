@@ -1,12 +1,18 @@
+import { useState } from 'react'
 import { Mic, Globe, AlertCircle, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
 import { LinkPreviewCard } from './LinkPreviewCard'
+import { MessageMenu } from './MessageMenu'
+import { MessageEditInput } from './MessageEditInput'
+import { DeleteMessageModal } from './DeleteMessageModal'
 import { linkifyText } from '../../lib/linkify'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessageTranslation } from '../../hooks/useMessageTranslation'
+import { useMessageStore } from '../../stores/messageStore'
+import { editMessage, softDeleteMessage } from '../../services/messageService'
 import type { MessageWithSender } from '../../types/chat'
 
 interface Props {
@@ -16,9 +22,18 @@ interface Props {
   prevMessage?:   MessageWithSender | null
 }
 
+function isWithin5Min(createdAt: string) {
+  return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
+}
+
 export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
+  const { upsertMessage } = useMessageStore()
+
+  const [hovered,     setHovered]     = useState(false)
+  const [editing,     setEditing]     = useState(false)
+  const [deleteOpen,  setDeleteOpen]  = useState(false)
 
   const myLanguage = profile?.preferred_language ?? 'ko'
 
@@ -29,7 +44,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
     return (
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-3`}>
         <span className="text-xs italic text-gray-400 dark:text-[#8696a0] px-3 py-1.5">
-          삭제된 메시지입니다
+          {t('msgDeleted')}
         </span>
       </div>
     )
@@ -38,8 +53,13 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
   const isVoice   = message.message_type === 'voice_translated'
   const isFailed  = message._status === 'failed'
   const isSending = message._status === 'sending'
+  const isSent    = message._status === 'sent' || !message._status
 
-  // 2-panel conditions
+  // 수정/삭제 권한
+  const canDelete = isOwn && isSent && message.message_type !== 'system'
+  const canEdit   = isOwn && isSent && message.message_type === 'text' && isWithin5Min(message.created_at)
+
+  // 2단 레이아웃 조건
   const voiceTwoPanel = isVoice && !!message.content_original
   const textTwoPanel  = isTranslatable && !!translatedText
   const showTwoPanel  = voiceTwoPanel || textTwoPanel
@@ -49,9 +69,33 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
     !prevMessage.deleted_at &&
     (new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime()) < 5 * 60 * 1000
 
-  return (
-    <div className={`flex items-end gap-2 px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+  // 수정 저장
+  const handleSave = async (content: string) => {
+    await editMessage(message.id, content)
+    // Optimistic update: realtime이 처리하지만 즉시 반영
+    upsertMessage(message.room_id!, {
+      ...message,
+      content,
+      edited_at: new Date().toISOString(),
+    })
+    setEditing(false)
+  }
 
+  // 삭제
+  const handleDelete = async () => {
+    await softDeleteMessage(message.id)
+    upsertMessage(message.room_id!, {
+      ...message,
+      deleted_at: new Date().toISOString(),
+    })
+  }
+
+  return (
+    <div
+      className={`flex items-end gap-2 px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {/* 아바타 (수신 메시지만) */}
       {!isOwn && (
         <div className="w-8 flex-shrink-0 self-end mb-0.5">
@@ -62,6 +106,18 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
               size="sm"
             />
           )}
+        </div>
+      )}
+
+      {/* ⋯ 메뉴 (호버 시, 내 메시지만, 발신 측에 배치) */}
+      {isOwn && (hovered || deleteOpen || editing) && !editing && (
+        <div className="self-end mb-1 flex-shrink-0">
+          <MessageMenu
+            canEdit={canEdit}
+            canDelete={canDelete}
+            onEdit={() => setEditing(true)}
+            onDelete={() => setDeleteOpen(true)}
+          />
         </div>
       )}
 
@@ -90,16 +146,19 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
             <AttachmentPreview attachments={message.attachments} />
           )}
 
-          {/* 메시지 본문 */}
-          {showTwoPanel ? (
+          {/* 인라인 수정 모드 */}
+          {editing ? (
+            <MessageEditInput
+              initialValue={message.content ?? ''}
+              onSave={handleSave}
+              onCancel={() => setEditing(false)}
+            />
+          ) : showTwoPanel ? (
             <div className="space-y-1">
-              {/* 원본: italic, 작게, 회색 */}
               <p className="text-xs italic text-gray-400 dark:text-white/50 leading-relaxed whitespace-pre-wrap break-words">
                 {isVoice ? message.content_original : message.content}
               </p>
-              {/* 구분선 */}
               <div className="border-t border-black/10 dark:border-white/15" />
-              {/* 번역: normal, 기본 색 */}
               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                 {isVoice ? message.content : translatedText}
               </p>
@@ -125,8 +184,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
                   )}
                 </span>
               )}
-
-              {/* 번역 중 인디케이터 */}
               {isTranslating && (
                 <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-[#8696a0]">
                   <span className="w-2.5 h-2.5 border border-current/30 border-t-current rounded-full animate-spin" />
@@ -137,8 +194,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
           )}
         </div>
 
-        {/* 링크 미리보기 (원본 텍스트 기준) */}
-        {!isFailed && !isSending && message.room_id && message.content && (() => {
+        {/* 링크 미리보기 */}
+        {!editing && !isFailed && !isSending && message.room_id && message.content && (() => {
           const parts = linkifyText(message.content)
           const firstLink = parts.find((p): p is { href: string } => typeof p !== 'string')
           if (!firstLink) return null
@@ -152,46 +209,62 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
           )
         })()}
 
-        {/* 메타 정보 (시간, 상태, 배지) */}
-        <div className={`flex items-center gap-1.5 mt-0.5 mx-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* 메타 정보 */}
+        {!editing && (
+          <div className={`flex items-center gap-1.5 mt-0.5 mx-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
 
-          {isFailed && (
-            <span className="text-[10px] text-red-500 flex items-center gap-0.5">
-              <AlertCircle size={11} />전송 실패
-            </span>
-          )}
+            {isFailed && (
+              <span className="text-[10px] text-red-500 flex items-center gap-0.5">
+                <AlertCircle size={11} />전송 실패
+              </span>
+            )}
+            {isSending && (
+              <Clock size={11} className="text-gray-300 dark:text-[#556e78]" />
+            )}
 
-          {isSending && (
-            <Clock size={11} className="text-gray-300 dark:text-[#556e78]" />
-          )}
+            {/* 음성 번역 배지 */}
+            {isVoice && !isFailed && !isSending && (
+              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+                <Mic size={9} />
+                {message.source_language?.toUpperCase()}
+                {message.target_language && (
+                  <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
+                )}
+              </span>
+            )}
 
-          {/* 음성 번역 배지 */}
-          {isVoice && !isFailed && !isSending && (
-            <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
-              <Mic size={9} />
-              {message.source_language?.toUpperCase()}
-              {message.target_language && (
-                <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
-              )}
-            </span>
-          )}
+            {/* 자동 텍스트 번역 배지 */}
+            {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && (
+              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+                <Globe size={9} />
+                {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
+              </span>
+            )}
 
-          {/* 자동 텍스트 번역 배지 */}
-          {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && (
-            <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
-              <Globe size={9} />
-              {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
-            </span>
-          )}
+            {/* 수정됨 배지 */}
+            {message.edited_at && !isFailed && !isSending && (
+              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] italic">
+                {t('msgEdited')}
+              </span>
+            )}
 
-          <time
-            title={formatFullDateTime(message.created_at)}
-            className="text-[10px] text-gray-400 dark:text-[#8696a0]"
-          >
-            {formatMessageTime(message.created_at)}
-          </time>
-        </div>
+            <time
+              title={formatFullDateTime(message.created_at)}
+              className="text-[10px] text-gray-400 dark:text-[#8696a0]"
+            >
+              {formatMessageTime(message.created_at)}
+            </time>
+          </div>
+        )}
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {deleteOpen && (
+        <DeleteMessageModal
+          onConfirm={handleDelete}
+          onClose={() => setDeleteOpen(false)}
+        />
+      )}
     </div>
   )
 }

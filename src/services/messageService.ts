@@ -66,6 +66,26 @@ export async function sendTextMessage(
   }
 }
 
+// ─── 메시지 수정 / 삭제 ──────────────────────────────────────────
+
+export async function editMessage(messageId: string, content: string): Promise<void> {
+  const trimmed = content.trim()
+  if (!trimmed) throw new Error('내용을 입력하세요')
+  const { error } = await supabase
+    .from('messages')
+    .update({ content: trimmed, edited_at: new Date().toISOString() })
+    .eq('id', messageId)
+  if (error) throw error
+}
+
+export async function softDeleteMessage(messageId: string): Promise<void> {
+  const { error } = await supabase
+    .from('messages')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', messageId)
+  if (error) throw error
+}
+
 // ─── 파일 메시지 ─────────────────────────────────────────────────
 
 export async function sendFileMessage(roomId: string, files: File[], caption?: string): Promise<void> {
