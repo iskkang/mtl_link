@@ -1,5 +1,3 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2'
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -27,28 +25,21 @@ Deno.serve(async (req: Request) => {
 
     if (!name || !email) return json({ error: 'name and email are required' }, 400)
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const resendKey   = Deno.env.get('RESEND_API_KEY')
+    const resendKey = Deno.env.get('RESEND_API_KEY')
 
     if (!resendKey) {
       console.warn('[send-signup-notification] RESEND_API_KEY not set — skipping email')
       return json({ ok: true, sent: 0, warn: 'RESEND_API_KEY not configured' })
     }
 
-    // 관리자 이메일 목록 조회
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-
-    const { data: admins, error: dbErr } = await admin
-      .from('profiles')
-      .select('email, name')
-      .eq('is_admin', true)
-      .eq('status', 'active')
-
-    if (dbErr) throw dbErr
-    if (!admins || admins.length === 0) return json({ ok: true, sent: 0 })
+    // 관리자 수신 이메일 — ADMIN_EMAIL 환경변수 (쉼표로 복수 지정 가능)
+    const adminEmailEnv = Deno.env.get('ADMIN_EMAIL')
+    if (!adminEmailEnv) {
+      console.warn('[send-signup-notification] ADMIN_EMAIL not set — skipping email')
+      return json({ ok: true, sent: 0, warn: 'ADMIN_EMAIL not configured' })
+    }
+    const adminEmails = adminEmailEnv.split(',').map(e => e.trim()).filter(Boolean)
+    if (adminEmails.length === 0) return json({ ok: true, sent: 0 })
 
     const siteUrl = Deno.env.get('SITE_URL') ?? 'https://your-domain.vercel.app'
 
@@ -61,7 +52,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         from:    `${APP_NAME} <${FROM_EMAIL}>`,
-        to:      admins.map(a => a.email),
+        to:      adminEmails,
         subject: `[${APP_NAME}] 새 가입 신청 — ${name}`,
         html:    buildHtml({ name, email, department, siteUrl }),
       }),
@@ -72,8 +63,8 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Resend ${resendRes.status}: ${errText}`)
     }
 
-    console.info(`[send-signup-notification] sent to ${admins.length} admin(s) for ${email}`)
-    return json({ ok: true, sent: admins.length })
+    console.info(`[send-signup-notification] sent to ${adminEmails.length} admin(s) for ${email}`)
+    return json({ ok: true, sent: adminEmails.length })
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
