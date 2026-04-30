@@ -108,6 +108,10 @@ const resources = {
       profileLang:    '선호 언어',
       profileEmail:   '이메일',
       profileStatus:  '상태',
+      // ── 자동 번역 ─────────────────────────────────────
+      translating:       '번역 중',
+      msgShowOriginal:   '원본 보기',
+      msgShowTranslated: '번역',
     },
   },
 
@@ -191,6 +195,9 @@ const resources = {
       profileLang:    'Language',
       profileEmail:   'Email',
       profileStatus:  'Status',
+      translating:       'Translating',
+      msgShowOriginal:   'Original',
+      msgShowTranslated: 'Translation',
     },
   },
 
@@ -274,6 +281,9 @@ const resources = {
       profileLang:    'Язык',
       profileEmail:   'Эл. почта',
       profileStatus:  'Статус',
+      translating:       'Перевод',
+      msgShowOriginal:   'Оригинал',
+      msgShowTranslated: 'Перевод',
     },
   },
 
@@ -357,6 +367,9 @@ const resources = {
       profileLang:    'Til',
       profileEmail:   'Elektron pochta',
       profileStatus:  'Holat',
+      translating:       'Tarjima qilinmoqda',
+      msgShowOriginal:   'Asl nusxa',
+      msgShowTranslated: 'Tarjima',
     },
   },
 
@@ -440,6 +453,9 @@ const resources = {
       profileLang:    '语言',
       profileEmail:   '邮箱',
       profileStatus:  '状态',
+      translating:       '翻译中',
+      msgShowOriginal:   '查看原文',
+      msgShowTranslated: '查看翻译',
     },
   },
 
@@ -523,6 +539,9 @@ const resources = {
       profileLang:    '言語',
       profileEmail:   'メール',
       profileStatus:  'ステータス',
+      translating:       '翻訳中',
+      msgShowOriginal:   '原文を表示',
+      msgShowTranslated: '翻訳を表示',
     },
   },
 }

@@ -327,6 +327,30 @@ export type Database = {
         Relationships: []
       }
 
+      // ─── message_translations ───────────────────────────────────────────────
+      message_translations: {
+        Row: {
+          id:              string
+          message_id:      string
+          room_id:         string
+          language:        SupportedLanguage
+          translated_text: string
+          created_at:      string
+        }
+        Insert: {
+          id?:             string
+          message_id:      string
+          room_id:         string
+          language:        SupportedLanguage
+          translated_text: string
+          created_at?:     string
+        }
+        Update: {
+          translated_text?: string
+        }
+        Relationships: []
+      }
+
       // ─── translation_preferences ─────────────────────────────────────────────
       translation_preferences: {
         Row: {

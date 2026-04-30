@@ -4,7 +4,11 @@ import { validateFiles } from '../lib/fileValidation'
 
 // ─── 텍스트 메시지 (Optimistic UI) ──────────────────────────────
 
-export async function sendTextMessage(roomId: string, content: string): Promise<void> {
+export async function sendTextMessage(
+  roomId: string,
+  content: string,
+  sourceLanguage?: string,
+): Promise<void> {
   const trimmed = content.trim()
   if (!trimmed) throw new Error('메시지가 비어있습니다')
   if (trimmed.length > 4000) throw new Error('메시지는 4,000자 이내로 입력하세요')
@@ -14,6 +18,7 @@ export async function sendTextMessage(roomId: string, content: string): Promise<
 
   const localId = crypto.randomUUID()
   const now     = new Date().toISOString()
+  const srcLang = (sourceLanguage ?? null) as import('../types/database').SupportedLanguage | null
 
   useMessageStore.getState().upsertMessage(roomId, {
     id:                   localId,
@@ -24,7 +29,7 @@ export async function sendTextMessage(roomId: string, content: string): Promise<
     message_type:         'text',
     content:              trimmed,
     content_original:     null,
-    source_language:      null,
+    source_language:      srcLang,
     target_language:      null,
     translation_provider: null,
     created_at:           now,
@@ -37,7 +42,13 @@ export async function sendTextMessage(roomId: string, content: string): Promise<
   try {
     const { data, error } = await supabase
       .from('messages')
-      .insert({ room_id: roomId, sender_id: user.id, message_type: 'text', content: trimmed })
+      .insert({
+        room_id:         roomId,
+        sender_id:       user.id,
+        message_type:    'text',
+        content:         trimmed,
+        source_language: srcLang,
+      })
       .select()
       .single()
     if (error) throw error

@@ -4,10 +4,12 @@ import { useRoomStore } from '../stores/roomStore'
 import { markAsRead } from '../services/roomService'
 import { sendTextMessage } from '../services/messageService'
 import { useRealtimeMessages } from './useRealtimeMessages'
+import { useAuth } from './useAuth'
 
 export function useMessages(roomId: string | null) {
   const store = useMessageStore()
   const resetUnread = useRoomStore(s => s.resetUnread)
+  const { profile } = useAuth()
 
   useEffect(() => {
     if (!roomId) return
@@ -35,7 +37,7 @@ export function useMessages(roomId: string | null) {
     messages: roomId ? (store.messagesByRoom[roomId] ?? []) : [],
     loading:  roomId ? (store.loadingByRoom[roomId] ?? false) : false,
     hasMore:  roomId ? (store.hasMoreByRoom[roomId] ?? false) : false,
-    send:     (content: string) => sendTextMessage(roomId!, content),
+    send:     (content: string) => sendTextMessage(roomId!, content, profile?.preferred_language),
     loadMore,
   }
 }
