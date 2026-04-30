@@ -18,6 +18,7 @@ export function DeleteRoomModal({ onConfirm, onClose }: Props) {
     setError(null)
     try {
       await onConfirm()
+      onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setLoading(false)

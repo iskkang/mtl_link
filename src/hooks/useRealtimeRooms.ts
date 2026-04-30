@@ -27,10 +27,19 @@ export function useRealtimeRooms(userId: string | undefined) {
           if (id) removeRoom(id)
         },
       )
+      .on(
+        'postgres_changes',
+        // REPLICA IDENTITY FULL 설정으로 old row에 room_id 포함됨
+        { event: 'DELETE', schema: 'public', table: 'room_members', filter: `user_id=eq.${userId}` },
+        payload => {
+          const roomId = (payload.old as { room_id?: string }).room_id
+          if (roomId) removeRoom(roomId)
+        },
+      )
       .subscribe((_status, err) => {
         if (err) console.error('[Realtime] rooms error:', err)
       })
 
     return () => { channel.unsubscribe() }
-  }, [userId, updateLastMessage])
+  }, [userId, updateLastMessage, removeRoom])
 }
