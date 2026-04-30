@@ -107,6 +107,18 @@ export async function createGroupRoom(name: string, memberIds: string[]): Promis
   return data as string
 }
 
+// ─── 방 나가기 / 삭제 ───────────────────────────────────────
+
+export async function leaveRoom(roomId: string): Promise<void> {
+  const { error } = await supabase.rpc('leave_room', { p_room_id: roomId })
+  if (error) throw error
+}
+
+export async function deleteRoom(roomId: string): Promise<void> {
+  const { error } = await supabase.from('rooms').delete().eq('id', roomId)
+  if (error) throw error
+}
+
 /** DM: 상대방 이름, 그룹: 방 이름 */
 export function getRoomDisplayName(room: RoomListItem, currentUserId: string): string {
   if (room.room_type === 'direct') {

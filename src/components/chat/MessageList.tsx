@@ -91,12 +91,23 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 </span>
               </div>
             )}
-            <MessageBubble
-              message={msg}
-              isOwn={msg.sender_id === currentUserId}
-              showSenderInfo={isGroupRoom}
-              prevMessage={prev}
-            />
+            {msg.message_type === 'system' ? (
+              <div className="flex justify-center my-1.5 px-3">
+                <span className="text-[11px] px-3 py-1 rounded-full
+                                 bg-white/70 dark:bg-surface-panel/80
+                                 text-gray-400 dark:text-[#8696a0]
+                                 shadow-sm backdrop-blur-sm italic">
+                  {msg.content}
+                </span>
+              </div>
+            ) : (
+              <MessageBubble
+                message={msg}
+                isOwn={msg.sender_id === currentUserId}
+                showSenderInfo={isGroupRoom}
+                prevMessage={prev}
+              />
+            )}
           </div>
         )
       })}

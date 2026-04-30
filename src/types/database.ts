@@ -417,6 +417,10 @@ export type Database = {
         Args: { p_room_id: string; p_to_user_id?: string }
         Returns: string
       }
+      leave_room: {
+        Args: { p_room_id: string }
+        Returns: void
+      }
     }
 
     Enums: {

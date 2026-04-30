@@ -10,6 +10,7 @@ interface RoomStore {
   setLoading:           (v: boolean) => void
   setError:             (e: string | null) => void
   upsertRoom:           (room: RoomListItem) => void
+  removeRoom:           (roomId: string) => void
   updateLastMessage:    (roomId: string, msg: string | null, at: string | null) => void
   incrementUnread:      (roomId: string) => void
   resetUnread:          (roomId: string) => void
@@ -23,6 +24,8 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
   setRooms:   (rooms) => set({ rooms }),
   setLoading: (v)     => set({ loading: v }),
   setError:   (e)     => set({ error: e }),
+
+  removeRoom: (roomId) => set(s => ({ rooms: s.rooms.filter(r => r.id !== roomId) })),
 
   upsertRoom: (room) => set(s => {
     const idx = s.rooms.findIndex(r => r.id === room.id)

@@ -4,7 +4,7 @@ import { useRoomStore } from '../stores/roomStore'
 import type { Room } from '../types/chat'
 
 export function useRealtimeRooms(userId: string | undefined) {
-  const { updateLastMessage } = useRoomStore()
+  const { updateLastMessage, removeRoom } = useRoomStore()
 
   useEffect(() => {
     if (!userId) return
@@ -17,6 +17,14 @@ export function useRealtimeRooms(userId: string | undefined) {
         payload => {
           const room = payload.new as Room
           updateLastMessage(room.id, room.last_message, room.last_message_at)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'rooms' },
+        payload => {
+          const id = (payload.old as { id: string }).id
+          if (id) removeRoom(id)
         },
       )
       .subscribe((_status, err) => {

@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessages } from '../../hooks/useMessages'
 import { useRoomStore } from '../../stores/roomStore'
-import { getRoomDisplayName, getRoomAvatarInfo } from '../../services/roomService'
+import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
 import { supabase } from '../../lib/supabase'
 import { Avatar } from '../ui/Avatar'
 import { MessageList } from '../chat/MessageList'
@@ -13,23 +13,30 @@ import { MessageInput } from '../chat/MessageInput'
 import { MessageActionBar } from '../chat/MessageActionBar'
 import { DragDropZone } from '../chat/DragDropZone'
 import { TranslationLanguageModal } from '../chat/TranslationLanguageModal'
+import { RoomMenu } from '../chat/RoomMenu'
+import { LeaveRoomModal } from '../chat/LeaveRoomModal'
+import { DeleteRoomModal } from '../chat/DeleteRoomModal'
 
 interface Props {
-  roomId:  string | null
-  onBack?: () => void
+  roomId:          string | null
+  onBack?:         () => void
+  onLeaveOrDelete?: (toast: string) => void
 }
 
-export function ChatWindow({ roomId, onBack }: Props) {
+export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const { t } = useTranslation()
   const { mode, toggle } = useTheme()
   const { user } = useAuth()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
+  const { removeRoom } = useRoomStore()
   const { messages, loading, hasMore, send, loadMore } = useMessages(roomId)
 
   const [draft,           setDraft]           = useState('')
   const [fileError,       setFileError]       = useState<string | null>(null)
   const [targetLanguage,  setTargetLanguage]  = useState<string | null>(null)
   const [translationOpen, setTranslationOpen] = useState(false)
+  const [leaveOpen,       setLeaveOpen]       = useState(false)
+  const [deleteOpen,      setDeleteOpen]      = useState(false)
 
   // 방이 바뀌면 draft 초기화 + 번역 언어 재조회
   useEffect(() => {
@@ -49,11 +56,26 @@ export function ChatWindow({ roomId, onBack }: Props) {
   const avatarInfo    = room ? getRoomAvatarInfo(room, currentUserId) : null
   const isGroup       = room?.room_type === 'group'
   const memberCount   = room?.members.length ?? 0
+  const isOwner       = !!room && room.created_by === currentUserId
 
   // 1:1 방에서 상대방 정보 (번역 모달용)
   const peer = room && !isGroup
     ? room.members.find(m => m.id !== currentUserId) ?? null
     : null
+
+  const handleLeave = async () => {
+    if (!roomId) return
+    await leaveRoom(roomId)
+    removeRoom(roomId)
+    onLeaveOrDelete?.(t('leaveRoomToast'))
+  }
+
+  const handleDelete = async () => {
+    if (!roomId) return
+    await deleteRoom(roomId)
+    removeRoom(roomId)
+    onLeaveOrDelete?.(t('deleteRoomToast'))
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -115,18 +137,29 @@ export function ChatWindow({ roomId, onBack }: Props) {
           )}
         </div>
 
-        {/* 테마 토글 */}
-        <button
-          onClick={toggle}
-          className="p-2 rounded-full flex-shrink-0 ml-2
-                     hover:bg-gray-100 dark:hover:bg-surface-hover
-                     text-gray-500 dark:text-[#aebac1]
-                     transition-colors"
-          aria-label="테마 전환"
-          title={t('themeToggle')}
-        >
-          {mode === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+          {/* 테마 토글 */}
+          <button
+            onClick={toggle}
+            className="p-2 rounded-full
+                       hover:bg-gray-100 dark:hover:bg-surface-hover
+                       text-gray-500 dark:text-[#aebac1]
+                       transition-colors"
+            aria-label="테마 전환"
+            title={t('themeToggle')}
+          >
+            {mode === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+          </button>
+
+          {/* 방 메뉴 (방 선택 시만) */}
+          {room && (
+            <RoomMenu
+              isOwner={isOwner}
+              onLeave={() => setLeaveOpen(true)}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          )}
+        </div>
       </header>
 
       {/* ── 메시지 영역 ──────────────────────────────── */}
@@ -177,6 +210,22 @@ export function ChatWindow({ roomId, onBack }: Props) {
           currentLanguage={targetLanguage ?? 'none'}
           onSaved={lang => setTargetLanguage(lang)}
           onClose={() => setTranslationOpen(false)}
+        />
+      )}
+
+      {/* ── 방 나가기 모달 ───────────────────────────── */}
+      {leaveOpen && (
+        <LeaveRoomModal
+          onConfirm={handleLeave}
+          onClose={() => setLeaveOpen(false)}
+        />
+      )}
+
+      {/* ── 방 삭제 모달 ────────────────────────────── */}
+      {deleteOpen && (
+        <DeleteRoomModal
+          onConfirm={handleDelete}
+          onClose={() => setDeleteOpen(false)}
         />
       )}
     </div>
