@@ -60,3 +60,21 @@ export async function setUserAdmin(userId: string, isAdmin: boolean): Promise<vo
     .eq('id', userId)
   if (error) throw error
 }
+
+// ─── 가입 승인 / 거절 ────────────────────────────────────────────────────────
+
+export async function approveUser(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ status: 'active' })
+    .eq('id', userId)
+  if (error) throw error
+}
+
+export async function rejectUser(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ status: 'rejected' })
+    .eq('id', userId)
+  if (error) throw error
+}

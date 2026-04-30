@@ -827,15 +827,195 @@ select public.get_target_language($1);  -- room_id
 
 ---
 
-## 19. 향후 확장
+## 19. v1.5 DB 확장 설계
+
+### 19.1 message_reactions (메시지 반응)
+
+```sql
+create table public.message_reactions (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null references public.messages(id) on delete cascade,
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  emoji text not null,
+  created_at timestamptz not null default now(),
+  unique(message_id, user_id, emoji)
+);
+
+alter table public.message_reactions enable row level security;
+
+create policy "reactions_select_member" on public.message_reactions
+  for select to authenticated using (public.is_room_member(room_id, auth.uid()));
+
+create policy "reactions_insert_member" on public.message_reactions
+  for insert to authenticated
+  with check (user_id = auth.uid() and public.is_room_member(room_id, auth.uid()));
+
+create policy "reactions_delete_own" on public.message_reactions
+  for delete to authenticated using (user_id = auth.uid());
+```
+
+---
+
+### 19.2 message_threads (스레드 답글)
+
+```sql
+-- messages 테이블에 thread_id 컬럼 추가
+alter table public.messages
+  add column thread_id uuid references public.messages(id) on delete cascade,
+  add column reply_count int not null default 0;
+
+-- 인덱스
+create index idx_messages_thread_id on public.messages(thread_id)
+  where thread_id is not null;
+```
+
+스레드 구조:
+- 원본 메시지: `thread_id = null`
+- 답글: `thread_id = 원본 메시지 id`
+- `reply_count`는 트리거로 자동 갱신
+
+---
+
+### 19.3 message_mentions (멘션)
+
+```sql
+create table public.message_mentions (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null references public.messages(id) on delete cascade,
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  mentioned_user_id uuid not null references public.profiles(id) on delete cascade,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.message_mentions enable row level security;
+
+create policy "mentions_select_self" on public.message_mentions
+  for select to authenticated using (mentioned_user_id = auth.uid());
+
+create policy "mentions_update_self" on public.message_mentions
+  for update to authenticated using (mentioned_user_id = auth.uid());
+```
+
+---
+
+### 19.4 message_links (링크 미리보기)
+
+```sql
+create table public.message_links (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null references public.messages(id) on delete cascade,
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  url text not null,
+  title text,
+  description text,
+  image_url text,
+  domain text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.message_links enable row level security;
+
+create policy "links_select_member" on public.message_links
+  for select to authenticated using (public.is_room_member(room_id, auth.uid()));
+```
+
+링크 미리보기는 `fetch-link-preview` Edge Function에서 OG 메타데이터 추출.
+
+---
+
+### 19.5 read_receipts (메시지별 읽음)
+
+```sql
+-- v1에서는 room_members.last_read_at으로 처리
+-- v1.5에서 메시지별 읽음 표시가 필요하면 아래 테이블 추가
+
+create table public.read_receipts (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid not null references public.messages(id) on delete cascade,
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  read_at timestamptz not null default now(),
+  unique(message_id, user_id)
+);
+
+alter table public.read_receipts enable row level security;
+
+create policy "receipts_select_member" on public.read_receipts
+  for select to authenticated using (public.is_room_member(room_id, auth.uid()));
+
+create policy "receipts_insert_self" on public.read_receipts
+  for insert to authenticated with check (user_id = auth.uid());
+```
+
+---
+
+### 19.6 메시지 수정 정책
+
+```sql
+-- messages 테이블에 이미 edited_at 컬럼 있음
+-- 5분 이내 수정만 허용하는 RLS 정책 업데이트
+
+drop policy if exists "messages_update_own" on public.messages;
+
+create policy "messages_update_own_5min" on public.messages
+  for update to authenticated
+  using (
+    sender_id = auth.uid()
+    and deleted_at is null
+    and created_at > now() - interval '5 minutes'
+  )
+  with check (sender_id = auth.uid());
+```
+
+---
+
+### 19.7 메시지 검색 인덱스
+
+```sql
+-- pg_trgm 인덱스 이미 v1에서 준비됨
+-- 검색 함수 추가
+
+create or replace function public.search_messages(
+  p_query text,
+  p_room_id uuid default null,
+  p_limit int default 20
+)
+returns table (
+  message_id uuid,
+  room_id uuid,
+  content text,
+  sender_name text,
+  created_at timestamptz
+)
+language sql security definer stable set search_path = public as $$
+  select
+    m.id,
+    m.room_id,
+    m.content,
+    p.name,
+    m.created_at
+  from public.messages m
+  join public.profiles p on p.id = m.sender_id
+  where m.deleted_at is null
+    and m.content ilike '%' || p_query || '%'
+    and (p_room_id is null or m.room_id = p_room_id)
+    and public.is_room_member(m.room_id, auth.uid())
+  order by m.created_at desc
+  limit p_limit;
+$$;
+```
+
+---
+
+## 20. 향후 확장
 
 | 기능 | 추가 필요 |
 |---|---|
 | 텍스트 자동 번역 | message_type `text_translated` 이미 정의됨 |
 | 그룹방 멤버별 언어 | translation_preferences에 room_id 컬럼 추가 |
-| TTS | Edge Function + Storage (음성 파일 보관 정책 결정 필요) |
+| TTS | Edge Function + Storage |
 | AI 요약 | room_summaries 테이블 |
-| 메시지 검색 | pg_trgm 인덱스 이미 준비됨 |
-| 링크 미리보기 | message_links 테이블 |
-| 메시지별 읽음 | read_receipts 테이블 |
-| 메시지 반응 | message_reactions 테이블 |
+| 음성/화상통화 | WebRTC, v3 이후 |
+| 모바일 앱 | React Native 또는 PWA |

@@ -1,27 +1,31 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Sun, Moon, Eye, EyeOff, Ship } from 'lucide-react'
+import { Sun, Moon, Eye, EyeOff, Ship, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../contexts/ThemeContext'
-
-const schema = z.object({
-  email:    z.string().email('올바른 이메일 주소를 입력하세요'),
-  password: z.string().min(1, '비밀번호를 입력하세요'),
-})
-type FormValues = z.infer<typeof schema>
+import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../lib/i18n'
 
 export default function LoginPage() {
-  const { signIn } = useAuth()
+  const { t, i18n } = useTranslation()
+  const { signIn }  = useAuth()
   const { mode, toggle } = useTheme()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+  const navigate    = useNavigate()
+  const location    = useLocation()
+  const from        = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
 
   const [showPassword, setShowPassword] = useState(false)
   const [serverError,  setServerError]  = useState<string | null>(null)
+  const [langOpen,     setLangOpen]     = useState(false)
+
+  const schema = z.object({
+    email:    z.string().email(t('emailInvalid')),
+    password: z.string().min(1, t('passwordRequired')),
+  })
+  type FormValues = z.infer<typeof schema>
 
   const {
     register,
@@ -35,25 +39,82 @@ export default function LoginPage() {
       await signIn(values.email, values.password)
       navigate(from, { replace: true })
     } catch {
-      setServerError('이메일 또는 비밀번호가 올바르지 않습니다.')
+      setServerError(t('invalidCreds'))
     }
   }
+
+  const handleLangSelect = (code: LangCode) => {
+    i18n.changeLanguage(code)
+    saveLanguage(code)
+    setLangOpen(false)
+  }
+
+  const currentLang = SUPPORTED_LANGS.find(l => l.code === i18n.language) ?? SUPPORTED_LANGS[0]
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 ${mode === 'dark' ? 'login-bg-dark' : 'login-bg-light'}`}>
 
-      {/* 테마 토글 */}
-      <button
-        onClick={toggle}
-        className="fixed top-4 right-4 p-2 rounded-lg
-                   bg-white/70 dark:bg-white/10
-                   text-gray-600 dark:text-gray-300
-                   hover:bg-white dark:hover:bg-white/20
-                   backdrop-blur-sm transition-all duration-200 z-10"
-        aria-label="테마 전환"
-      >
-        {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
+      {/* 우측 상단 컨트롤 */}
+      <div className="fixed top-4 right-4 flex items-center gap-2 z-10">
+
+        {/* 언어 선택 드롭다운 */}
+        <div className="relative">
+          <button
+            onClick={() => setLangOpen(o => !o)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm
+                       bg-white/70 dark:bg-white/10
+                       text-gray-700 dark:text-gray-200
+                       hover:bg-white dark:hover:bg-white/20
+                       backdrop-blur-sm transition-all duration-200"
+          >
+            <span>{currentLang.flag}</span>
+            <span className="font-medium">{currentLang.label}</span>
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {langOpen && (
+            <>
+              {/* 외부 클릭 닫기 */}
+              <div className="fixed inset-0" onClick={() => setLangOpen(false)} />
+              <div className="absolute right-0 mt-1 w-40 rounded-xl shadow-lg overflow-hidden
+                              bg-white dark:bg-mtl-slate
+                              border border-gray-100 dark:border-white/10
+                              py-1 z-50">
+                {SUPPORTED_LANGS.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => handleLangSelect(lang.code)}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors
+                      ${i18n.language === lang.code
+                        ? 'bg-mtl-cyan/10 dark:bg-mtl-cyan/20 text-mtl-navy dark:text-mtl-cyan font-medium'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
+                      }`}
+                  >
+                    <span>{lang.flag}</span>
+                    <span>{lang.label}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 테마 토글 */}
+        <button
+          onClick={toggle}
+          className="p-2 rounded-lg
+                     bg-white/70 dark:bg-white/10
+                     text-gray-600 dark:text-gray-300
+                     hover:bg-white dark:hover:bg-white/20
+                     backdrop-blur-sm transition-all duration-200"
+          aria-label="테마 전환"
+        >
+          {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+      </div>
 
       {/* 로그인 카드 */}
       <div className="w-full max-w-sm animate-card-in">
@@ -88,7 +149,7 @@ export default function LoginPage() {
             {/* 이메일 */}
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                이메일
+                {t('email')}
               </label>
               <input
                 type="email"
@@ -105,7 +166,7 @@ export default function LoginPage() {
             {/* 비밀번호 */}
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                비밀번호
+                {t('password')}
               </label>
               <div className="relative">
                 <input
@@ -150,14 +211,25 @@ export default function LoginPage() {
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  로그인 중…
+                  {t('submitting')}
                 </span>
-              ) : '로그인'}
+              ) : t('submit')}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-600">
-            계정 문의는 시스템 관리자에게 연락하세요
+          {/* 회원가입 */}
+          <div className="mt-5 text-center">
+            <Link
+              to="/signup"
+              className="inline-block text-xs font-medium text-mtl-cyan dark:text-accent
+                         hover:underline transition-colors"
+            >
+              {t('signupBtn')}
+            </Link>
+          </div>
+
+          <p className="mt-3 text-center text-xs text-gray-400 dark:text-gray-600">
+            {t('contact')}
           </p>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Mic, Globe, AlertCircle, Clock } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
+import { LinkPreviewCard } from './LinkPreviewCard'
 import { linkifyText } from '../../lib/linkify'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import type { MessageWithSender } from '../../types/chat'
@@ -109,6 +110,21 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage }: P
             </div>
           )}
         </div>
+
+        {/* 링크 미리보기 */}
+        {!isFailed && !isSending && message.room_id && display && (() => {
+          const parts = linkifyText(display)
+          const firstLink = parts.find((p): p is { href: string } => typeof p !== 'string')
+          if (!firstLink) return null
+          return (
+            <LinkPreviewCard
+              messageId={message.id}
+              roomId={message.room_id}
+              url={firstLink.href}
+              isOwn={isOwn}
+            />
+          )
+        })()}
 
         {/* 메타 정보 (시간, 상태, 음성 배지) */}
         <div className={`flex items-center gap-1.5 mt-0.5 mx-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>

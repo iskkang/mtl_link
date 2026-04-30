@@ -3,6 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
 
 const LoginPage          = lazy(() => import('./pages/LoginPage'))
+const SignUpPage         = lazy(() => import('./pages/SignUpPage'))
+const PendingPage        = lazy(() => import('./pages/PendingPage'))
+const RejectedPage       = lazy(() => import('./pages/RejectedPage'))
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const ChatPage           = lazy(() => import('./pages/ChatPage'))
 const AdminPage          = lazy(() => import('./pages/AdminPage'))
@@ -17,7 +20,10 @@ export function AppRoutes() {
   return (
     <Suspense fallback={PageFallback}>
       <Routes>
-        <Route path="/login"           element={<LoginPage />} />
+        <Route path="/login"    element={<LoginPage />} />
+        <Route path="/signup"   element={<SignUpPage />} />
+        <Route path="/pending"  element={<PendingPage />} />
+        <Route path="/rejected" element={<RejectedPage />} />
         <Route path="/change-password" element={
           <ProtectedRoute>
             <ChangePasswordPage />

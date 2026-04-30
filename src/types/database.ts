@@ -27,7 +27,7 @@ export type Database = {
           department:           string | null
           position:             string | null
           avatar_url:           string | null
-          status:               'active' | 'inactive'
+          status:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin:             boolean
           must_change_password: boolean
           preferred_language:   SupportedLanguage
@@ -41,7 +41,7 @@ export type Database = {
           department?:           string | null
           position?:             string | null
           avatar_url?:           string | null
-          status?:               'active' | 'inactive'
+          status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
           must_change_password?: boolean
           preferred_language?:   SupportedLanguage
@@ -55,7 +55,7 @@ export type Database = {
           department?:           string | null
           position?:             string | null
           avatar_url?:           string | null
-          status?:               'active' | 'inactive'
+          status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
           must_change_password?: boolean
           preferred_language?:   SupportedLanguage
@@ -292,6 +292,39 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+
+      // ─── message_links ───────────────────────────────────────────────────────
+      message_links: {
+        Row: {
+          id:          string
+          message_id:  string
+          room_id:     string
+          url:         string
+          title:       string | null
+          description: string | null
+          image_url:   string | null
+          domain:      string | null
+          created_at:  string
+        }
+        Insert: {
+          id?:          string
+          message_id:   string
+          room_id:      string
+          url:          string
+          title?:       string | null
+          description?: string | null
+          image_url?:   string | null
+          domain?:      string | null
+          created_at?:  string
+        }
+        Update: {
+          title?:       string | null
+          description?: string | null
+          image_url?:   string | null
+          domain?:      string | null
+        }
+        Relationships: []
       }
 
       // ─── translation_preferences ─────────────────────────────────────────────

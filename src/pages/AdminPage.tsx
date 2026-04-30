@@ -13,6 +13,8 @@ import {
   createUser,
   setUserStatus,
   setUserAdmin,
+  approveUser,
+  rejectUser,
   type CreateUserInput,
   type CreateUserResult,
 } from '../services/adminService'
@@ -30,7 +32,7 @@ export default function AdminPage() {
   const [loading,     setLoading]     = useState(true)
   const [search,      setSearch]      = useState('')
   const [addOpen,     setAddOpen]     = useState(false)
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'pending' | 'rejected'>('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -51,8 +53,9 @@ export default function AdminPage() {
     return matchQuery && matchStatus
   })
 
-  const totalActive = profiles.filter(p => p.status === 'active').length
-  const totalAdmin  = profiles.filter(p => p.is_admin).length
+  const totalActive  = profiles.filter(p => p.status === 'active').length
+  const totalAdmin   = profiles.filter(p => p.is_admin).length
+  const totalPending = profiles.filter(p => p.status === 'pending').length
 
   const handleStatusToggle = async (p: Profile) => {
     const next = p.status === 'active' ? 'inactive' : 'active'
@@ -62,11 +65,23 @@ export default function AdminPage() {
   }
 
   const handleAdminToggle = async (p: Profile) => {
-    if (p.id === user?.id) return // 자신의 관리자 권한은 수정 불가
+    if (p.id === user?.id) return
     const next = !p.is_admin
     setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, is_admin: next } : x))
     try { await setUserAdmin(p.id, next) }
     catch { setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, is_admin: p.is_admin } : x)) }
+  }
+
+  const handleApprove = async (p: Profile) => {
+    setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: 'active' } : x))
+    try { await approveUser(p.id) }
+    catch { setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status } : x)) }
+  }
+
+  const handleReject = async (p: Profile) => {
+    setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: 'rejected' } : x))
+    try { await rejectUser(p.id) }
+    catch { setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status } : x)) }
   }
 
   return (
@@ -116,11 +131,12 @@ export default function AdminPage() {
       <div className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
 
         {/* ── 통계 카드 ─────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           {[
             { label: '전체 직원', value: profiles.length, color: 'text-mtl-cyan dark:text-accent' },
             { label: '재직 중',   value: totalActive,     color: 'text-emerald-500 dark:text-emerald-400' },
             { label: '관리자',    value: totalAdmin,      color: 'text-mtl-navy dark:text-mtl-mist' },
+            { label: '승인 대기', value: totalPending,    color: totalPending > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-[#8696a0]' },
           ].map(s => (
             <div key={s.label}
                  className="bg-white dark:bg-surface-panel rounded-2xl px-5 py-4
@@ -162,6 +178,8 @@ export default function AdminPage() {
               <option value="all">전체</option>
               <option value="active">재직</option>
               <option value="inactive">비활성</option>
+              <option value="pending">승인 대기</option>
+              <option value="rejected">거절됨</option>
             </select>
             <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 dark:text-[#8696a0]" />
           </div>
@@ -209,6 +227,8 @@ export default function AdminPage() {
                     isSelf={p.id === user?.id}
                     onStatusToggle={handleStatusToggle}
                     onAdminToggle={handleAdminToggle}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
                   />
                 ))}
               </tbody>
@@ -236,17 +256,29 @@ export default function AdminPage() {
 
 function EmployeeRow({
   profile: p, isSelf,
-  onStatusToggle, onAdminToggle,
+  onStatusToggle, onAdminToggle, onApprove, onReject,
 }: {
-  profile:       Profile
-  isSelf:        boolean
+  profile:        Profile
+  isSelf:         boolean
   onStatusToggle: (p: Profile) => void
   onAdminToggle:  (p: Profile) => void
+  onApprove:      (p: Profile) => void
+  onReject:       (p: Profile) => void
 }) {
-  const isActive = p.status === 'active'
+  const isActive   = p.status === 'active'
+  const isPending  = p.status === 'pending'
+  const isRejected = p.status === 'rejected'
+  const dimmed     = !isActive && !isPending
+
+  const statusBadge = () => {
+    if (isActive)   return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />재직</span>
+    if (isPending)  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />대기</span>
+    if (isRejected) return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400"><span className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400" />거절</span>
+    return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-surface-hover text-gray-400 dark:text-[#8696a0]"><span className="w-1.5 h-1.5 rounded-full bg-gray-400" />비활성</span>
+  }
 
   return (
-    <tr className={`transition-colors hover:bg-gray-50/60 dark:hover:bg-surface-hover/30 ${!isActive ? 'opacity-50' : ''}`}>
+    <tr className={`transition-colors hover:bg-gray-50/60 dark:hover:bg-surface-hover/30 ${dimmed ? 'opacity-50' : ''}`}>
       {/* 직원 */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
@@ -271,16 +303,7 @@ function EmployeeRow({
       </td>
 
       {/* 상태 */}
-      <td className="px-4 py-3">
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
-          ${isActive
-            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-            : 'bg-gray-100 dark:bg-surface-hover text-gray-400 dark:text-[#8696a0]'
-          }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-400'}`} />
-          {isActive ? '재직' : '비활성'}
-        </span>
-      </td>
+      <td className="px-4 py-3">{statusBadge()}</td>
 
       {/* 권한 */}
       <td className="px-4 py-3">
@@ -297,23 +320,36 @@ function EmployeeRow({
       {/* 작업 */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
-          {/* 비활성/복귀 */}
-          <ActionIconBtn
-            title={isActive ? '비활성화' : '복귀'}
-            onClick={() => onStatusToggle(p)}
-            disabled={isSelf}
-          >
-            {isActive ? <UserX size={14} /> : <UserCheck size={14} />}
-          </ActionIconBtn>
-
-          {/* 관리자 토글 */}
-          <ActionIconBtn
-            title={p.is_admin ? '관리자 해제' : '관리자 지정'}
-            onClick={() => onAdminToggle(p)}
-            disabled={isSelf}
-          >
-            {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
-          </ActionIconBtn>
+          {/* 승인 대기 / 거절 상태: 승인·거절 버튼 */}
+          {(isPending || isRejected) ? (
+            <>
+              <ActionIconBtn title="승인" onClick={() => onApprove(p)}>
+                <UserCheck size={14} className="text-emerald-500 dark:text-emerald-400" />
+              </ActionIconBtn>
+              {isPending && (
+                <ActionIconBtn title="거절" onClick={() => onReject(p)}>
+                  <UserX size={14} className="text-red-500 dark:text-red-400" />
+                </ActionIconBtn>
+              )}
+            </>
+          ) : (
+            <>
+              <ActionIconBtn
+                title={isActive ? '비활성화' : '복귀'}
+                onClick={() => onStatusToggle(p)}
+                disabled={isSelf}
+              >
+                {isActive ? <UserX size={14} /> : <UserCheck size={14} />}
+              </ActionIconBtn>
+              <ActionIconBtn
+                title={p.is_admin ? '관리자 해제' : '관리자 지정'}
+                onClick={() => onAdminToggle(p)}
+                disabled={isSelf}
+              >
+                {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+              </ActionIconBtn>
+            </>
+          )}
         </div>
       </td>
     </tr>

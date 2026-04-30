@@ -1176,3 +1176,143 @@ MTL Link를 React + Vite + TypeScript + Tailwind + Supabase로 개발해줘.
 - [ ] API 키 클라이언트 미노출 확인
 - [ ] Vercel 배포
 - [ ] 5명 동시 접속 메시지 지연 1초 이내
+
+---
+
+## 32. v1.5 개발 프롬프트
+
+v1 완료 후 아래 순서대로 진행한다.
+
+---
+
+### 32.1 1단계 — 파일·링크 미리보기 (DB 변경 없음)
+
+```
+아래 기능을 추가해라.
+
+1. 파일 미리보기
+   - 이미지 메시지 클릭 시 모달로 크게 보기
+   - 모달 안에서 이전/다음 이미지 전환
+   - ESC 또는 외부 클릭으로 닫기
+   - PDF는 iframe으로 인라인 미리보기
+   - 다운로드 버튼 유지
+
+2. 링크 미리보기 카드
+   - 메시지에 URL이 있으면 fetch-link-preview Edge Function 호출
+   - OG 메타데이터(제목·설명·이미지·도메인) 추출
+   - message_links 테이블에 저장
+   - 메시지 버블 아래에 카드 형태로 표시
+   - 카드 클릭 시 새 탭에서 열기
+
+새로 만들 파일:
+- supabase/functions/fetch-link-preview/index.ts
+- src/components/chat/ImageModal.tsx
+- src/components/chat/LinkPreviewCard.tsx
+- src/components/chat/FilePreview.tsx
+
+수정할 파일:
+- MessageBubble.tsx — 링크 카드, 이미지 모달 연결
+- FileMessage.tsx — PDF 인라인 미리보기 추가
+
+마이그레이션:
+- message_links 테이블 추가 (DB설계서 §19.4)
+```
+
+---
+
+### 32.2 2단계 — 읽음 표시·메시지 수정·반응
+
+```
+아래 기능을 추가해라.
+
+1. 읽음 표시
+   - 1:1 방에서 상대방이 읽으면 메시지 옆에 체크 아이콘 표시
+   - 읽으면 파란 체크, 안 읽으면 회색 체크 (WhatsApp 스타일)
+   - room_members.last_read_at 기준으로 처리
+   - 그룹방은 읽은 인원 수 표시 (예: "읽음 3")
+
+2. 메시지 수정
+   - 내 메시지에 호버 시 수정 버튼 표시
+   - 클릭 시 메시지 버블이 인라인 수정 모드로 전환
+   - 5분 이내만 수정 가능
+   - 수정된 메시지에 "(수정됨)" 표시
+   - RLS 정책: DB설계서 §19.6 적용
+
+3. 메시지 반응
+   - 메시지 호버 시 이모지 반응 버튼 표시
+   - 자주 쓰는 이모지 6개 빠른 선택 (👍 ❤️ 😂 😮 😢 🙏)
+   - 전체 이모지 피커도 열 수 있게
+   - 반응 클릭 시 취소/추가 토글
+   - 메시지 아래에 반응 이모지 + 카운트 표시
+   - Realtime으로 즉시 반영
+
+새로 만들 파일:
+- src/components/chat/MessageReactions.tsx
+- src/components/chat/MessageEditInput.tsx
+- src/hooks/useReadReceipts.ts
+
+수정할 파일:
+- MessageBubble.tsx — 읽음 체크, 수정 버튼, 반응 표시
+
+마이그레이션:
+- message_reactions 테이블 (DB설계서 §19.1)
+- messages_update_own_5min RLS 정책 (DB설계서 §19.6)
+```
+
+---
+
+### 32.3 3단계 — 브라우저 알림·검색·멘션·스레드
+
+```
+아래 기능을 추가해라.
+
+1. 브라우저 알림
+   - 앱 진입 시 Notification API 권한 요청
+   - 다른 탭에 있을 때 새 메시지 오면 푸시 알림
+   - 알림 클릭 시 해당 방으로 이동
+   - 내가 보낸 메시지와 현재 보고 있는 방은 알림 안 보냄
+   - 알림 설정 토글 (사용자별 on/off)
+
+2. 메시지 검색
+   - 사이드바 검색창 활성화
+   - 키워드 입력 시 실시간 검색 (debounce 300ms)
+   - 전체 방 검색 또는 현재 방만 검색 토글
+   - 검색 결과에 발신자·방 이름·시간 표시
+   - 결과 클릭 시 해당 방·메시지로 이동
+   - search_messages DB 함수 사용 (DB설계서 §19.7)
+
+3. 멘션(@)
+   - 메시지 입력 중 @ 입력 시 직원 목록 팝업
+   - 이름 검색으로 필터링
+   - 선택 시 @이름 텍스트 삽입 + 하이라이트
+   - 메시지 전송 시 message_mentions 테이블에 저장
+   - 멘션된 사용자에게 브라우저 알림 발송
+   - 사이드바에서 안 읽은 멘션 배지 표시
+
+4. 스레드 답글
+   - 메시지 호버 시 "답글" 버튼 표시
+   - 클릭 시 우측에 스레드 패널 슬라이드인
+   - 스레드 패널에서 답글 작성
+   - 원본 메시지에 "답글 N개" 표시
+   - 스레드도 Realtime 구독
+   - 스레드 안에서도 멘션·반응·파일 첨부 가능
+
+새로 만들 파일:
+- src/hooks/useBrowserNotifications.ts
+- src/components/chat/SearchPanel.tsx
+- src/components/chat/MentionPicker.tsx
+- src/components/chat/ThreadPanel.tsx
+- src/components/chat/ThreadMessage.tsx
+
+수정할 파일:
+- Sidebar.tsx — 검색창 활성화
+- MessageInput.tsx — @ 감지 + MentionPicker 연결
+- MessageBubble.tsx — 스레드 버튼, 답글 수 표시
+- ChatWindow.tsx — ThreadPanel 슬라이드인
+- useRealtimeMessages.ts — 스레드 메시지 구독 추가
+
+마이그레이션:
+- messages.thread_id, reply_count 컬럼 (DB설계서 §19.2)
+- message_mentions 테이블 (DB설계서 §19.3)
+- read_receipts 테이블 (DB설계서 §19.5)
+```
