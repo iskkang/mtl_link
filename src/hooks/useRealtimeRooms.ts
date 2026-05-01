@@ -13,7 +13,7 @@ function msgPreview(msg: Message): string | null {
 }
 
 export function useRealtimeRooms(userId: string | undefined) {
-  const { updateLastMessage, removeRoom, updateMemberReadAt } = useRoomStore()
+  const { updateLastMessage, removeRoom } = useRoomStore()
 
   useEffect(() => {
     if (!userId) return
@@ -56,25 +56,10 @@ export function useRealtimeRooms(userId: string | undefined) {
           if (roomId) removeRoom(roomId)
         },
       )
-      .on(
-        'postgres_changes',
-        // 다른 멤버의 last_read_at 변경 감지 → 읽음 표시 즉시 반영
-        { event: 'UPDATE', schema: 'public', table: 'room_members', filter: `user_id=neq.${userId}` },
-        payload => {
-          const { room_id, user_id, last_read_at } = payload.new as {
-            room_id:      string
-            user_id:      string
-            last_read_at: string | null
-          }
-          if (room_id && user_id && last_read_at) {
-            updateMemberReadAt(room_id, user_id, last_read_at)
-          }
-        },
-      )
       .subscribe((_status, err) => {
         if (err) console.error('[Realtime] rooms error:', err)
       })
 
     return () => { channel.unsubscribe() }
-  }, [userId, updateLastMessage, removeRoom, updateMemberReadAt])
+  }, [userId, updateLastMessage, removeRoom])
 }

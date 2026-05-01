@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useMessageStore, MSG_SELECT, normaliseMsgs } from '../stores/messageStore'
+import { useRoomStore } from '../stores/roomStore'
 import type { Message, Attachment } from '../types/chat'
 
 export function useRealtimeMessages(roomId: string | null) {
   const { upsertMessage, addAttachment, refetchSinceLastSeen } = useMessageStore()
+  const updateMemberReadAt = useRoomStore(s => s.updateMemberReadAt)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
@@ -53,6 +55,18 @@ export function useRealtimeMessages(roomId: string | null) {
           })
         },
       )
+      .on(
+        'postgres_changes',
+        // room_members UPDATE: 멤버의 last_read_at 변경 → 읽음 표시 즉시 반영
+        // room_id=eq 필터로 검증된 패턴 사용 (neq 대신)
+        { event: 'UPDATE', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
+        payload => {
+          const row = payload.new as { room_id: string; user_id: string; last_read_at: string | null }
+          if (row.room_id && row.user_id && row.last_read_at) {
+            updateMemberReadAt(row.room_id, row.user_id, row.last_read_at)
+          }
+        },
+      )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') refetchSinceLastSeen(roomId).catch(console.error)
         if (err) console.error('[Realtime] messages error:', err)
@@ -63,5 +77,5 @@ export function useRealtimeMessages(roomId: string | null) {
       channel.unsubscribe()
       channelRef.current = null
     }
-  }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen])
+  }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen, updateMemberReadAt])
 }
