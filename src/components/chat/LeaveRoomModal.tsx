@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 
 interface Props {
+  isDirect?: boolean
   onConfirm: () => Promise<void>
   onClose:   () => void
 }
 
-export function LeaveRoomModal({ onConfirm, onClose }: Props) {
+export function LeaveRoomModal({ isDirect, onConfirm, onClose }: Props) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
@@ -34,10 +35,10 @@ export function LeaveRoomModal({ onConfirm, onClose }: Props) {
       <div className="bg-white dark:bg-surface-panel rounded-2xl shadow-2xl
                       w-[90vw] max-w-sm mx-4 p-6">
         <h3 className="text-base font-semibold text-gray-900 dark:text-[#e9edef] mb-3">
-          {t('leaveRoomTitle')}
+          {isDirect ? t('directLeaveTitle') : t('leaveRoomTitle')}
         </h3>
         <p className="text-sm text-gray-500 dark:text-[#8696a0] leading-relaxed mb-5">
-          {t('leaveRoomDesc')}
+          {isDirect ? t('directLeaveDesc') : t('leaveRoomDesc')}
         </p>
 
         {error && (

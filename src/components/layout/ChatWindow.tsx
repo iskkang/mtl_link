@@ -59,6 +59,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const displayName   = room ? getRoomDisplayName(room, currentUserId) : null
   const avatarInfo    = room ? getRoomAvatarInfo(room, currentUserId) : null
   const isGroup       = room?.room_type === 'group'
+  const isDirect      = !!room && room.room_type === 'direct'
   const memberCount   = room?.members.length ?? 0
   const isOwner       = !!room && room.created_by === currentUserId
 
@@ -88,7 +89,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
     if (!roomId) return
     await leaveRoom(roomId)
     removeRoom(roomId)
-    onLeaveOrDelete?.(t('leaveRoomToast'))
+    onLeaveOrDelete?.(isDirect ? t('directLeaveToast') : t('leaveRoomToast'))
   }
 
   const handleDelete = async () => {
@@ -176,6 +177,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
           {room && (
             <RoomMenu
               isOwner={isOwner}
+              isDirect={isDirect}
               onLeave={() => setLeaveOpen(true)}
               onDelete={() => setDeleteOpen(true)}
             />
@@ -245,6 +247,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
       {/* ── 방 나가기 모달 ───────────────────────────── */}
       {leaveOpen && (
         <LeaveRoomModal
+          isDirect={isDirect}
           onConfirm={handleLeave}
           onClose={() => setLeaveOpen(false)}
         />

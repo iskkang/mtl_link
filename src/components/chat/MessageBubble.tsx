@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mic, Globe, AlertCircle, Clock, Reply } from 'lucide-react'
+import { Mic, Globe, AlertCircle, Clock, CornerDownLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -112,17 +112,17 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         </div>
       )}
 
-      {/* 액션 버튼 (호버 시) - own: 버블 왼쪽, received: 버블 오른쪽(DOM 마지막) */}
+      {/* 액션 버튼 (호버 시) - own: 버블 왼쪽 */}
       {isOwn && (hovered || deleteOpen || editing) && !editing && (
-        <div className="self-end mb-1 flex-shrink-0 flex items-center gap-0.5">
+        <div className="self-end mb-1 flex-shrink-0 flex items-center gap-1.5">
           <button
             onClick={onReply}
             title={t('msgReply')}
-            className="p-1 rounded-full text-gray-400 dark:text-[#8696a0]
-                       hover:bg-gray-100 dark:hover:bg-surface-hover hover:text-gray-600
-                       dark:hover:text-[#aebac1] transition-colors"
+            className="p-2 rounded-full bg-gray-700 dark:bg-gray-600
+                       shadow-md hover:bg-gray-600 dark:hover:bg-gray-500
+                       transition-colors"
           >
-            <Reply size={14} />
+            <CornerDownLeft size={16} className="text-gray-100" />
           </button>
           <MessageMenu
             canEdit={canEdit}
@@ -284,11 +284,11 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           <button
             onClick={onReply}
             title={t('msgReply')}
-            className="p-1 rounded-full text-gray-400 dark:text-[#8696a0]
-                       hover:bg-gray-100 dark:hover:bg-surface-hover hover:text-gray-600
-                       dark:hover:text-[#aebac1] transition-colors"
+            className="p-2 rounded-full bg-gray-700 dark:bg-gray-600
+                       shadow-md hover:bg-gray-600 dark:hover:bg-gray-500
+                       transition-colors"
           >
-            <Reply size={14} />
+            <CornerDownLeft size={16} className="text-gray-100" />
           </button>
         </div>
       )}

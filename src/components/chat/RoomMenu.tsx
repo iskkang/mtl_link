@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 
 interface Props {
   isOwner:   boolean
+  isDirect:  boolean
   onLeave:   () => void
   onDelete:  () => void
 }
 
-export function RoomMenu({ isOwner, onLeave, onDelete }: Props) {
+export function RoomMenu({ isOwner, isDirect, onLeave, onDelete }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -51,7 +52,7 @@ export function RoomMenu({ isOwner, onLeave, onDelete }: Props) {
             {t('roomLeave')}
           </button>
 
-          {isOwner && (
+          {!isDirect && isOwner && (
             <button
               onClick={() => { setOpen(false); onDelete() }}
               className="w-full flex items-center gap-2.5 px-4 py-2.5
