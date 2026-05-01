@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
 import { formatDateSeparator, isSameDayStr } from '../../lib/date'
-import type { MessageWithSender } from '../../types/chat'
+import type { MessageWithSender, RoomListItem } from '../../types/chat'
 
 interface Props {
   messages:          MessageWithSender[]
@@ -10,12 +10,13 @@ interface Props {
   hasMore:           boolean
   currentUserId:     string
   isGroupRoom:       boolean
+  members:           RoomListItem['members']
   onLoadMore:        () => void
   onReply:           (msg: MessageWithSender) => void
   onScrollToMessage: (messageId: string) => void
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, onLoadMore, onReply, onScrollToMessage }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLenRef = useRef(0)
@@ -110,6 +111,9 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 prevMessage={prev}
                 onReply={() => onReply(msg)}
                 onScrollToMessage={onScrollToMessage}
+                members={members}
+                currentUserId={currentUserId}
+                isGroup={isGroupRoom}
               />
             )}
           </div>

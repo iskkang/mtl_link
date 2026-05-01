@@ -206,6 +206,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
             hasMore={hasMore}
             currentUserId={currentUserId}
             isGroupRoom={isGroup}
+            members={room.members}
             onLoadMore={loadMore}
             onReply={setReplyTo}
             onScrollToMessage={scrollToMessage}

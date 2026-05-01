@@ -24,10 +24,10 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
   if (e2) throw e2
   if (!rooms?.length) return []
 
-  // 3. 방 멤버 목록 (room_id + user_id)
+  // 3. 방 멤버 목록 (room_id + user_id + last_read_at)
   const { data: allMems, error: e3 } = await supabase
     .from('room_members')
-    .select('room_id, user_id')
+    .select('room_id, user_id, last_read_at')
     .in('room_id', roomIds)
   if (e3) throw e3
 
@@ -58,11 +58,11 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
 
   // 조합
   const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
-  const membersByRoom: Record<string, Pick<Profile, 'id' | 'name' | 'avatar_url'>[]> = {}
+  const membersByRoom: Record<string, (Pick<Profile, 'id' | 'name' | 'avatar_url'> & { last_read_at: string | null })[]> = {}
   for (const m of allMems ?? []) {
     if (!membersByRoom[m.room_id]) membersByRoom[m.room_id] = []
     const p = profileMap[m.user_id]
-    if (p) membersByRoom[m.room_id].push(p)
+    if (p) membersByRoom[m.room_id].push({ ...p, last_read_at: m.last_read_at ?? null })
   }
   const unreadMap = Object.fromEntries(unreadCounts.map(u => [u.roomId, u.count]))
 

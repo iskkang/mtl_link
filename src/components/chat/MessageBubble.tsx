@@ -8,13 +8,15 @@ import { MessageMenu } from './MessageMenu'
 import { MessageEditInput } from './MessageEditInput'
 import { DeleteMessageModal } from './DeleteMessageModal'
 import { QuotedMessage } from './QuotedMessage'
+import { ReadReceipt } from './ReadReceipt'
+import { useReadStatus } from '../../hooks/useReadStatus'
 import { linkifyText } from '../../lib/linkify'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessageTranslation } from '../../hooks/useMessageTranslation'
 import { useMessageStore } from '../../stores/messageStore'
 import { editMessage, softDeleteMessage } from '../../services/messageService'
-import type { MessageWithSender } from '../../types/chat'
+import type { MessageWithSender, RoomListItem } from '../../types/chat'
 
 interface Props {
   message:            MessageWithSender
@@ -23,13 +25,16 @@ interface Props {
   prevMessage?:       MessageWithSender | null
   onReply?:           () => void
   onScrollToMessage?: (messageId: string) => void
+  members:            RoomListItem['members']
+  currentUserId:      string
+  isGroup:            boolean
 }
 
 function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage, members, currentUserId, isGroup }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
@@ -42,6 +47,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
   const { translatedText, isTranslating, isTranslatable } =
     useMessageTranslation(message, myLanguage)
+
+  const readStatus = useReadStatus(message, isGroup, members, currentUserId)
 
   if (message.deleted_at) {
     return (
@@ -239,6 +246,11 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             )}
             {isSending && (
               <Clock size={11} className="text-gray-300 dark:text-[#556e78]" />
+            )}
+
+            {/* 읽음 표시 (본인 메시지, 전송 완료 후) */}
+            {isOwn && isSent && (
+              <ReadReceipt status={readStatus} isGroup={isGroup} />
             )}
 
             {/* 음성 번역 배지 */}

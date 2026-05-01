@@ -13,6 +13,7 @@ interface RoomStore {
   upsertRoom:           (room: RoomListItem) => void
   removeRoom:           (roomId: string) => void
   updateLastMessage:    (roomId: string, msg: string | null, at: string | null) => void
+  updateMemberReadAt:   (roomId: string, userId: string, lastReadAt: string) => void
   incrementUnread:      (roomId: string) => void
   resetUnread:          (roomId: string) => void
 }
@@ -56,6 +57,19 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
       const tb = b.last_message_at ?? b.created_at
       return tb.localeCompare(ta)
     })
+    return { rooms: next }
+  }),
+
+  updateMemberReadAt: (roomId, userId, lastReadAt) => set(s => {
+    const idx = s.rooms.findIndex(r => r.id === roomId)
+    if (idx < 0) return {}
+    const next = [...s.rooms]
+    next[idx] = {
+      ...next[idx],
+      members: next[idx].members.map(m =>
+        m.id === userId ? { ...m, last_read_at: lastReadAt } : m,
+      ),
+    }
     return { rooms: next }
   }),
 
