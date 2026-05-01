@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Sun, Moon, MessageCircle, ArrowLeft, Users, X, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -55,8 +55,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
   const [searchOpen,   setSearchOpen]   = useState(false)
   const [searchQuery,  setSearchQuery]  = useState('')
   const [globalOpen,   setGlobalOpen]   = useState(false)
-  const prevResultIdRef = useRef<string | null>(null)
-
   const {
     currentIdx: searchIdx,
     total: searchTotal,
@@ -65,17 +63,16 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     goPrev: searchGoPrev,
     canGoNext: searchCanGoNext,
     canGoPrev: searchCanGoPrev,
+    forceSearch: searchForce,
   } = useMessageSearch(messages, searchOpen ? searchQuery : '')
 
-  // 검색 결과 변경 시 자동 스크롤
+  // 검색 결과 변경 시 자동 스크롤 — searchIdx 변경(이동)도 포함
   useEffect(() => {
     if (!searchCurrent) return
-    if (searchCurrent.id === prevResultIdRef.current) return
-    prevResultIdRef.current = searchCurrent.id
     const el = document.querySelector<HTMLElement>(`[data-message-id="${searchCurrent.id}"]`)
     if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [searchCurrent])
+    el.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'center' })
+  }, [searchCurrent, searchIdx])
 
   // 방이 바뀌면 초기화
   useEffect(() => {
@@ -266,7 +263,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
       {searchOpen && room && (
         <MessageSearchBar
           query={searchQuery}
-          onChange={setSearchQuery}
+          onChange={q => { setSearchQuery(q) }}
           onClose={() => { setSearchOpen(false); setSearchQuery(''); setGlobalOpen(false) }}
           total={searchTotal}
           currentIdx={searchIdx}
@@ -275,6 +272,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
           canNext={searchCanGoNext}
           canPrev={searchCanGoPrev}
           onGlobal={() => setGlobalOpen(v => !v)}
+          onEnter={() => searchForce(searchQuery)}
           placeholder="메시지 검색"
           labelGlobal="통합검색"
         />

@@ -12,6 +12,7 @@ interface Props {
   canNext:     boolean
   canPrev:     boolean
   onGlobal:    () => void
+  onEnter:     () => void
   placeholder: string
   labelGlobal: string
 }
@@ -20,7 +21,7 @@ export function MessageSearchBar({
   query, onChange, onClose,
   total, currentIdx,
   onNext, onPrev, canNext, canPrev,
-  onGlobal, placeholder, labelGlobal,
+  onGlobal, onEnter, placeholder, labelGlobal,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -36,6 +37,14 @@ export function MessageSearchBar({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         className="flex-1 text-sm bg-transparent outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
+        onKeyDown={e => {
+          if (e.nativeEvent.isComposing) return
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            if (total > 0) onNext()
+            else onEnter()
+          }
+        }}
       />
 
       {query && total > 0 && (
@@ -48,7 +57,7 @@ export function MessageSearchBar({
         onClick={onPrev}
         disabled={!canPrev}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#2a3942] disabled:opacity-30"
-        title="이전 결과"
+        title="이전 결과 (∧)"
       >
         <ChevronUp size={16} />
       </button>
@@ -57,7 +66,7 @@ export function MessageSearchBar({
         onClick={onNext}
         disabled={!canNext}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#2a3942] disabled:opacity-30"
-        title="다음 결과"
+        title="다음 결과 (∨)"
       >
         <ChevronDown size={16} />
       </button>
