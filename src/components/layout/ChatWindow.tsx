@@ -6,12 +6,16 @@ import { useAuth } from '../../hooks/useAuth'
 import { useMessages } from '../../hooks/useMessages'
 import { useRoomStore } from '../../stores/roomStore'
 import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
+import { sendFileMessage } from '../../services/messageService'
+import { validateFiles } from '../../lib/fileValidation'
+import { getUserFriendlyMessage } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
 import { Avatar } from '../ui/Avatar'
 import { MessageList } from '../chat/MessageList'
 import { MessageInput } from '../chat/MessageInput'
 import { MessageActionBar } from '../chat/MessageActionBar'
 import { DragDropZone } from '../chat/DragDropZone'
+import { PendingFilesPreview } from '../chat/PendingFilesPreview'
 import { TranslationLanguageModal } from '../chat/TranslationLanguageModal'
 import { RoomMenu } from '../chat/RoomMenu'
 import { LeaveRoomModal } from '../chat/LeaveRoomModal'
@@ -20,8 +24,8 @@ import { ReplyPreview } from '../chat/ReplyPreview'
 import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
 interface Props {
-  roomId:          string | null
-  onBack?:         () => void
+  roomId:           string | null
+  onBack?:          () => void
   onLeaveOrDelete?: (toast: string) => void
 }
 
@@ -40,12 +44,15 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const [leaveOpen,       setLeaveOpen]       = useState(false)
   const [deleteOpen,      setDeleteOpen]      = useState(false)
   const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
+  const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
+  const [fileUploading,   setFileUploading]  = useState(false)
 
-  // 방이 바뀌면 draft/reply 초기화 + 번역 언어 재조회
+  // 방이 바뀌면 초기화
   useEffect(() => {
     setDraft('')
     setReplyTo(null)
     setTargetLanguage(null)
+    setPendingFiles([])
     if (!roomId) return
 
     Promise.resolve(
@@ -63,19 +70,50 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const memberCount   = room?.members.length ?? 0
   const isOwner       = !!room && room.created_by === currentUserId
 
-  // 1:1 방에서 상대방 정보 (번역 모달용)
   const peer = room && !isGroup
     ? room.members.find(m => m.id !== currentUserId) ?? null
     : null
 
+  // 파일 선택/드롭 → 검증 후 pendingFiles에 추가
+  const handleFilesSelected = useCallback((newFiles: File[]) => {
+    const combined = [...pendingFiles, ...newFiles]
+    if (combined.length > 5) {
+      setFileError('한 번에 최대 5개까지 첨부할 수 있습니다')
+      return
+    }
+    const v = validateFiles(newFiles)
+    if (!v.ok) { setFileError(v.error ?? '파일 검증 실패'); return }
+    setPendingFiles(combined)
+  }, [pendingFiles])
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index))
+  }, [])
+
+  // 전송: 파일이 있으면 sendFileMessage, 없으면 텍스트 전송
   const handleSend = useCallback(async (content: string) => {
+    if (!roomId) return
     const current = replyTo
     setReplyTo(null)
     const ref: ReplyRef | null = current
       ? { id: current.id, content: current.content, message_type: current.message_type, deleted_at: current.deleted_at, sender: current.sender }
       : null
-    await send(content, current?.id ?? null, ref)
-  }, [replyTo, send])
+
+    if (pendingFiles.length > 0) {
+      const files = [...pendingFiles]
+      setPendingFiles([])
+      setFileUploading(true)
+      try {
+        await sendFileMessage(roomId, files, content.trim() || undefined, current?.id ?? null, ref)
+      } catch (err) {
+        setFileError(getUserFriendlyMessage(err))
+      } finally {
+        setFileUploading(false)
+      }
+    } else {
+      await send(content, current?.id ?? null, ref)
+    }
+  }, [replyTo, send, pendingFiles, roomId])
 
   const scrollToMessage = useCallback((messageId: string) => {
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
@@ -109,7 +147,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
                           shadow-sm dark:shadow-none">
 
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {/* 모바일 뒤로가기 */}
           {onBack && (
             <button
               onClick={onBack}
@@ -123,7 +160,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
           )}
 
           {room && displayName && avatarInfo ? (
-            /* 방 선택됨 */
             <div className="flex items-center gap-3 min-w-0">
               {isGroup ? (
                 <div className="w-9 h-9 rounded-full bg-mtl-slate dark:bg-surface-hover
@@ -143,7 +179,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
               </div>
             </div>
           ) : (
-            /* 방 미선택 */
             <div className="flex items-center gap-2.5">
               <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-100
                               dark:border-0 dark:bg-transparent dark:p-0">
@@ -160,7 +195,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-          {/* 테마 토글 */}
           <button
             onClick={toggle}
             className="p-2 rounded-full
@@ -173,7 +207,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
             {mode === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
           </button>
 
-          {/* 방 메뉴 (방 선택 시만) */}
           {room && (
             <RoomMenu
               isOwner={isOwner}
@@ -187,8 +220,12 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
 
       {/* ── 메시지 영역 ──────────────────────────────── */}
       {roomId && room ? (
-        <DragDropZone roomId={roomId} onError={setFileError}>
-          {/* 에러 토스트 */}
+        <DragDropZone
+          onError={setFileError}
+          onFilesSelected={handleFilesSelected}
+          disabled={fileUploading}
+        >
+          {/* 파일/에러 토스트 */}
           {fileError && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40
                             flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg
@@ -211,23 +248,34 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
             onReply={setReplyTo}
             onScrollToMessage={scrollToMessage}
           />
+
           <MessageActionBar
             roomId={roomId}
             onEmojiSelect={emoji => setDraft(prev => prev + emoji)}
             onError={setFileError}
+            onFilesSelected={handleFilesSelected}
+            uploading={fileUploading}
             targetLanguage={targetLanguage}
             onOpenTranslationModal={() => setTranslationOpen(true)}
           />
+
+          {/* 전송 전 파일 미리보기 */}
+          {pendingFiles.length > 0 && (
+            <PendingFilesPreview files={pendingFiles} onRemove={handleRemoveFile} />
+          )}
+
           {replyTo && (
             <ReplyPreview
               replyTo={replyTo}
               onCancel={() => setReplyTo(null)}
             />
           )}
+
           <MessageInput
             value={draft}
             onChange={setDraft}
             onSend={handleSend}
+            hasPendingFiles={pendingFiles.length > 0}
           />
         </DragDropZone>
       ) : (
@@ -245,7 +293,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
         />
       )}
 
-      {/* ── 방 나가기 모달 ───────────────────────────── */}
       {leaveOpen && (
         <LeaveRoomModal
           isDirect={isDirect}
@@ -254,7 +301,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
         />
       )}
 
-      {/* ── 방 삭제 모달 ────────────────────────────── */}
       {deleteOpen && (
         <DeleteRoomModal
           onConfirm={handleDelete}

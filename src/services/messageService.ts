@@ -44,7 +44,6 @@ export async function sendTextMessage(
     attachments:          [],
     reply_message:        replyMessage ?? null,
   })
-  // sender 측 room preview 즉시 반영 (rooms UPDATE Realtime 의존 불필요)
   useRoomStore.getState().updateLastMessage(roomId, trimmed, now)
 
   try {
@@ -98,54 +97,60 @@ export async function softDeleteMessage(messageId: string): Promise<void> {
 
 // ─── 파일 메시지 ─────────────────────────────────────────────────
 
-export async function sendFileMessage(roomId: string, files: File[], caption?: string): Promise<void> {
+export async function sendFileMessage(
+  roomId:       string,
+  files:        File[],
+  caption?:     string,
+  replyToId?:   string | null,
+  replyMessage?: ReplyRef | null,
+): Promise<void> {
   const validation = validateFiles(files)
   if (!validation.ok) throw new Error(validation.error)
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('인증되지 않았습니다')
 
-  const isImage    = validation.results!.every(r => r.kind === 'image')
-  const msgType    = isImage ? 'image' as const : 'file' as const
+  const hasNonImage = validation.results!.some(r => r.kind !== 'image')
+  const msgType     = hasNonImage ? 'file' as const : 'image' as const
 
-  // 업로드 중 이탈 방지
   const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
   window.addEventListener('beforeunload', onBeforeUnload)
 
   try {
-    // 1. 메시지 행 먼저 생성
+    // 1. 메시지 행 생성
     const { data: msg, error: msgErr } = await supabase
       .from('messages')
       .insert({
         room_id:      roomId,
         sender_id:    user.id,
         message_type: msgType,
-        content:      caption ?? null,
+        content:      caption?.trim() || null,
+        reply_to_id:  replyToId ?? null,
       })
       .select()
       .single()
     if (msgErr) throw msgErr
 
-    // Realtime이 메시지를 먼저 받아도 괜찮도록 store에 즉시 추가
     useMessageStore.getState().upsertMessage(roomId, {
       ...msg,
       _status:       'sending',
       sender:        null,
       attachments:   [],
-      reply_message: null,
+      reply_message: replyMessage ?? null,
     })
 
-    // 2. 파일 병렬 업로드
+    // 2. 파일 병렬 업로드 → chat-attachments (public bucket)
     const results = await Promise.allSettled(
       files.map(async (file, idx) => {
         const safe = file.name.replace(/[^\w.\-가-힣]/g, '_')
         const path = `${roomId}/${msg.id}/${Date.now()}_${idx}_${safe}`
 
         const { error: upErr } = await supabase.storage
-          .from('chat-files')
+          .from('chat-attachments')
           .upload(path, file, { contentType: file.type })
         if (upErr) throw upErr
 
+        const kind = validation.results![idx].kind ?? 'other'
         const { error: attErr } = await supabase
           .from('message_attachments')
           .insert({
@@ -156,13 +161,12 @@ export async function sendFileMessage(roomId: string, files: File[], caption?: s
             file_path:       path,
             file_size:       file.size,
             mime_type:       file.type,
-            attachment_type: validation.results![idx].kind!,
+            attachment_type: kind,
           })
         if (attErr) throw attErr
       }),
     )
 
-    // 최종 상태 업데이트
     useMessageStore.getState().updateStatus(roomId, msg.id, 'sent')
 
     const failed = results.filter(r => r.status === 'rejected')

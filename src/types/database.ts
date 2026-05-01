@@ -245,7 +245,7 @@ export type Database = {
           file_path:       string
           file_size:       number
           mime_type:       string
-          attachment_type: 'image' | 'document' | 'archive'
+          attachment_type: 'image' | 'video' | 'document' | 'archive' | 'other'
           created_at:      string
         }
         Insert: {
@@ -257,7 +257,7 @@ export type Database = {
           file_path:        string
           file_size?:       number
           mime_type:        string
-          attachment_type:  'image' | 'document' | 'archive'
+          attachment_type:  'image' | 'video' | 'document' | 'archive' | 'other'
           created_at?:      string
         }
         Update: {
@@ -269,7 +269,7 @@ export type Database = {
           file_path?:       string
           file_size?:       number
           mime_type?:       string
-          attachment_type?: 'image' | 'document' | 'archive'
+          attachment_type?: 'image' | 'video' | 'document' | 'archive' | 'other'
           created_at?:      string
         }
         Relationships: [

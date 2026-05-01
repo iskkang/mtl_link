@@ -1,11 +1,9 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { Smile, Paperclip, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EmojiPickerPopup } from '../emoji/EmojiPickerPopup'
 import { VoiceRecorderButton } from '../voice/VoiceRecorderButton'
-import { validateFiles } from '../../lib/fileValidation'
-import { sendFileMessage } from '../../services/messageService'
-import { getUserFriendlyMessage } from '../../lib/errors'
+import { useState } from 'react'
 
 const LANG_LABELS: Record<string, string> = {
   ko: '한국어', en: 'English', ru: 'Русский',
@@ -13,39 +11,30 @@ const LANG_LABELS: Record<string, string> = {
 }
 
 interface Props {
-  roomId:                  string
-  disabled?:               boolean
-  onEmojiSelect:           (emoji: string) => void
-  onError:                 (msg: string) => void
-  targetLanguage:          string | null   // null = 로딩 중, 'none' = 번역 안 함
-  onOpenTranslationModal:  () => void
+  roomId:                 string
+  disabled?:              boolean
+  uploading?:             boolean
+  onEmojiSelect:          (emoji: string) => void
+  onError:                (msg: string) => void
+  onFilesSelected:        (files: File[]) => void
+  targetLanguage:         string | null
+  onOpenTranslationModal: () => void
 }
 
 export function MessageActionBar({
-  roomId, disabled, onEmojiSelect, onError,
-  targetLanguage, onOpenTranslationModal,
+  roomId, disabled, uploading, onEmojiSelect, onError,
+  onFilesSelected, targetLanguage, onOpenTranslationModal,
 }: Props) {
   const { t } = useTranslation()
-  const [emojiOpen,     setEmojiOpen]     = useState(false)
-  const [fileUploading, setFileUploading] = useState(false)
+  const [emojiOpen, setEmojiOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
-
-    const v = validateFiles(files)
-    if (!v.ok) { onError(v.error ?? '파일 검증 실패'); return }
-
-    setFileUploading(true)
-    try {
-      await sendFileMessage(roomId, files)
-    } catch (err) {
-      onError(getUserFriendlyMessage(err))
-    } finally {
-      setFileUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
+    onFilesSelected(files)
+    // input 초기화 (같은 파일 재선택 가능)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const activeTranslation = targetLanguage && targetLanguage !== 'none'
@@ -77,8 +66,8 @@ export function MessageActionBar({
       {/* ── 파일 첨부 ──────────────────────────── */}
       <ActionBtn
         label={t('attachBtn')}
-        disabled={disabled || fileUploading}
-        loading={fileUploading}
+        disabled={disabled || uploading}
+        loading={uploading}
         onClick={() => fileInputRef.current?.click()}
       >
         <Paperclip size={19} />
@@ -88,8 +77,8 @@ export function MessageActionBar({
         type="file"
         multiple
         hidden
-        accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/x-zip-compressed"
-        onChange={handleFileSelect}
+        accept="*/*"
+        onChange={handleFileChange}
       />
 
       {/* ── 음성 번역 ──────────────────────────── */}
@@ -100,7 +89,7 @@ export function MessageActionBar({
         onError={onError}
       />
 
-      {/* ── 번역 언어 배지 (클릭 → 설정 모달) ─── */}
+      {/* ── 번역 언어 배지 ───────────────────────── */}
       <button
         type="button"
         onClick={onOpenTranslationModal}

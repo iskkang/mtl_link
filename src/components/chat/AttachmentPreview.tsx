@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { FileText, FileSpreadsheet, Archive, File, Download, ExternalLink } from 'lucide-react'
-import { getSignedFileUrl } from '../../hooks/useSignedUrl'
+import { useState } from 'react'
+import { FileText, FileSpreadsheet, Archive, File, Film, Download, ExternalLink } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { ImageModal } from './ImageModal'
 import { PdfPreview } from './FilePreview'
 import type { Attachment } from '../../types/chat'
@@ -9,51 +9,61 @@ interface Props {
   attachments: Attachment[]
 }
 
+// chat-attachments (public bucket) → 동기 공개 URL
+function publicUrl(filePath: string): string {
+  const { data } = supabase.storage.from('chat-attachments').getPublicUrl(filePath)
+  return data.publicUrl
+}
+
 export function AttachmentPreview({ attachments }: Props) {
   if (!attachments.length) return null
 
   const images = attachments.filter(a => a.attachment_type === 'image')
-  const others = attachments.filter(a => a.attachment_type !== 'image')
+  const videos = attachments.filter(a => a.attachment_type === 'video')
+  const others = attachments.filter(a => a.attachment_type !== 'image' && a.attachment_type !== 'video')
 
-  const imageIdKey = images.map(i => i.id).join(',')
-  const [imageUrls,  setImageUrls]  = useState<(string | null)[]>([])
+  const imageUrls  = images.map(a => publicUrl(a.file_path))
+  const imageNames = images.map(a => a.file_name)
+
   const [modalIndex, setModalIndex] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (!images.length) { setImageUrls([]); return }
-    let cancelled = false
-    Promise.all(images.map(img => getSignedFileUrl(img.file_path).catch(() => null)))
-      .then(urls => { if (!cancelled) setImageUrls(urls) })
-    return () => { cancelled = true }
-  }, [imageIdKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const validUrls  = imageUrls.filter(Boolean) as string[]
-  const validNames = images.map(i => i.file_name)
 
   return (
     <div className="mt-1.5 space-y-1.5">
-      {/* 이미지 그리드 */}
+
+      {/* ── 이미지 그리드 ─────────────────────────── */}
       {images.length > 0 && (
         <div className={`grid gap-1 ${images.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {images.map((att, idx) => (
             <ImageThumbnail
               key={att.id}
-              url={imageUrls[idx] ?? null}
+              url={imageUrls[idx]}
               name={att.file_name}
-              onClick={() => { if (imageUrls[idx]) setModalIndex(idx) }}
+              onClick={() => setModalIndex(idx)}
             />
           ))}
         </div>
       )}
 
-      {/* 파일 카드 */}
+      {/* ── 동영상 인라인 플레이어 ───────────────── */}
+      {videos.map(att => (
+        <video
+          key={att.id}
+          src={publicUrl(att.file_path)}
+          controls
+          preload="metadata"
+          className="w-full rounded-lg"
+          style={{ maxWidth: '280px', maxHeight: '200px' }}
+        />
+      ))}
+
+      {/* ── 문서 / 기타 파일 카드 ───────────────── */}
       {others.map(att => <FileCard key={att.id} attachment={att} />)}
 
-      {/* 이미지 모달 */}
-      {modalIndex !== null && validUrls.length > 0 && (
+      {/* ── 이미지 라이트박스 ────────────────────── */}
+      {modalIndex !== null && imageUrls.length > 0 && (
         <ImageModal
-          urls={validUrls}
-          names={validNames}
+          urls={imageUrls}
+          names={imageNames}
           currentIndex={modalIndex}
           onClose={() => setModalIndex(null)}
           onChange={setModalIndex}
@@ -64,22 +74,7 @@ export function AttachmentPreview({ attachments }: Props) {
 }
 
 /* ── 이미지 썸네일 ───────────────────────────────── */
-function ImageThumbnail({
-  url, name, onClick,
-}: {
-  url:     string | null
-  name:    string
-  onClick: () => void
-}) {
-  if (!url) {
-    return (
-      <div
-        className="rounded-lg overflow-hidden bg-gray-200 dark:bg-surface-hover animate-pulse"
-        style={{ aspectRatio: '4/3', maxHeight: '200px' }}
-      />
-    )
-  }
-
+function ImageThumbnail({ url, name, onClick }: { url: string; name: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -101,31 +96,15 @@ function ImageThumbnail({
 
 /* ── 파일 카드 ───────────────────────────────────── */
 function FileCard({ attachment }: { attachment: Attachment }) {
-  const [downloading, setDownloading] = useState(false)
-  const [pdfUrl,      setPdfUrl]      = useState<string | null>(null)
-
+  const url   = publicUrl(attachment.file_path)
   const isPdf = attachment.mime_type === 'application/pdf'
 
-  useEffect(() => {
-    if (!isPdf) return
-    getSignedFileUrl(attachment.file_path).then(setPdfUrl).catch(() => null)
-  }, [attachment.file_path, isPdf])
-
-  const handleDownload = async () => {
-    if (downloading) return
-    setDownloading(true)
-    try {
-      const url = await getSignedFileUrl(attachment.file_path)
-      const a   = document.createElement('a')
-      a.href     = url
-      a.download = attachment.file_name
-      a.target   = '_blank'
-      a.click()
-    } catch {
-      // ignore
-    } finally {
-      setDownloading(false)
-    }
+  const handleDownload = () => {
+    const a   = document.createElement('a')
+    a.href     = url
+    a.download = attachment.file_name
+    a.target   = '_blank'
+    a.click()
   }
 
   return (
@@ -147,26 +126,19 @@ function FileCard({ attachment }: { attachment: Attachment }) {
         </div>
         <button
           onClick={handleDownload}
-          disabled={downloading}
           className="p-1.5 rounded-lg flex-shrink-0
                      hover:bg-black/10 dark:hover:bg-white/10
                      text-gray-400 dark:text-[#8696a0]
                      hover:text-gray-700 dark:hover:text-[#e9edef]
-                     disabled:opacity-40 transition-colors"
+                     transition-colors"
           aria-label="다운로드"
         >
-          {downloading
-            ? <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin block" />
-            : <Download size={15} />
-          }
+          <Download size={15} />
         </button>
         <a
-          href="#"
-          onClick={async e => {
-            e.preventDefault()
-            const u = await getSignedFileUrl(attachment.file_path)
-            window.open(u, '_blank')
-          }}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
           className="p-1.5 rounded-lg flex-shrink-0
                      hover:bg-black/10 dark:hover:bg-white/10
                      text-gray-400 dark:text-[#8696a0]
@@ -178,20 +150,20 @@ function FileCard({ attachment }: { attachment: Attachment }) {
         </a>
       </div>
 
-      {isPdf && pdfUrl && (
-        <PdfPreview url={pdfUrl} fileName={attachment.file_name} />
-      )}
+      {isPdf && <PdfPreview url={url} fileName={attachment.file_name} />}
     </div>
   )
 }
 
 /* ── 파일 타입 아이콘 ────────────────────────────── */
 function FileTypeIcon({ mime, className }: { mime: string; className?: string }) {
-  if (mime.startsWith('image/')) return <File className={className} />
+  if (mime.startsWith('image/'))  return <File        className={className} />
+  if (mime.startsWith('video/'))  return <Film        className={className} />
   if (mime === 'application/pdf' || mime.includes('word')) return <FileText className={className} />
   if (mime.includes('excel') || mime.includes('spreadsheet') || mime === 'text/csv')
     return <FileSpreadsheet className={className} />
-  if (mime.includes('zip')) return <Archive className={className} />
+  if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z'))
+    return <Archive className={className} />
   return <File className={className} />
 }
 

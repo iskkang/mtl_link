@@ -4,22 +4,25 @@ import { useTranslation } from 'react-i18next'
 import { getUserFriendlyMessage } from '../../lib/errors'
 
 interface Props {
-  value:     string
-  onChange:  (v: string) => void
-  onSend:    (content: string) => Promise<void>
-  disabled?: boolean
+  value:           string
+  onChange:        (v: string) => void
+  onSend:          (content: string) => Promise<void>
+  disabled?:       boolean
+  hasPendingFiles?: boolean
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled }: Props) {
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles }: Props) {
   const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
   const [error,     setError]     = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const canSend = value.trim().length > 0 && !sending && !disabled && value.length <= MAX_LEN
+  // 텍스트가 있거나, 첨부 파일이 선택된 경우 전송 가능
+  const canSend = (value.trim().length > 0 || !!hasPendingFiles) &&
+                  !sending && !disabled && value.length <= MAX_LEN
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current
@@ -42,7 +45,7 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
       await onSend(content)
     } catch (err) {
       setError(getUserFriendlyMessage(err))
-      onChange(content) // 실패 시 복원
+      if (content) onChange(content) // 텍스트 실패 시 복원 (파일만 있는 경우엔 복원 불필요)
     } finally {
       setSending(false)
     }
@@ -62,7 +65,6 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
                     bg-[#f9f9f9] dark:bg-surface-panel
                     border-t border-gray-200 dark:border-[#374045]">
 
-      {/* 에러 */}
       {error && (
         <div className="mb-2 px-3 py-1.5 rounded-lg
                         bg-red-50 dark:bg-red-900/20
@@ -72,13 +74,18 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
       )}
 
       <div className="flex items-end gap-2">
-        {/* 입력창 */}
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
             value={value}
             disabled={disabled || sending}
-            placeholder={disabled ? t('selectRoomHint') : t('msgPlaceholder')}
+            placeholder={
+              hasPendingFiles
+                ? '캡션 입력... (선택)'
+                : disabled
+                  ? t('selectRoomHint')
+                  : t('msgPlaceholder')
+            }
             rows={1}
             maxLength={MAX_LEN + 100}
             className="
@@ -95,7 +102,6 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
             onChange={e => { onChange(e.target.value); autoResize() }}
             onKeyDown={handleKeyDown}
           />
-          {/* 글자 수 경고 */}
           {value.length >= WARN_AT && (
             <span className={`absolute bottom-2 right-3 text-[10px] ${
               remaining < 0 ? 'text-red-500' : 'text-gray-400 dark:text-[#8696a0]'
@@ -105,7 +111,6 @@ export function MessageInput({ value, onChange, onSend, disabled }: Props) {
           )}
         </div>
 
-        {/* 전송 버튼 */}
         <button
           onClick={handleSend}
           disabled={!canSend}
