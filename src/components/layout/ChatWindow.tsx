@@ -72,7 +72,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
     const current = replyTo
     setReplyTo(null)
     const ref: ReplyRef | null = current
-      ? { id: current.id, content: current.content, deleted_at: current.deleted_at, sender: current.sender }
+      ? { id: current.id, content: current.content, message_type: current.message_type, deleted_at: current.deleted_at, sender: current.sender }
       : null
     await send(content, current?.id ?? null, ref)
   }, [replyTo, send])

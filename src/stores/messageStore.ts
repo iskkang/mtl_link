@@ -18,16 +18,47 @@ export const MSG_SELECT = `
   *,
   sender:profiles!sender_id(id, name, avatar_url),
   attachments:message_attachments(*),
-  reply_message:messages!reply_to_id(id, content, deleted_at, sender:profiles!sender_id(id, name))
+  reply_message:messages!messages_reply_to_id_fkey(
+    id,
+    content,
+    message_type,
+    deleted_at,
+    sender:profiles!messages_sender_id_fkey(id, name)
+  )
 ` as const
 
+type RawReplyMessage = {
+  id:           string
+  content:      string | null
+  message_type: string
+  deleted_at:   string | null
+  sender:       { id: string; name: string } | { id: string; name: string }[] | null
+}
+
 export function normaliseMsgs(raw: unknown[]): MessageWithSender[] {
-  return (raw as MessageWithSender[]).map(m => ({
-    ...m,
-    _status:       'sent' as const,
-    attachments:   (m.attachments as Attachment[] | null) ?? [],
-    reply_message: (m.reply_message as ReplyRef | null) ?? null,
-  }))
+  return (raw as MessageWithSender[]).map(m => {
+    const rawReply = m.reply_message as RawReplyMessage | null
+    let reply_message: ReplyRef | null = null
+    if (rawReply) {
+      const rawSender = rawReply.sender
+      const sender = Array.isArray(rawSender)
+        ? (rawSender[0] ?? null)
+        : rawSender
+      reply_message = {
+        id:           rawReply.id,
+        content:      rawReply.content,
+        message_type: rawReply.message_type,
+        deleted_at:   rawReply.deleted_at,
+        sender,
+      }
+    }
+    return {
+      ...m,
+      _status:       'sent' as const,
+      attachments:   (m.attachments as Attachment[] | null) ?? [],
+      reply_message,
+    }
+  })
 }
 
 export const useMessageStore = create<MessageStore>((set, get) => ({

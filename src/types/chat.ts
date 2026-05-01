@@ -9,10 +9,11 @@ export type TranslationPreference = Database['public']['Tables']['translation_pr
 
 /** 인용 답장 원본 메시지 참조 */
 export interface ReplyRef {
-  id:         string
-  content:    string | null
-  deleted_at: string | null
-  sender:     Pick<Profile, 'id' | 'name'> | null
+  id:           string
+  content:      string | null
+  message_type: string
+  deleted_at:   string | null
+  sender:       Pick<Profile, 'id' | 'name'> | null
 }
 
 /** 메시지 + 발신자 프로필 + 첨부파일 (UI 렌더링용) */
