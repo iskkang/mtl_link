@@ -81,22 +81,29 @@ export async function markAsRead(roomId: string): Promise<void> {
   if (!user) return
   const now = new Date().toISOString()
 
-  await supabase
+  console.log('[READ-1] markAsRead DB update 시작', { roomId, userId: user.id, now })
+  const { error: updateError } = await supabase
     .from('room_members')
     .update({ last_read_at: now })
     .eq('room_id', roomId)
     .eq('user_id', user.id)
+  console.log('[READ-2] markAsRead DB update 완료', { error: updateError ?? null })
 
   // postgres_changes RLS가 크로스-유저 이벤트를 막을 수 있으므로
   // Broadcast를 보조 신호로 전송 (fire-and-forget)
   const ch = supabase.channel(`read:${roomId}`)
   ch.subscribe(status => {
     if (status !== 'SUBSCRIBED') return
+    console.log('[READ-3] broadcast 전송 직전', { roomId, userId: user.id, lastReadAt: now })
     ch.send({
       type:    'broadcast',
       event:   'read_receipt',
       payload: { userId: user.id, lastReadAt: now },
-    }).catch(() => null).finally(() => ch.unsubscribe())
+    }).then(result => {
+      console.log('[READ-4] broadcast 전송 결과', result)
+    }).catch(err => {
+      console.log('[READ-4] broadcast 전송 오류', err)
+    }).finally(() => ch.unsubscribe())
   })
 }
 

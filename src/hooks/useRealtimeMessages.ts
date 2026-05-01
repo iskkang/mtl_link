@@ -74,13 +74,17 @@ export function useRealtimeMessages(roomId: string | null) {
 
     // Broadcast 채널: postgres_changes RLS 우회 경로
     // markAsRead 호출 시 read:${roomId}에 브로드캐스트 → 즉시 읽음 표시 반영
+    console.log('[READ-5] readCh 구독 시작', { roomId })
     const readCh = supabase
       .channel(`read:${roomId}`)
       .on('broadcast', { event: 'read_receipt' }, ({ payload }) => {
+        console.log('[READ-6] broadcast read_receipt 수신', payload)
         const { userId, lastReadAt } = payload as { userId: string; lastReadAt: string }
         if (userId && lastReadAt) updateMemberReadAt(roomId, userId, lastReadAt)
       })
-      .subscribe()
+      .subscribe(status => {
+        console.log('[READ-7] readCh 구독 상태', status)
+      })
 
     channelRef.current = channel
     return () => {

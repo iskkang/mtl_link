@@ -7,6 +7,7 @@ interface Props {
 }
 
 export function ReadReceipt({ status, isGroup }: Props) {
+  console.log('[READ-9] ReadReceipt 렌더', { status, isGroup })
   if (!isGroup) {
     return status.type === 'read'
       ? <CheckCheck size={14} className="text-blue-500 dark:text-blue-400 flex-shrink-0" />
