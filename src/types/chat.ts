@@ -25,6 +25,8 @@ export interface MessageWithSender extends Message {
   _localId?: string
   /** 전송 상태 */
   _status?:  'sending' | 'sent' | 'failed'
+  /** 클라이언트 사이드 번역 결과 (검색용) */
+  _translatedText?: string | null
 }
 
 /** 방 목록 아이템 (사이드바용) */

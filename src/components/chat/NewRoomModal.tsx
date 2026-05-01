@@ -29,7 +29,6 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
 
   const nameInputRef = useRef<HTMLInputElement>(null)
 
-  // 탭 전환 시 상태 초기화
   useEffect(() => {
     setSelected([])
     setGroupName('')
@@ -37,7 +36,6 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
     if (tab === 'group') setTimeout(() => nameInputRef.current?.focus(), 50)
   }, [tab])
 
-  // 모달 열릴 때 초기화
   useEffect(() => {
     if (open) {
       setTab('direct')
@@ -49,7 +47,6 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
     }
   }, [open])
 
-  // Esc 닫기
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -62,7 +59,6 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
     setRooms(rooms)
   }
 
-  // ── 1:1 채팅 생성 ──────────────────────────────────
   const handleCreateDirect = async (targetId: string) => {
     if (creating) return
     setLoadingId(targetId)
@@ -79,7 +75,6 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
     }
   }
 
-  // ── 그룹 채팅 생성 ─────────────────────────────────
   const handleCreateGroup = async () => {
     const name = groupName.trim()
     if (!name || selected.length < 2) return
@@ -101,35 +96,32 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
   const groupReady = groupName.trim().length > 0 && selected.length >= 2
 
   return (
-    /* 백드롭 */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4
-                 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      {/* 모달 카드 */}
-      <div className="w-full max-w-md flex flex-col rounded-2xl overflow-hidden
-                      bg-white dark:bg-mtl-slate
-                      shadow-2xl
-                      max-h-[90vh]"
-           onClick={e => e.stopPropagation()}
+      <div
+        className="w-full max-w-md flex flex-col rounded-2xl overflow-hidden shadow-2xl max-h-[90vh]"
+        style={{ background: 'var(--card)' }}
+        onClick={e => e.stopPropagation()}
       >
         {/* 상단 그라디언트 바 */}
-        <div className="card-accent-bar flex-shrink-0" />
+        <div className="h-1 flex-shrink-0" style={{ background: 'linear-gradient(90deg, #2563EB, #6366F1)' }} />
 
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0
-                        border-b border-gray-100 dark:border-[#374045]">
-          <h2 className="font-display text-xl font-bold tracking-wide
-                         text-mtl-navy dark:text-[#e9edef]">
+        <div
+          className="flex items-center justify-between px-5 py-4 flex-shrink-0 border-b"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          <h2 className="text-xl font-bold tracking-wide" style={{ color: 'var(--ink)' }}>
             새 채팅
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full
-                       hover:bg-gray-100 dark:hover:bg-surface-hover
-                       text-gray-400 dark:text-[#8696a0]
-                       transition-colors"
+            className="p-1.5 rounded-full transition-colors"
+            style={{ color: 'var(--ink-4)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             aria-label="닫기"
           >
             <X size={18} />
@@ -137,27 +129,29 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
         </div>
 
         {/* 탭 */}
-        <div className="flex border-b border-gray-100 dark:border-[#374045] flex-shrink-0">
+        <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--line)' }}>
           {([
             { key: 'direct', label: '1:1 채팅', Icon: MessageSquare },
             { key: 'group',  label: '그룹 채팅', Icon: Users },
-          ] as const).map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`
-                flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold
-                border-b-2 transition-colors
-                ${tab === key
-                  ? 'border-mtl-cyan dark:border-accent text-mtl-navy dark:text-[#e9edef]'
-                  : 'border-transparent text-gray-400 dark:text-[#8696a0] hover:text-gray-600 dark:hover:text-[#e9edef]'
-                }
-              `}
-            >
-              <Icon size={16} />
-              {label}
-            </button>
-          ))}
+          ] as const).map(({ key, label, Icon }) => {
+            const isActive = tab === key
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors"
+                style={{
+                  borderColor: isActive ? 'var(--blue)' : 'transparent',
+                  color: isActive ? 'var(--ink)' : 'var(--ink-4)',
+                }}
+                onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink)' }}
+                onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink-4)' }}
+              >
+                <Icon size={16} />
+                {label}
+              </button>
+            )
+          })}
         </div>
 
         {/* 본문 */}
@@ -165,17 +159,14 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
 
           {/* 에러 */}
           {error && (
-            <div className="mx-4 mt-3 px-4 py-2.5 rounded-lg flex-shrink-0
-                            bg-red-50 dark:bg-red-900/20
-                            border border-red-200 dark:border-red-800">
+            <div className="mx-4 mt-3 px-4 py-2.5 rounded-lg flex-shrink-0 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
               <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
 
           {tab === 'direct' ? (
-            /* ── 1:1 채팅 ──────────────────────────── */
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden pt-3">
-              <p className="px-4 pb-2 text-xs text-gray-400 dark:text-[#8696a0] flex-shrink-0">
+              <p className="px-4 pb-2 text-xs flex-shrink-0" style={{ color: 'var(--ink-4)' }}>
                 대화할 팀원을 선택하세요
               </p>
               <UserPicker
@@ -188,12 +179,10 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
               />
             </div>
           ) : (
-            /* ── 그룹 채팅 ─────────────────────────── */
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
               {/* 그룹 이름 */}
               <div className="px-4 pt-4 pb-3 flex-shrink-0">
-                <label className="block text-xs font-semibold uppercase tracking-wider
-                                  text-gray-500 dark:text-[#8696a0] mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
                   그룹 이름 <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -219,9 +208,12 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
 
               {/* 멤버 선택 */}
               <div className="px-4 pt-1 pb-1 flex-shrink-0">
-                <span className="text-xs text-gray-400 dark:text-[#8696a0]">
-                  멤버 선택 <span className={selected.length >= 2 ? 'text-accent' : ''}>({selected.length}명 선택)</span>
-                  <span className="text-gray-300 dark:text-[#556e78]"> — 2명 이상</span>
+                <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
+                  멤버 선택{' '}
+                  <span style={{ color: selected.length >= 2 ? 'var(--blue)' : 'var(--ink-4)' }}>
+                    ({selected.length}명 선택)
+                  </span>
+                  <span style={{ color: 'var(--ink-4)' }}> — 2명 이상</span>
                 </span>
               </div>
               <div className="flex-1 min-h-0 overflow-hidden">
@@ -234,15 +226,12 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
               </div>
 
               {/* 생성 버튼 */}
-              <div className="px-4 py-4 flex-shrink-0 border-t border-gray-100 dark:border-[#374045]">
+              <div className="px-4 py-4 flex-shrink-0 border-t" style={{ borderColor: 'var(--line)' }}>
                 <button
                   onClick={handleCreateGroup}
                   disabled={!groupReady || creating}
-                  className="w-full py-2.5 rounded-lg font-semibold text-sm text-white
-                             bg-mtl-navy hover:bg-mtl-navy/90
-                             dark:bg-accent dark:hover:bg-accent-hover dark:text-white
-                             disabled:opacity-40 disabled:cursor-not-allowed
-                             transition-all duration-200"
+                  className="w-full py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                  style={{ background: 'var(--blue)' }}
                 >
                   {creating ? (
                     <span className="flex items-center justify-center gap-2">
@@ -262,7 +251,6 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
   )
 }
 
-/* ── 선택된 멤버 칩 ──────────────────────────────── */
 function SelectedChips({
   selectedIds,
   onRemove,
@@ -287,16 +275,21 @@ function SelectedChips({
       {profiles.map(p => (
         <span
           key={p.id}
-          className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full text-xs
-                     bg-mtl-cyan/15 dark:bg-accent/20
-                     text-mtl-navy dark:text-[#e9edef]
-                     border border-mtl-cyan/30 dark:border-accent/30"
+          className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full text-xs border"
+          style={{
+            background: 'rgba(37,99,235,0.1)',
+            color: 'var(--ink)',
+            borderColor: 'rgba(37,99,235,0.25)',
+          }}
         >
           <Avatar name={p.name} avatarUrl={p.avatar_url} size="xs" />
           {p.name}
           <button
             onClick={() => onRemove(p.id)}
-            className="ml-0.5 text-gray-400 hover:text-red-400 transition-colors leading-none"
+            className="ml-0.5 transition-colors leading-none"
+            style={{ color: 'var(--ink-4)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-4)')}
             aria-label={`${p.name} 제거`}
           >✕</button>
         </span>

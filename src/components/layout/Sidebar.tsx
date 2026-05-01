@@ -31,29 +31,45 @@ export function Sidebar({
   const { rooms, loading } = useRooms()
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full sidebar-panel">
 
       {/* ── 헤더 ─────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-3 flex-shrink-0
-                          bg-white dark:bg-surface-panel
-                          border-b border-gray-200 dark:border-[#374045]">
+      <header
+        className="flex items-center justify-between px-4 py-3.5 flex-shrink-0 border-b"
+        style={{ borderColor: 'var(--side-line)' }}
+      >
         <div className="flex items-center gap-2.5">
-          <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-100 dark:border-0 dark:shadow-none">
-            <img src="/mtl-logo.png" alt="MTL" className="h-7 w-auto object-contain" />
+          {/* Brand mark */}
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #EF3F1A, #B83113)' }}
+          >
+            <span className="text-white text-[11px] font-black tracking-tight leading-none">M</span>
           </div>
-          <span className="font-display font-bold text-[17px] tracking-wide
-                           text-mtl-navy dark:text-[#e9edef]">
-            MTL LINK
-          </span>
+          <div>
+            <span
+              className="font-bold text-[14px] leading-none block"
+              style={{ color: 'var(--side-text)' }}
+            >
+              MTL LINK
+            </span>
+            <span
+              className="text-[9px] leading-none font-mono-ui tracking-widest uppercase mt-0.5 block"
+              style={{ color: 'var(--side-mute)' }}
+            >
+              logistics
+            </span>
+          </div>
         </div>
         <button
           onClick={onNewChat}
-          className="p-2 rounded-full
-                     hover:bg-gray-100 dark:hover:bg-surface-hover
-                     text-gray-500 dark:text-[#aebac1] transition-colors"
+          className="p-2 rounded-lg transition-colors"
+          style={{ color: 'var(--side-mute)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           aria-label="새 채팅"
         >
-          <SquarePen size={19} />
+          <SquarePen size={18} />
         </button>
       </header>
 
@@ -63,23 +79,23 @@ export function Sidebar({
       {/* ── 채팅 탭 ──────────────────────────────────── */}
       {activeTab === 'chat' && (
         <>
-          <div className="px-3 py-2 flex-shrink-0 bg-[#f9f9f9] dark:bg-surface">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg
-                            bg-white dark:bg-surface-input
-                            border border-gray-200 dark:border-0">
-              <Search size={15} className="text-gray-400 dark:text-[#8696a0] flex-shrink-0" />
+          <div className="px-3 py-2 flex-shrink-0">
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-lg"
+              style={{ background: 'var(--side-row)' }}
+            >
+              <Search size={14} className="flex-shrink-0" style={{ color: 'var(--side-mute)' }} />
               <input
                 type="text"
                 placeholder={t('searchChat')}
                 readOnly
-                className="flex-1 bg-transparent text-sm outline-none cursor-default
-                           text-gray-700 dark:text-[#e9edef]
-                           placeholder-gray-400 dark:placeholder-[#8696a0]"
+                className="flex-1 bg-transparent text-sm outline-none cursor-default"
+                style={{ color: 'var(--side-text)' }}
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto scrollbar-thin bg-white dark:bg-surface">
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
             {rooms.length === 0 && !loading
               ? <EmptyRoomList onNewChat={onNewChat} t={t} />
               : (
@@ -105,16 +121,17 @@ export function Sidebar({
 
       {/* ── 프로필 푸터 ──────────────────────────────── */}
       {profile && (
-        <footer className="flex items-center gap-3 px-4 py-3 flex-shrink-0
-                           bg-[#f0f0f0] dark:bg-surface-panel
-                           border-t border-gray-200 dark:border-[#374045]">
+        <footer
+          className="flex items-center gap-3 px-4 py-3 flex-shrink-0 border-t"
+          style={{ background: 'var(--side-deep)', borderColor: 'var(--side-line)' }}
+        >
           <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate text-gray-900 dark:text-[#e9edef]">
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--side-text)' }}>
               {profile.name}
             </p>
             {(profile.department || profile.position) && (
-              <p className="text-xs truncate text-gray-400 dark:text-[#8696a0]">
+              <p className="text-xs truncate" style={{ color: 'var(--side-mute)' }}>
                 {[profile.department, profile.position].filter(Boolean).join(' · ')}
               </p>
             )}
@@ -123,13 +140,13 @@ export function Sidebar({
           <LanguageSwitcher />
           <button
             onClick={signOut}
-            className="p-2 rounded-full
-                       hover:bg-gray-200 dark:hover:bg-surface-hover
-                       text-gray-400 dark:text-[#8696a0]
-                       hover:text-gray-700 dark:hover:text-[#e9edef] transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--side-mute)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             aria-label="로그아웃"
           >
-            <LogOut size={17} />
+            <LogOut size={16} />
           </button>
         </footer>
       )}
@@ -140,22 +157,25 @@ export function Sidebar({
 function EmptyRoomList({ onNewChat, t }: { onNewChat: () => void; t: (k: string) => string }) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
-      <div className="w-16 h-16 rounded-full
-                      bg-gray-100 dark:bg-surface-panel
-                      flex items-center justify-center mb-4">
-        <MessageSquare size={28} className="text-gray-300 dark:text-[#8696a0]" />
+      <div
+        className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+        style={{ background: 'var(--side-row)' }}
+      >
+        <MessageSquare size={28} style={{ color: 'var(--side-mute)' }} />
       </div>
-      <p className="text-sm font-medium text-gray-500 dark:text-[#8696a0] mb-1">
+      <p className="text-sm font-medium mb-1" style={{ color: 'var(--side-mute)' }}>
         {t('noRooms')}
       </p>
-      <p className="text-xs text-gray-400 dark:text-[#556e78] mb-5 leading-relaxed whitespace-pre-line">
+      <p className="text-xs mb-5 leading-relaxed whitespace-pre-line" style={{ color: 'var(--side-mute)', opacity: 0.7 }}>
         {t('noRoomsDesc')}
       </p>
       <button
         onClick={onNewChat}
         className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold
-                   bg-mtl-navy dark:bg-accent text-white
-                   hover:bg-mtl-navy/90 dark:hover:bg-accent-hover transition-colors"
+                   text-white transition-colors"
+        style={{ background: 'var(--blue)' }}
+        onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+        onMouseLeave={e => (e.currentTarget.style.filter = '')}
       >
         <SquarePen size={13} />
         {t('newChatBtn')}

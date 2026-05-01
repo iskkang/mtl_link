@@ -18,23 +18,27 @@ export function FriendItem({ friend, isOnline, onViewProfile }: Props) {
     <button
       type="button"
       onClick={onViewProfile}
-      className="w-full flex items-center gap-3 px-4 py-2.5 text-left
-                 hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+      style={{ color: 'inherit' }}
+      onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--side-row)')}
+      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
     >
       <div className="relative flex-shrink-0">
         <Avatar name={friend.name} avatarUrl={friend.avatar_url} size="sm" />
         <span
-          className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full
-                      border-2 border-white dark:border-surface
-                      ${isOnline ? 'bg-emerald-400' : 'bg-gray-300 dark:bg-[#556e78]'}`}
+          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
+          style={{
+            background: isOnline ? '#10B981' : 'var(--side-muted)',
+            borderColor: 'var(--side-bg)',
+          }}
         />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate text-gray-900 dark:text-[#e9edef]">
+        <p className="text-sm font-medium truncate" style={{ color: 'var(--side-text)' }}>
           {friend.name}
         </p>
         {friend.position && (
-          <p className="text-xs truncate text-gray-400 dark:text-[#8696a0]">
+          <p className="text-xs truncate" style={{ color: 'var(--side-mute)' }}>
             {friend.position}
           </p>
         )}

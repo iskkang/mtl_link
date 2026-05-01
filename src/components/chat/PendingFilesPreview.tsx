@@ -10,10 +10,10 @@ export function PendingFilesPreview({ files, onRemove }: Props) {
   if (!files.length) return null
 
   return (
-    <div className="flex gap-2 px-3 py-2 overflow-x-auto flex-shrink-0
-                    bg-[#f9f9f9] dark:bg-surface-panel
-                    border-t border-gray-200 dark:border-[#374045]
-                    scrollbar-thin">
+    <div
+      className="flex gap-2 px-3 py-2 overflow-x-auto flex-shrink-0 border-t scrollbar-thin"
+      style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+    >
       {files.map((file, idx) => (
         <PendingItem key={`${file.name}-${idx}`} file={file} onRemove={() => onRemove(idx)} />
       ))}
@@ -34,10 +34,10 @@ function PendingItem({ file, onRemove }: { file: File; onRemove: () => void }) {
 
   return (
     <div className="relative flex-shrink-0 group">
-      <div className="w-[60px] h-[60px] rounded-xl overflow-hidden
-                      border border-gray-200 dark:border-[#374045]
-                      bg-gray-100 dark:bg-surface-input
-                      flex flex-col items-center justify-center">
+      <div
+        className="w-[60px] h-[60px] rounded-xl overflow-hidden border flex flex-col items-center justify-center"
+        style={{ borderColor: 'var(--line)', background: 'var(--bg)' }}
+      >
         {isImage && preview ? (
           <img src={preview} alt={file.name} className="w-full h-full object-cover" />
         ) : (

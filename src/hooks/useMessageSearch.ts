@@ -47,7 +47,8 @@ export function useMessageSearch(
         if (m.message_type === 'system') return false
         const content = (m.content ?? '').normalize('NFC').toLowerCase()
         const contentOriginal = (m.content_original ?? '').normalize('NFC').toLowerCase()
-        return content.includes(q) || contentOriginal.includes(q)
+        const translatedText = (m._translatedText ?? '').normalize('NFC').toLowerCase()
+        return content.includes(q) || contentOriginal.includes(q) || translatedText.includes(q)
       })
       .slice()
       .reverse()

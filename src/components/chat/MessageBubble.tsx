@@ -67,7 +67,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   if (message.deleted_at) {
     return (
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-3`}>
-        <span className="text-xs italic text-gray-400 dark:text-[#8696a0] px-3 py-1.5">
+        <span className="text-xs italic px-3 py-1.5" style={{ color: 'var(--ink-4)' }}>
           {t('msgDeleted')}
         </span>
       </div>
@@ -140,11 +140,12 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           <button
             onClick={onReply}
             title={t('msgReply')}
-            className="p-2 rounded-full bg-gray-700 dark:bg-gray-600
-                       shadow-md hover:bg-gray-600 dark:hover:bg-gray-500
-                       transition-colors"
+            className="p-2 rounded-full shadow-md transition-colors"
+            style={{ background: 'var(--ink-2)', color: 'var(--card)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-2)')}
           >
-            <CornerDownLeft size={16} className="text-gray-100" />
+            <CornerDownLeft size={16} />
           </button>
           <MessageMenu
             canEdit={canEdit}
@@ -159,21 +160,30 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
         {/* 발신자 이름 (그룹방, 첫 메시지) */}
         {showSenderInfo && !isOwn && !isContinuation && message.sender && (
-          <span className="text-[11px] font-semibold mb-1 ml-1 text-mtl-cyan dark:text-mtl-cyan">
+          <span className="text-[11px] font-semibold mb-1 ml-1" style={{ color: 'var(--blue)' }}>
             {message.sender.name}
           </span>
         )}
 
         {/* 말풍선 */}
-        <div className={`
-          relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words
-          ${isOwn
-            ? 'bg-[#d9fdd3] dark:bg-bubble-own text-gray-800 dark:text-[#e9edef] rounded-br-sm'
-            : 'bg-white dark:bg-bubble-other text-gray-800 dark:text-[#e9edef] rounded-bl-sm shadow-sm dark:shadow-none border border-gray-100 dark:border-0'
-          }
-          ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
-          ${isSending ? 'opacity-60' : ''}
-        `}>
+        <div
+          className={`
+            relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
+            ${isOwn ? 'rounded-br-sm' : 'rounded-bl-sm'}
+            ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
+            ${isSending ? 'opacity-60' : ''}
+          `}
+          style={isOwn ? {
+            background: 'var(--bubble-out)',
+            border: '1px solid var(--bubble-out-bd)',
+            color: 'var(--ink)',
+          } : {
+            background: 'var(--bubble-in)',
+            border: '1px solid var(--line)',
+            color: 'var(--ink)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
 
           {/* 첨부파일 */}
           {message.attachments && message.attachments.length > 0 && (
@@ -197,7 +207,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             />
           ) : showTwoPanel ? (
             <div className="space-y-2">
-              <p className="text-xs italic text-gray-400 dark:text-white/50 leading-relaxed whitespace-pre-wrap break-words">
+              <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
                 {(isVoice || isOcr)
                   ? (searchQuery ? highlightText(message.content_original ?? '', searchQuery) : message.content_original)
                   : (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)}
@@ -223,7 +233,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                               href={part.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="underline text-blue-600 dark:text-blue-400 break-all"
+                              className="underline break-all" style={{ color: 'var(--blue)' }}
                             >
                               {part.href}
                             </a>
@@ -232,7 +242,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                 </span>
               )}
               {isTranslating && (
-                <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-[#8696a0]">
+                <span className="ml-1.5 inline-flex items-center gap-1 text-[10px]" style={{ color: 'var(--ink-4)' }}>
                   <span className="w-2.5 h-2.5 border border-current/30 border-t-current rounded-full animate-spin" />
                   {t('translating')}
                 </span>
@@ -276,7 +286,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
             {/* 음성 번역 배지 */}
             {isVoice && !isFailed && !isSending && (
-              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
                 <Mic size={9} />
                 {message.source_language?.toUpperCase()}
                 {message.target_language && (
@@ -287,7 +297,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
             {/* OCR 번역 배지 */}
             {isOcr && !isFailed && !isSending && (
-              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
                 <ScanText size={9} />
                 {message.source_language?.toUpperCase()}
                 {message.target_language && (
@@ -298,7 +308,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
             {/* 자동 텍스트 번역 배지 */}
             {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && (
-              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
                 <Globe size={9} />
                 {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
               </span>
@@ -306,14 +316,14 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
             {/* 수정됨 배지 */}
             {message.edited_at && !isFailed && !isSending && (
-              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] italic">
+              <span className="text-[10px] italic" style={{ color: 'var(--ink-4)' }}>
                 {t('msgEdited')}
               </span>
             )}
 
             <time
               title={formatFullDateTime(message.created_at)}
-              className="text-[10px] text-gray-400 dark:text-[#8696a0]"
+              className="text-[10px]" style={{ color: 'var(--ink-4)' }}
             >
               {formatMessageTime(message.created_at)}
             </time>
@@ -327,11 +337,12 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           <button
             onClick={onReply}
             title={t('msgReply')}
-            className="p-2 rounded-full bg-gray-700 dark:bg-gray-600
-                       shadow-md hover:bg-gray-600 dark:hover:bg-gray-500
-                       transition-colors"
+            className="p-2 rounded-full shadow-md transition-colors"
+            style={{ background: 'var(--ink-2)', color: 'var(--card)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-2)')}
           >
-            <CornerDownLeft size={16} className="text-gray-100" />
+            <CornerDownLeft size={16} />
           </button>
         </div>
       )}

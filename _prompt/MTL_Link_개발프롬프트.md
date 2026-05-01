@@ -1,7 +1,107 @@
 # MTL Link 개발 프롬프트
 
-> v1 원본 → v2 보강 → v2.1 메뉴바·음성번역까지 통합한 최종본.
+> v1 원본 → v2 보강 → v2.1 메뉴바·음성번역 → v2.2 추가 기능까지 통합한 최종본.
+> 최종 업데이트: 2026-05-02
 > 이 문서 한 개로 전체 개발을 진행한다.
+
+---
+
+## 0. 현재 구현 완료 상태 (2026-05-02)
+
+> 이 섹션은 현재까지 구현 완료된 내용을 요약한다. §5~§32는 설계 원본.
+
+### 구현 완료된 컴포넌트 / 서비스 / 훅 전체 목록
+
+**Pages**
+- `LoginPage.tsx` — 이메일/비밀번호 로그인
+- `ChangePasswordPage.tsx` — 첫 로그인 비밀번호 변경
+- `ChatPage.tsx` — 메인 채팅 페이지
+- `AdminPage.tsx` — 관리자 직원 관리 + 가입 신청 승인/거절
+- `SignUpPage.tsx` — 셀프 가입 신청 (v2.2)
+- `PendingPage.tsx` — 가입 신청 대기 안내 (v2.2)
+- `RejectedPage.tsx` — 가입 거절 안내 (v2.2)
+
+**Layout**
+- `AppLayout.tsx`, `Sidebar.tsx`, `ChatWindow.tsx`, `ProtectedRoute.tsx`
+- `SidebarTabs.tsx` — 채팅방 / 친구 탭 전환 (v2.2)
+
+**Chat Components**
+- `RoomList.tsx`, `RoomListItem.tsx` — 방 목록
+- `MessageList.tsx` — 메시지 렌더링 (가상 스크롤링 없음, 페이지네이션)
+- `MessageBubble.tsx` — 메시지 버블 (음성번역 토글, 텍스트자동번역, 답장인용)
+- `MessageInput.tsx` — 텍스트 입력창
+- `MessageActionBar.tsx` — 이모지·파일·음성·OCR 버튼 바
+- `MessageMenu.tsx` — 메시지 우클릭/호버 메뉴 (수정·삭제·답장)
+- `MessageEditInput.tsx` — 인라인 메시지 수정
+- `MessageSearchBar.tsx` — 방 내 검색 바 (v2.2)
+- `GlobalSearchPanel.tsx` — 전체 검색 패널 (v2.2)
+- `QuotedMessage.tsx` — 인용 답장 원본 표시
+- `ReplyPreview.tsx` — 입력 중 답장 대상 미리보기
+- `ReadReceipt.tsx` — 읽음 표시 컴포넌트
+- `NewRoomModal.tsx`, `UserPicker.tsx` — 방 생성
+- `DeleteRoomModal.tsx`, `LeaveRoomModal.tsx` — 방 삭제·나가기
+- `RoomMenu.tsx` — 방 헤더 ⋮ 메뉴
+- `TranslationLanguageModal.tsx` — 번역 언어 설정
+- `DragDropZone.tsx` — 드래그앤드롭
+- `AttachmentPreview.tsx`, `PendingFilesPreview.tsx` — 첨부 미리보기
+- `ImageModal.tsx` — 이미지 확대 모달 (v1.5)
+- `FilePreview.tsx` — PDF·파일 미리보기 (v1.5)
+- `LinkPreviewCard.tsx` — 링크 OG 카드 (v1.5)
+- `OcrButton.tsx` — OCR 번역 버튼 (v2.2)
+- `FriendsList.tsx`, `FriendItem.tsx`, `FriendProfileModal.tsx` — 친구·연락처 (v2.2)
+- `DeleteMessageModal.tsx` — 메시지 삭제 확인
+
+**Voice**
+- `VoiceRecorderButton.tsx`, `RecordingIndicator.tsx`, `VoicePermissionModal.tsx`
+
+**Emoji**
+- `EmojiPickerPopup.tsx`
+
+**UI**
+- `Button.tsx`, `Input.tsx`, `Modal.tsx`, `Avatar.tsx`, `Toast.tsx`, `Spinner.tsx`
+- `LanguageSwitcher.tsx` — 6개 언어 UI 전환 (v2.2)
+- `NotificationToggle.tsx`, `NotificationPrompt.tsx` — 브라우저 알림
+
+**Stores**
+- `roomStore.ts` — 방 목록 상태
+- `messageStore.ts` — 메시지 상태 + `setTranslation`
+
+**Services**
+- `authService.ts`, `profileService.ts`, `roomService.ts`
+- `messageService.ts` — 텍스트·파일 메시지 전송
+- `storageService.ts`, `adminService.ts`
+- `translationService.ts` — 텍스트 자동 번역 API 호출 (v2.2)
+- `voiceMessageService.ts` — 음성 번역 메시지 전송
+- `ocrService.ts` — OCR 번역 메시지 전송 (v2.2)
+- `searchService.ts` — 글로벌 메시지 검색 (v2.2)
+- `friendsService.ts` — 친구/직원 목록 (v2.2)
+
+**Hooks**
+- `useAuth.ts`, `useRooms.ts`, `useMessages.ts`
+- `useRealtimeMessages.ts`, `useRealtimeRooms.ts`
+- `useSignedUrl.ts`, `useToast.ts`
+- `useMicrophonePermission.ts`, `useMediaRecorder.ts`
+- `useReadStatus.ts` — 읽음 상태 관리 (v1.5)
+- `usePresence.ts` — 사용자 온라인 상태 (v2.2)
+- `useMessageTranslation.ts` — 텍스트 자동 번역 훅 (v2.2)
+- `useMessageSearch.ts` — 방 내 메시지 검색 훅 (v2.2)
+- `useGlobalMessageMonitor.ts` — 브라우저 알림 모니터
+
+**Contexts**
+- `AuthContext.tsx`
+- `ThemeContext.tsx` — 다크/라이트 테마 (v2.2)
+
+**Lib**
+- `supabase.ts`, `fileValidation.ts`, `linkify.ts`, `date.ts`, `errors.ts`, `logger.ts`
+- `i18n.ts` — react-i18next 6개 언어 설정 (v2.2)
+
+**Edge Functions (총 6개)**
+- `admin-create-user/` — 직원 추가
+- `voice-translate/` — 음성 STT + 번역
+- `translate-text/` — 텍스트 자동 번역 (v2.2)
+- `ocr-translate/` — OCR + 번역 (v2.2)
+- `fetch-link-preview/` — 링크 미리보기 (v1.5)
+- `send-signup-notification/` — 가입 신청 알림 (v2.2)
 
 ---
 
@@ -102,95 +202,163 @@ Anthropic Claude Haiku ← Edge Function 내부에서만
 
 ---
 
-## 6. v1 제외 기능
+## 5-2. v2.2 추가 구현 기능 (현재 완료)
 
-음성·영상통화(WebRTC), AI 요약·OCR, 링크 미리보기 카드, 메시지 검색, 이미지 모달 확대, 브라우저 알림, 메시지 반응·멘션, 텍스트 자동 번역, 그룹방 멤버별 언어 override, TTS, 모바일 네이티브 앱, 자가 가입.
+### 텍스트 자동 번역
+- 수신 메시지의 `source_language`가 내 `preferred_language`와 다를 때 `translate-text` Edge Function 호출
+- `useMessageTranslation` 훅: 세션 캐시(`Map`) + 중복 요청 방지 → `messageStore.setTranslation` 저장
+- 메시지 버블에 번역문 2단 레이아웃 (원본 italic 회색 + 구분선 + 번역)
+
+### OCR 번역
+- `OcrButton.tsx`: 메뉴바에 OCR 아이콘 버튼 추가
+- 이미지 선택 → `ocrService.sendOcrTranslation()` → `ocr-translate` Edge Function → `text_translated` 메시지 insert
+- 지원 형식: JPG, PNG, WEBP, GIF (최대 10MB)
+
+### 메시지 검색 (카카오톡 스타일)
+- `MessageSearchBar.tsx`: 채팅창 상단에 검색 바 토글
+- `useMessageSearch`: 300ms debounce, 현재 방 메시지에서 클라이언트 사이드 필터링
+- content + content_original + _translatedText 모두 검색
+- 이전/다음 내비게이션, 하이라이트 스크롤
+
+### 전체 채팅 검색
+- `GlobalSearchPanel.tsx`: 사이드바 검색 아이콘 → 전체 패널
+- `searchService.ts`: Supabase DB 쿼리 (참여한 방만, RLS 보장)
+
+### 친구/연락처 탭
+- `SidebarTabs.tsx`: 사이드바에 채팅방 / 직원 탭 전환
+- `FriendsList.tsx`, `FriendItem.tsx`: 활성 직원 목록, 부서·직급 표시
+- `FriendProfileModal.tsx`: 직원 프로필 + 1:1 채팅 시작 버튼
+
+### 회원가입 신청 흐름
+- `SignUpPage.tsx`: 이메일·이름·부서·직급 입력 → `signup_requests` 테이블에 pending 저장
+- `send-signup-notification` Edge Function: 관리자에게 알림 메일
+- `AdminPage.tsx`: 신청 목록 표시, 승인(→ admin-create-user) / 거절 처리
+- 승인 후 `PendingPage.tsx` / 거절 후 `RejectedPage.tsx` 안내
+
+### 다크/라이트 테마
+- `ThemeContext.tsx`: `localStorage` 저장, 사이드바 하단 토글
+- Tailwind `dark:` 클래스 전체 적용
+
+### 6개 언어 UI
+- `i18n.ts`: ko/en/ru/zh/ja/uz 번역 파일
+- `LanguageSwitcher.tsx`: 사이드바 하단 언어 선택 드롭다운
+
+### 사용자 프레즌스
+- `usePresence.ts`: Supabase Realtime Presence channel
+- 사이드바 아바타 옆 초록 점 표시
+
+### 읽음 표시 (v1.5)
+- `ReadReceipt.tsx`: 1:1 방 ✓✓ 파란 체크 / 그룹방 읽은 인원 숫자
+- `useReadStatus.ts`: `room_members.last_read_at` 기준, Realtime broadcast 갱신
+
+### 답장 인용 (v1.5)
+- `messages.reply_to_id` 컬럼 (FK → messages.id)
+- `QuotedMessage.tsx`: 인용 박스 표시
+- `ReplyPreview.tsx`: 입력 중 답장 대상 미리보기 바
 
 ---
 
-## 7. 폴더 구조
+## 6. 현재 미구현 기능 (v3 예정)
+
+음성·영상통화(WebRTC), AI 요약, 메시지 반응(이모지), @멘션, 스레드 답글, 그룹방 멤버별 언어 override, TTS, 모바일 네이티브 앱.
+
+---
+
+## 7. 폴더 구조 (현재 실제 구조)
 
 ```text
 mtl-link/
-  .env.example
-  .env.local                        # gitignore
+  .env.example / .env.local         # gitignore
   package.json
   vite.config.ts / tailwind.config.js / tsconfig.json
-  index.html
-  vercel.json
+  index.html / vercel.json
   supabase/
     config.toml
-    migrations/                     # DB 설계서 §14 참고 (17개 파일)
+    migrations/                     # DB 설계서 §14 참고 (28개 파일)
     functions/
       admin-create-user/index.ts
-      voice-translate/
-        index.ts
-        providers/whisper.ts
-        providers/claude.ts
-      .env                          # OPENAI_API_KEY, ANTHROPIC_API_KEY
+      voice-translate/index.ts + providers/whisper.ts + providers/claude.ts
+      translate-text/index.ts       # v2.2
+      ocr-translate/index.ts        # v2.2
+      fetch-link-preview/index.ts   # v1.5
+      send-signup-notification/index.ts  # v2.2
+      .env                          # OPENAI_API_KEY, ANTHROPIC_API_KEY, ADMIN_EMAIL
     seed.sql
   src/
     main.tsx / App.tsx / routes.tsx
     lib/
-      supabase.ts
-      fileValidation.ts
-      linkify.ts
-      date.ts
-      errors.ts
-      logger.ts
+      supabase.ts / fileValidation.ts / linkify.ts
+      date.ts / errors.ts / logger.ts
+      i18n.ts                       # v2.2: 6개 언어 react-i18next
     types/
-      database.ts                   # supabase gen types로 자동 생성
-      chat.ts
+      database.ts                   # supabase gen types 자동 생성
+      chat.ts                       # MessageWithSender, ReplyRef, RoomListItem 등
     contexts/
       AuthContext.tsx
+      ThemeContext.tsx               # v2.2: 다크/라이트 테마
     stores/
       roomStore.ts
-      messageStore.ts
+      messageStore.ts               # setTranslation 포함
     pages/
-      LoginPage.tsx
-      ChangePasswordPage.tsx
-      ChatPage.tsx
-      AdminPage.tsx
+      LoginPage.tsx / ChangePasswordPage.tsx / ChatPage.tsx / AdminPage.tsx
+      SignUpPage.tsx                 # v2.2: 가입 신청
+      PendingPage.tsx                # v2.2: 승인 대기
+      RejectedPage.tsx               # v2.2: 거절 안내
     components/
       layout/
         AppLayout.tsx / Sidebar.tsx / ChatWindow.tsx / ProtectedRoute.tsx
-      auth/
-        LoginForm.tsx
       chat/
         RoomList.tsx / RoomListItem.tsx
+        SidebarTabs.tsx              # v2.2: 채팅방·친구 탭
         MessageList.tsx
-        MessageBubble.tsx           # 원본/번역 토글 포함
+        MessageBubble.tsx            # 음성번역 토글·텍스트자동번역·답장인용
         MessageInput.tsx
-        MessageActionBar.tsx        # 이모지·파일·음성 버튼 바 (v2.1)
-        DragDropZone.tsx            # 드래그앤드롭 (v2.1)
-        AttachmentPreview.tsx / FileMessage.tsx / ImageMessage.tsx
+        MessageActionBar.tsx         # 이모지·파일·음성·OCR 버튼 바
+        MessageMenu.tsx              # 수정·삭제·답장 메뉴
+        MessageEditInput.tsx         # 인라인 수정
+        MessageSearchBar.tsx         # v2.2: 방 내 검색
+        GlobalSearchPanel.tsx        # v2.2: 전체 검색 패널
+        QuotedMessage.tsx            # v1.5: 인용 박스
+        ReplyPreview.tsx             # v1.5: 답장 미리보기
+        ReadReceipt.tsx              # v1.5: 읽음 표시
+        DragDropZone.tsx
+        AttachmentPreview.tsx / PendingFilesPreview.tsx
+        ImageModal.tsx               # v1.5: 이미지 확대 모달
+        FilePreview.tsx              # v1.5: PDF·파일 미리보기
+        LinkPreviewCard.tsx          # v1.5: 링크 OG 카드
+        OcrButton.tsx                # v2.2: OCR 번역 버튼
+        TranslationLanguageModal.tsx
         NewRoomModal.tsx / UserPicker.tsx
+        DeleteRoomModal.tsx / LeaveRoomModal.tsx / RoomMenu.tsx
+        DeleteMessageModal.tsx
+        FriendsList.tsx / FriendItem.tsx / FriendProfileModal.tsx  # v2.2
       emoji/
-        EmojiPickerPopup.tsx        # (v2.1)
+        EmojiPickerPopup.tsx
       voice/
-        VoiceRecorderButton.tsx     # (v2.1)
-        RecordingIndicator.tsx      # (v2.1)
-        VoicePermissionModal.tsx    # (v2.1)
-      settings/
-        TranslationLanguageModal.tsx # (v2.1)
-      admin/
-        UserList.tsx / AddUserModal.tsx
+        VoiceRecorderButton.tsx / RecordingIndicator.tsx / VoicePermissionModal.tsx
       ui/
         Button.tsx / Input.tsx / Modal.tsx / Avatar.tsx
         Toast.tsx / Spinner.tsx / EmptyState.tsx
+        LanguageSwitcher.tsx         # v2.2: 언어 전환
+        NotificationToggle.tsx / NotificationPrompt.tsx  # v1.5
     services/
       authService.ts / profileService.ts / roomService.ts
-      messageService.ts / storageService.ts
-      adminService.ts
-      translationService.ts         # (v2.1)
-      voiceMessageService.ts        # (v2.1)
+      messageService.ts / storageService.ts / adminService.ts
+      translationService.ts         # 텍스트 자동 번역 API 호출
+      voiceMessageService.ts        # 음성 번역
+      ocrService.ts                 # v2.2: OCR 번역
+      searchService.ts              # v2.2: 글로벌 검색
+      friendsService.ts             # v2.2: 직원 목록
     hooks/
       useAuth.ts / useRooms.ts / useMessages.ts
       useRealtimeMessages.ts / useRealtimeRooms.ts
-      useSignedUrl.ts
-      useToast.ts
-      useMicrophonePermission.ts    # (v2.1)
-      useMediaRecorder.ts           # (v2.1)
+      useSignedUrl.ts / useToast.ts
+      useMicrophonePermission.ts / useMediaRecorder.ts
+      useReadStatus.ts             # v1.5: 읽음 상태
+      usePresence.ts               # v2.2: 온라인 상태
+      useMessageTranslation.ts     # v2.2: 텍스트 자동 번역
+      useMessageSearch.ts          # v2.2: 방 내 검색
+      useGlobalMessageMonitor.ts   # v1.5: 브라우저 알림
 ```
 
 ---
@@ -1156,26 +1324,55 @@ MTL Link를 React + Vite + TypeScript + Tailwind + Supabase로 개발해줘.
 
 ---
 
-## 31. 완료 기준
+## 31. 완료 기준 (현재 상태)
 
-- [ ] 로그인 / 첫 로그인 비밀번호 변경
-- [ ] 1:1 방 생성 (중복 방지 검증)
-- [ ] 그룹 방 생성
-- [ ] 텍스트 메시지 실시간 송수신 (Optimistic UI)
-- [ ] 이미지·문서 첨부 및 다운로드
-- [ ] URL 자동 링크
-- [ ] 이모지 피커 동작
-- [ ] 파일 첨부 메뉴바 버튼 동작
-- [ ] 드래그앤드롭 파일 업로드
-- [ ] 마이크 녹음 → 번역 → 메시지 전송
-- [ ] 음성 파일 서버 미저장 확인
-- [ ] 원본/번역 토글 버튼 동작
-- [ ] 수신자별 번역 언어 설정
-- [ ] 관리자 직원 추가 (Edge Function)
-- [ ] RLS: 참여하지 않은 방 접근 차단 확인
-- [ ] API 키 클라이언트 미노출 확인
-- [ ] Vercel 배포
-- [ ] 5명 동시 접속 메시지 지연 1초 이내
+### v1 기본 기능
+- [x] 로그인 / 첫 로그인 비밀번호 변경
+- [x] 1:1 방 생성 (중복 방지 검증)
+- [x] 그룹 방 생성
+- [x] 텍스트 메시지 실시간 송수신 (Optimistic UI)
+- [x] 이미지·문서 첨부 및 다운로드
+- [x] URL 자동 링크
+- [x] 이모지 피커 동작
+- [x] 파일 첨부 메뉴바 버튼 동작
+- [x] 드래그앤드롭 파일 업로드
+- [x] 마이크 녹음 → 번역 → 메시지 전송
+- [x] 음성 파일 서버 미저장 확인
+- [x] 원본/번역 토글 버튼 동작
+- [x] 수신자별 번역 언어 설정
+- [x] 관리자 직원 추가 (Edge Function)
+- [x] RLS: 참여하지 않은 방 접근 차단 확인
+- [x] API 키 클라이언트 미노출 확인
+- [x] Vercel 배포
+
+### v1.5 기능
+- [x] 이미지 클릭 시 모달 확대
+- [x] PDF 인라인 미리보기
+- [x] URL OG 링크 카드 표시
+- [x] 메시지 읽음 표시 (1:1 ✓✓ / 그룹 숫자)
+- [x] 메시지 수정 (5분 이내, 인라인)
+- [x] 메시지 삭제 (soft delete)
+- [x] 답장 인용 기능
+- [x] 방 나가기 / 삭제 (헤더 ⋮ 메뉴)
+- [x] 브라우저 알림 (다른 탭 새 메시지)
+- [x] 현재 방 메시지 검색 (이전/다음 내비)
+- [x] 전체 채팅 글로벌 검색 패널
+
+### v2.2 신규 기능
+- [x] 수신 텍스트 메시지 자동 번역 (내 언어 설정 기준)
+- [x] 이미지 OCR 추출 + 번역 메시지 전송
+- [x] 친구/연락처 탭 (직원 목록, 프로필, 1:1 채팅)
+- [x] 6개 언어 UI 전환 (ko/en/ru/zh/ja/uz)
+- [x] 회원가입 신청 → 관리자 승인/거절
+- [x] 다크/라이트 테마 토글
+- [x] 사용자 온라인 프레즌스
+
+### 미구현 (v3 예정)
+- [ ] 메시지 반응 (이모지 👍 ❤️)
+- [ ] @멘션
+- [ ] 스레드 답글
+- [ ] 음성·영상통화 (WebRTC)
+- [ ] 모바일 네이티브 앱
 
 ---
 

@@ -121,7 +121,7 @@ export default function LoginPage() {
         {/* 상단 그라디언트 바 */}
         <div className="card-accent-bar" />
 
-        <div className="bg-white dark:bg-mtl-slate rounded-b-2xl shadow-2xl px-8 py-10">
+        <div className="rounded-b-2xl shadow-2xl px-8 py-10" style={{ background: 'var(--card)' }}>
 
           {/* 로고 + 브랜드 */}
           <div className="flex flex-col items-center mb-8">
@@ -134,8 +134,8 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-center gap-2 mb-1">
-              <Ship size={16} className="text-mtl-cyan" />
-              <span className="font-display text-2xl font-bold tracking-wide text-mtl-navy dark:text-mtl-mist">
+              <Ship size={16} style={{ color: 'var(--blue)' }} />
+              <span className="text-2xl font-bold tracking-wide" style={{ color: 'var(--ink)' }}>
                 MTL LINK
               </span>
             </div>

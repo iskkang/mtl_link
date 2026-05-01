@@ -1,23 +1,39 @@
 # MTL Link DB 설계서
 
-> v1 원본 → v2 보강 → v2.1 음성번역 스키마까지 통합한 최종본.
+> v1 원본 → v2 보강 → v2.1 음성번역 → v2.2 추가 기능 스키마까지 통합한 최종본.
+> 최종 업데이트: 2026-05-02
 
 ---
 
-## 0. 버전별 변경 이력
+## 0. 현재 마이그레이션 적용 현황 (2026-05-02 기준)
 
-| 항목 | v1 원본 | v2 보강 | v2.1 추가 |
-|---|---|---|---|
-| DB 트리거 | 언급 없음 | 6개 트리거 | `translation_preferences` updated_at 트리거 추가 |
-| DB 함수 | 없음 | 6개 함수 | `get_target_language()` 추가 → **7개** |
-| RLS 정책 | 일부 예시 | 전 테이블 완비 | `translation_preferences` RLS 4개 추가 |
-| 무한 재귀 방지 | 없음 | `SECURITY DEFINER` 함수 | 동일 |
-| Storage RLS | 없음 | chat-files·avatars 정책 | 동일 |
-| `profiles` | 기본 컬럼 | `is_admin`, `must_change_password` | **`preferred_language` 추가** |
-| `rooms` | 기본 컬럼 | 동일 | **`default_translation_language` 추가** |
-| `messages` | 기본 컬럼 | `content_length_limit` 제약 | **`content_original`, `source_language`, `target_language`, `translation_provider` 추가** |
-| `translation_preferences` | 없음 | 없음 | **신규 테이블** |
-| 마이그레이션 구조 | 없음 | 11개 파일 | **17개 파일** (v2.1 6개 추가) |
+총 **28개** 마이그레이션 파일 적용 완료.
+
+| 범위 | 파일 수 | 주요 내용 |
+|---|---:|---|
+| 기반 v2 | 12개 | profiles~storage_policies |
+| 음성번역 v2.1 | 6개 | 언어 컬럼, translation_preferences |
+| v1.5·v2.2 확장 | 10개 | signup, reply, read_receipts, OCR번역, 텍스트번역 등 |
+
+---
+
+## 0-1. 버전별 변경 이력
+
+| 항목 | v1 원본 | v2 보강 | v2.1 추가 | v2.2 추가 (현재) |
+|---|---|---|---|---|
+| DB 트리거 | 언급 없음 | 6개 트리거 | `translation_preferences` updated_at 트리거 추가 | 1:1 방 자동 정리 트리거 추가 |
+| DB 함수 | 없음 | 6개 함수 | `get_target_language()` 추가 → **7개** | `leave_room()` 추가 → **8개** |
+| RLS 정책 | 일부 예시 | 전 테이블 완비 | `translation_preferences` RLS 4개 추가 | `signup_requests`, `message_translations` 추가 |
+| 무한 재귀 방지 | 없음 | `SECURITY DEFINER` 함수 | 동일 | 동일 |
+| Storage RLS | 없음 | chat-files·avatars 정책 | 동일 | `chat-attachments` 버킷 추가 |
+| `profiles` | 기본 컬럼 | `is_admin`, `must_change_password` | **`preferred_language` 추가** | 동일 |
+| `rooms` | 기본 컬럼 | 동일 | **`default_translation_language` 추가** | 동일 |
+| `messages` | 기본 컬럼 | `content_length_limit` 제약 | **`content_original`, `source_language`, `target_language`, `translation_provider` 추가** | **`reply_to_id` 추가** |
+| `translation_preferences` | 없음 | 없음 | **신규 테이블** | 동일 |
+| `signup_requests` | 없음 | 없음 | 없음 | **신규 테이블** (가입 신청·승인·거절) |
+| `message_translations` | 없음 | 없음 | 없음 | **신규 테이블** (텍스트 자동 번역 캐시) |
+| `room_members` Realtime | 없음 | 없음 | 없음 | **REPLICA IDENTITY FULL + publication** |
+| 마이그레이션 구조 | 없음 | 11개 파일 | **17개 파일** (v2.1 6개 추가) | **28개 파일** (v2.2 11개 추가) |
 
 ---
 
@@ -39,14 +55,18 @@ MoveTalk과는 **별도의 Supabase 프로젝트**로 운영한다. DB는 **Supa
 
 | 테이블명 | 상태 | 목적 |
 |---|---|---|
-| profiles | ✅ 필수 | 직원 프로필 |
-| rooms | ✅ 필수 | 채팅방 |
-| room_members | ✅ 필수 | 채팅방 참여자 |
-| messages | ✅ 필수 | 메시지 (번역 컬럼 포함) |
-| message_attachments | ✅ 필수 | 첨부파일 |
-| translation_preferences | ✅ 필수 (v2.1) | 수신자별 번역 언어 설정 |
-| message_links | v1.5 보류 | 링크 메타데이터 |
-| read_receipts | v1.5 보류 | 메시지별 읽음 |
+| profiles | ✅ 구현 완료 | 직원 프로필 |
+| rooms | ✅ 구현 완료 | 채팅방 |
+| room_members | ✅ 구현 완료 | 채팅방 참여자 (REPLICA IDENTITY FULL) |
+| messages | ✅ 구현 완료 | 메시지 (번역·답장 컬럼 포함) |
+| message_attachments | ✅ 구현 완료 | 첨부파일 |
+| translation_preferences | ✅ 구현 완료 (v2.1) | 수신자별 번역 언어 설정 |
+| message_links | ✅ 구현 완료 (v1.5) | 링크 OG 메타데이터 |
+| signup_requests | ✅ 구현 완료 (v2.2) | 가입 신청 (pending/approved/rejected) |
+| message_translations | ✅ 구현 완료 (v2.2) | 텍스트 자동 번역 캐시 |
+| message_reactions | ⏳ 설계만 완료 (v3) | 메시지 이모지 반응 |
+| message_mentions | ⏳ 설계만 완료 (v3) | @멘션 |
+| read_receipts | ⏳ 설계만 완료 (v3) | 메시지별 개별 읽음 (현재는 last_read_at으로 처리) |
 
 ---
 
@@ -658,38 +678,56 @@ create policy "avatars_delete_self" on storage.objects for delete to authenticat
 
 ---
 
-## 13. 관리자 기능 — Edge Functions
+## 13. Edge Functions (총 6개)
 
 ### 13.1 admin-create-user
 직원 추가 (Auth user 생성 + 임시 비밀번호 발급). Service Role Key 사용.
 
-```text
-supabase/functions/admin-create-user/index.ts
-```
-
 처리 흐름: 관리자 검증 → `auth.admin.createUser()` → 임시 비밀번호 → 메일 발송
 
-### 13.2 voice-translate (v2.1 신규)
-음성 파일 → STT → 번역. OpenAI Whisper + Claude Haiku 사용.
+### 13.2 voice-translate (v2.1)
+음성 파일 → STT(Whisper) → 번역(Claude Haiku) → 텍스트 반환. 음성 파일 메모리에서 즉시 폐기.
+
+### 13.3 translate-text (v2.2 신규)
+텍스트 메시지 자동 번역. 수신자 언어 ≠ 발신 언어일 때 클라이언트에서 호출.
 
 ```text
-supabase/functions/voice-translate/index.ts
-supabase/functions/voice-translate/providers/whisper.ts
-supabase/functions/voice-translate/providers/claude.ts
+supabase/functions/translate-text/index.ts
 ```
 
-처리 흐름: 인증 → 방 멤버 검증 → Whisper STT → Claude 번역 → 텍스트 반환 (음성 파일 메모리에서 폐기)
+처리 흐름: 인증 → 방 멤버 검증 → Claude Haiku 번역 → 결과 반환
 
-필요한 Edge Function 시크릿:
+### 13.4 ocr-translate (v2.2 신규)
+이미지 파일 → OCR(Claude Vision) → 번역 → `text_translated` 메시지 insert.
+
+```text
+supabase/functions/ocr-translate/index.ts
+```
+
+처리 흐름: 인증 → 이미지 검증(10MB·JPG/PNG/WEBP/GIF) → Claude Vision OCR → 번역 → 메시지 전송
+
+### 13.5 fetch-link-preview (v1.5)
+URL OG 메타데이터(제목·설명·이미지·도메인) 추출 → `message_links` 저장.
+
+### 13.6 send-signup-notification (v2.2 신규)
+신규 회원가입 신청 발생 시 관리자 이메일 알림 발송.
+
+환경변수: `ADMIN_EMAIL` 필요.
+
+### 필요한 Edge Function 시크릿 (전체)
+
 ```env
-SUPABASE_SERVICE_ROLE_KEY=...   # admin-create-user
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # admin-create-user, signup-notification
 OPENAI_API_KEY=...              # voice-translate Whisper
-ANTHROPIC_API_KEY=...           # voice-translate Claude
+ANTHROPIC_API_KEY=...           # voice-translate, translate-text, ocr-translate
+ADMIN_EMAIL=...                 # send-signup-notification
 ```
 
 ---
 
-## 14. 마이그레이션 파일 구조
+## 14. 마이그레이션 파일 구조 (현재 적용 완료)
 
 ```text
 supabase/
@@ -714,12 +752,28 @@ supabase/
     20260501100003_v2_1_translation_preferences.sql
     20260501100004_v2_1_get_target_language_fn.sql
     20260501100005_v2_1_translation_rls.sql
+    # ─── v1.5 · v2.2 확장 ────────────────────────────────
+    20260501110000_message_translations.sql       # 텍스트 자동 번역 캐시 테이블
+    20260501200000_admin_profile_policy.sql       # 관리자 프로필 RLS 수정
+    20260501300000_leave_room_fn.sql              # leave_room() 함수
+    20260501300001_room_members_replica_identity.sql  # REPLICA IDENTITY FULL
+    20260502000000_signup_pending_rejected.sql    # 가입 신청 signup_requests 테이블
+    20260502100000_cleanup_direct_room_trigger.sql    # 1:1 방 자동 정리 (1차)
+    20260502200000_message_update_5min_rls.sql    # 메시지 수정 5분 RLS
+    20260502300000_reply_to_message.sql           # messages.reply_to_id 컬럼
+    20260502400000_cleanup_direct_room_trigger.sql    # 1:1 방 자동 정리 (보완)
+    20260502500000_room_members_realtime_publication.sql  # Realtime publication
+    20260503000000_chat_attachments_bucket.sql    # chat-attachments Storage 버킷
   functions/
     admin-create-user/index.ts
     voice-translate/
       index.ts
       providers/whisper.ts
       providers/claude.ts
+    translate-text/index.ts               # 텍스트 자동 번역 (v2.2)
+    ocr-translate/index.ts                # OCR + 번역 (v2.2)
+    fetch-link-preview/index.ts           # 링크 OG 메타 추출 (v1.5)
+    send-signup-notification/index.ts     # 가입 신청 관리자 알림 (v2.2)
   seed.sql
 ```
 

@@ -61,71 +61,65 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
   const remaining = MAX_LEN - value.length
 
   return (
-    <div className="flex-shrink-0 px-3 py-2
-                    bg-[#f9f9f9] dark:bg-surface-panel
-                    border-t border-gray-200 dark:border-[#374045]">
-
+    <div
+      className="composer-panel flex-shrink-0 px-3 py-3 border-t"
+      style={{ background: 'var(--card)', borderColor: 'var(--line)', boxShadow: 'var(--shadow-panel)' }}
+    >
       {error && (
-        <div className="mb-2 px-3 py-1.5 rounded-lg
-                        bg-red-50 dark:bg-red-900/20
-                        text-xs text-red-600 dark:text-red-400">
+        <div className="mb-2 px-3 py-1.5 rounded-lg text-xs"
+             style={{ background: 'rgba(239,63,26,0.08)', color: 'var(--red)', border: '1px solid rgba(239,63,26,0.2)' }}>
           {error}
         </div>
       )}
 
-      <div className="flex items-end gap-2">
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            value={value}
-            disabled={disabled || sending}
-            placeholder={
-              hasPendingFiles
-                ? '캡션 입력... (선택)'
-                : disabled
-                  ? t('selectRoomHint')
-                  : t('msgPlaceholder')
-            }
-            rows={1}
-            maxLength={MAX_LEN + 100}
-            className="
-              w-full resize-none rounded-2xl px-4 py-2.5 text-sm leading-relaxed
-              bg-white dark:bg-surface-input
-              border border-gray-200 dark:border-0
-              text-gray-800 dark:text-[#e9edef]
-              placeholder-gray-400 dark:placeholder-[#8696a0]
-              focus:outline-none focus:ring-2 focus:ring-mtl-cyan/30 dark:focus:ring-accent/30
-              disabled:cursor-not-allowed disabled:opacity-50
-              transition-all scrollbar-thin
-            "
-            style={{ maxHeight: '120px' }}
-            onChange={e => { onChange(e.target.value); autoResize() }}
-            onKeyDown={handleKeyDown}
-          />
-          {value.length >= WARN_AT && (
-            <span className={`absolute bottom-2 right-3 text-[10px] ${
-              remaining < 0 ? 'text-red-500' : 'text-gray-400 dark:text-[#8696a0]'
-            }`}>
-              {remaining}
-            </span>
-          )}
-        </div>
-
+      <div
+        className="flex items-end gap-2 rounded-2xl border px-3 py-1.5"
+        style={{ background: 'var(--bg)', borderColor: 'var(--line)' }}
+      >
+        <textarea
+          ref={textareaRef}
+          value={value}
+          disabled={disabled || sending}
+          placeholder={
+            hasPendingFiles
+              ? '캡션 입력... (선택)'
+              : disabled
+                ? t('selectRoomHint')
+                : t('msgPlaceholder')
+          }
+          rows={1}
+          maxLength={MAX_LEN + 100}
+          className="flex-1 resize-none bg-transparent text-sm leading-relaxed py-1.5
+                     focus:outline-none disabled:cursor-not-allowed disabled:opacity-50
+                     transition-all scrollbar-thin"
+          style={{
+            maxHeight: '120px',
+            color: 'var(--ink)',
+            caretColor: 'var(--blue)',
+          }}
+          onChange={e => { onChange(e.target.value); autoResize() }}
+          onKeyDown={handleKeyDown}
+        />
+        {value.length >= WARN_AT && (
+          <span
+            className="text-[10px] pb-1.5 flex-shrink-0"
+            style={{ color: remaining < 0 ? 'var(--red)' : 'var(--ink-4)' }}
+          >
+            {remaining}
+          </span>
+        )}
         <button
           onClick={handleSend}
           disabled={!canSend}
-          className="
-            w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-            bg-accent hover:bg-accent-hover
-            text-white
-            disabled:opacity-30 disabled:cursor-not-allowed
-            transition-all duration-200
-          "
+          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+                     text-white disabled:opacity-30 disabled:cursor-not-allowed
+                     transition-all duration-200"
+          style={{ background: canSend ? 'var(--blue)' : 'var(--ink-4)' }}
           aria-label={t('attachBtn')}
         >
           {sending
             ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            : <Send size={16} className="translate-x-0.5" />
+            : <Send size={15} className="translate-x-0.5" />
           }
         </button>
       </div>

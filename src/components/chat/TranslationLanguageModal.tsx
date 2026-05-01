@@ -14,7 +14,7 @@ const LANGUAGES = [
 ]
 
 interface Props {
-  toUserId:        string | null   // null = 그룹방 (not supported yet)
+  toUserId:        string | null
   toUserName:      string
   currentLanguage: string
   onSaved:         (lang: string) => void
@@ -63,24 +63,24 @@ export function TranslationLanguageModal({
       onClick={onClose}
     >
       <div
-        className="relative w-80 rounded-2xl shadow-2xl
-                   bg-white dark:bg-surface-panel
-                   border border-gray-100 dark:border-[#374045]
-                   p-5"
+        className="relative w-80 rounded-2xl shadow-2xl border p-5"
+        style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Globe size={16} className="text-mtl-cyan dark:text-accent" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-[#e9edef]">
+            <Globe size={16} style={{ color: 'var(--blue)' }} />
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
               {toUserName}에게 번역 언어
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-hover
-                       text-gray-400 dark:text-[#8696a0] transition-colors"
+            className="p-1 rounded-lg transition-colors"
+            style={{ color: 'var(--ink-4)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             aria-label="닫기"
           >
             <X size={15} />
@@ -89,57 +89,60 @@ export function TranslationLanguageModal({
 
         {/* 언어 목록 */}
         <div className="space-y-0.5 mb-4">
-          {LANGUAGES.map(l => (
-            <label
-              key={l.code}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors
-                ${selected === l.code
-                  ? 'bg-mtl-cyan/10 dark:bg-accent/10 text-mtl-navy dark:text-[#e9edef]'
-                  : 'hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-[#aebac1]'
-                }`}
-            >
-              <input
-                type="radio"
-                name="lang"
-                value={l.code}
-                checked={selected === l.code}
-                onChange={e => setSelected(e.target.value)}
-                className="sr-only"
-              />
-              <span className="text-base leading-none">{l.flag}</span>
-              <span className="text-sm font-medium">{l.name}</span>
-              {selected === l.code && (
-                <span className="ml-auto w-4 h-4 rounded-full bg-mtl-cyan dark:bg-accent
-                                 flex items-center justify-center flex-shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                </span>
-              )}
-            </label>
-          ))}
+          {LANGUAGES.map(l => {
+            const isSelected = selected === l.code
+            return (
+              <label
+                key={l.code}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
+                style={{
+                  background: isSelected ? 'rgba(37,99,235,0.08)' : 'transparent',
+                  color: isSelected ? 'var(--ink)' : 'var(--ink-2)',
+                }}
+                onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLLabelElement).style.background = 'var(--bg)' }}
+                onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLLabelElement).style.background = 'transparent' }}
+              >
+                <input
+                  type="radio"
+                  name="lang"
+                  value={l.code}
+                  checked={isSelected}
+                  onChange={e => setSelected(e.target.value)}
+                  className="sr-only"
+                />
+                <span className="text-base leading-none">{l.flag}</span>
+                <span className="text-sm font-medium">{l.name}</span>
+                {isSelected && (
+                  <span
+                    className="ml-auto w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'var(--blue)' }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  </span>
+                )}
+              </label>
+            )
+          })}
         </div>
 
-        {error && (
-          <p className="mb-3 text-xs text-red-500 dark:text-red-400">{error}</p>
-        )}
+        {error && <p className="mb-3 text-xs text-red-500">{error}</p>}
 
         {/* 버튼 */}
         <div className="flex gap-2 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-xl
-                       hover:bg-gray-100 dark:hover:bg-surface-hover
-                       text-gray-600 dark:text-[#aebac1] transition-colors"
+            className="px-4 py-2 text-sm rounded-xl transition-colors"
+            style={{ color: 'var(--ink-3)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             취소
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !toUserId}
-            className="px-4 py-2 text-sm rounded-xl font-medium
-                       bg-mtl-cyan dark:bg-accent text-white
-                       hover:bg-mtl-cyan/90 dark:hover:bg-accent-hover
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       transition-colors"
+            className="px-4 py-2 text-sm rounded-xl font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            style={{ background: 'var(--blue)' }}
           >
             {saving ? '저장 중…' : '저장'}
           </button>

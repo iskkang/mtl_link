@@ -1,6 +1,20 @@
 # MTL Link 운영설계서
 
 > 신규 문서. 환경 분리, 배포, 모니터링, 백업, 계정 관리 등 운영에 필요한 사항을 정리.
+> 최종 업데이트: 2026-05-02
+
+---
+
+## 0. 현재 운영 상태 요약 (2026-05-02)
+
+| 항목 | 현황 |
+|---|---|
+| Edge Functions | **6개** 배포 완료 |
+| 마이그레이션 | **28개** 적용 완료 |
+| 언어 UI | ko/en/ru/zh/ja/uz 6개 지원 |
+| 회원가입 방식 | 관리자 초대 **+** 셀프 신청(관리자 승인) |
+| 테마 | 다크/라이트 전환 지원 |
+| Storage 버킷 | `chat-files` + `avatars` + `chat-attachments` |
 
 ---
 
@@ -32,7 +46,16 @@
 
 **Supabase Edge Functions**:
 - Dashboard → Edge Functions → Secrets
-- `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` 등록
+- 필요한 시크릿 전체:
+
+```env
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # admin-create-user, send-signup-notification
+OPENAI_API_KEY=...              # voice-translate (Whisper STT)
+ANTHROPIC_API_KEY=...           # voice-translate, translate-text, ocr-translate
+ADMIN_EMAIL=...                 # send-signup-notification 알림 수신 이메일
+```
 
 ---
 
@@ -274,7 +297,17 @@ node scripts/backup-storage.js
 - Edge Function이 새 임시 비밀번호 발급, `must_change_password = true`
 - 직원에게 메일 발송
 
-> Supabase의 *"비밀번호 재설정 이메일"* 기능은 v1.5에서 검토 (자가 재설정).
+> Supabase의 *"비밀번호 재설정 이메일"* 기능은 v3에서 검토 (자가 재설정).
+
+### 7.4 신규 직원 자가 가입 신청 (v2.2 추가)
+
+1. **신규 직원**: `/signup` 페이지에서 이름·이메일·부서·직급 입력 → 신청 제출
+2. **시스템**: `signup_requests` 테이블에 `pending` 저장 + 관리자 이메일 알림 발송
+3. **관리자**: `/admin` 페이지의 *가입 신청* 탭에서 내용 확인 후 승인 또는 거절
+4. **승인 시**: `admin-create-user` 함수로 계정 생성 → 임시 비밀번호 메일 발송
+5. **거절 시**: 신청자 이메일로 거절 안내 (선택적) + `signup_requests.status = 'rejected'`
+
+> 이 흐름은 완전 자가 가입이 아니라 **관리자 승인 필수** 방식이다. 보안 정책 유지.
 
 ### 7.4 관리자 권한 부여
 
@@ -362,7 +395,12 @@ v1에서는 최소한 다음을 확보:
 5. [ ] 다른 탭에서 동일 방 → Realtime 수신 확인
 6. [ ] 이미지 업로드 → 썸네일 표시
 7. [ ] 파일 다운로드
-8. [ ] 로그아웃
+8. [ ] 음성번역 버튼 → 녹음 → 메시지 전송 확인
+9. [ ] 텍스트 자동 번역 표시 확인 (언어 설정 다른 계정)
+10. [ ] 메시지 검색 바 토글 → 키워드 검색
+11. [ ] 브라우저 알림 권한 요청 표시
+12. [ ] 다크/라이트 테마 전환 확인
+13. [ ] 로그아웃
 
 ### 9.4 보안 사고 대응
 
@@ -394,10 +432,12 @@ v1에서는 최소한 다음을 확보:
 | 도메인 | ~$1 | 회사 도메인 활용 시 무료 |
 | 메일 발송 (Resend) | $0~$20 | v1 무료 티어로 충분 |
 | OpenAI Whisper STT | ~$8 | 50명 × 일5회 × 15초 × 22일 ≈ 23시간/월 |
-| Anthropic Claude Haiku 번역 | ~$2 | 건당 약 200토큰 × 월 5,500건 |
+| Anthropic Claude Haiku 번역 | ~$2 | 건당 약 200토큰 × 월 5,500건 (음성번역) |
+| Anthropic Claude Haiku 텍스트번역 | ~$3 | 텍스트 자동번역 (v2.2 추가) |
+| Anthropic Claude Vision OCR | ~$2 | 이미지 OCR (v2.2 추가, 사용 빈도 낮음) |
 | **합계 (v1 기본)** | **~$25** | Vercel Hobby + Supabase Pro |
-| **합계 (음성번역 포함)** | **~$35** | 기본 + 음성번역 $10 |
-| **합계 (50명 안정 운영)** | **~$55~80** | Vercel Pro 추가 시 |
+| **합계 (음성+텍스트+OCR 번역)** | **~$40** | 기본 + 번역 API $15 |
+| **합계 (50명 안정 운영)** | **~$60~85** | Vercel Pro 추가 시 |
 
 > 사용자 50명 메신저 기준으로 충분히 합리적인 수준.
 
@@ -405,13 +445,26 @@ v1에서는 최소한 다음을 확보:
 
 ## 11. 향후 확장 시 운영 영향
 
-| v1.5/v2 기능 | 운영 영향 |
-|---|---|
-| 메시지 검색 | 인덱스 크기 증가, Storage가 아닌 DB 디스크 확인 |
-| 링크 미리보기 | 외부 OG 메타 fetch → Edge Function 추가 + 무한루프·SSRF 방지 |
-| AI 번역·요약 | Anthropic/OpenAI API 비용 추가, 모니터링 필요 |
-| 모바일 PWA | 푸시 알림 시 VAPID 키 관리 |
-| 화물·프로젝트 연동 | MoveTalk과 데이터 공유 시 인증 토큰 교환 방식 설계 필요 |
+| 기능 | 상태 | 운영 영향 |
+|---|---|---|
+| 메시지 검색 (현재 방) | ✅ 완료 | 클라이언트 사이드, 추가 인프라 없음 |
+| 글로벌 메시지 검색 | ✅ 완료 | DB ilike 쿼리, pg_trgm 인덱스 활용 |
+| 링크 미리보기 | ✅ 완료 | `fetch-link-preview` EF, SSRF 방지 처리 완료 |
+| 텍스트 자동 번역 | ✅ 완료 | Anthropic API 비용 모니터링 필요 (~$3/월 추가) |
+| OCR 번역 | ✅ 완료 | Claude Vision 비용, 이미지 크기 10MB 제한 |
+| 회원가입 신청 | ✅ 완료 | `signup_requests` 테이블 정기 정리 필요 |
+| 메시지 반응·멘션 | v3 예정 | `message_reactions`, `message_mentions` 테이블 추가 필요 |
+| 모바일 PWA | v3 예정 | VAPID 키 관리, 푸시 알림 서비스 |
+| 화물·프로젝트 연동 | v3 예정 | MoveTalk과 인증 토큰 교환 방식 설계 필요 |
+
+### 텍스트 자동 번역 운영 주의사항 (v2.2)
+- 번역 결과는 `message_translations` 테이블에 캐시되어 중복 API 호출 방지
+- 클라이언트 세션 캐시(`Map`)도 있어 페이지 새로고침 전까지 재호출 없음
+- Claude Haiku 비용 급증 시: `translate-text` Edge Function에 rate limit 로직 추가 검토
+
+### OCR 번역 운영 주의사항 (v2.2)
+- 민감한 문서(계약서, 개인정보 포함 서류)는 OCR 사용 금지 권고 (운영 가이드 명시)
+- 이미지가 Claude Vision API 외부로 전송됨 → 회사 정보보안 정책 확인 필요
 
 ---
 

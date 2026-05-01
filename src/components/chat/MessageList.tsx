@@ -67,11 +67,8 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto scrollbar-thin py-2
-                 bg-[#efeae2] dark:bg-surface-chat"
-      style={{
-        backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-      }}
+      className="flex-1 overflow-y-auto scrollbar-thin py-2"
+      style={{ background: 'var(--chat-bg)' }}
     >
       {/* 이전 메시지 로딩 */}
       {loading && messages.length > 0 && (
@@ -88,22 +85,22 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
           <div key={msg._localId ?? msg.id} data-message-id={msg.id}>
             {showDate && (
               <div className="flex justify-center my-3">
-                <span className="text-[11px] px-3 py-1 rounded-full
-                                 bg-white/70 dark:bg-surface-panel/80
-                                 text-gray-500 dark:text-[#8696a0]
-                                 shadow-sm backdrop-blur-sm">
-                  {formatDateSeparator(msg.created_at)}
-                </span>
+                <span
+                className="text-[11px] px-3 py-1 rounded-full shadow-sm backdrop-blur-sm"
+                style={{ background: 'var(--card)', color: 'var(--ink-3)', border: '1px solid var(--line)' }}
+              >
+                {formatDateSeparator(msg.created_at)}
+              </span>
               </div>
             )}
             {msg.message_type === 'system' ? (
               <div className="flex justify-center my-1.5 px-3">
-                <span className="text-[11px] px-3 py-1 rounded-full
-                                 bg-white/70 dark:bg-surface-panel/80
-                                 text-gray-400 dark:text-[#8696a0]
-                                 shadow-sm backdrop-blur-sm italic">
-                  {msg.content}
-                </span>
+                <span
+                className="text-[11px] px-3 py-1 rounded-full shadow-sm backdrop-blur-sm italic"
+                style={{ background: 'var(--card)', color: 'var(--ink-4)', border: '1px solid var(--line)' }}
+              >
+                {msg.content}
+              </span>
               </div>
             ) : (
               <MessageBubble

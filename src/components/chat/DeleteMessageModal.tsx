@@ -27,16 +27,17 @@ export function DeleteMessageModal({ onConfirm, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center
-                 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget && !loading) onClose() }}
     >
-      <div className="bg-white dark:bg-surface-panel rounded-2xl shadow-2xl
-                      w-[90vw] max-w-sm mx-4 p-6">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-[#e9edef] mb-2">
+      <div
+        className="rounded-2xl shadow-2xl w-[90vw] max-w-sm mx-4 p-6"
+        style={{ background: 'var(--card)' }}
+      >
+        <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--ink)' }}>
           {t('deleteMsgTitle')}
         </h3>
-        <p className="text-sm text-gray-500 dark:text-[#8696a0] leading-relaxed mb-5">
+        <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--ink-3)' }}>
           {t('deleteMsgDesc')}
         </p>
 
@@ -46,19 +47,17 @@ export function DeleteMessageModal({ onConfirm, onClose }: Props) {
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 rounded-xl text-sm font-medium
-                       text-gray-600 dark:text-[#8696a0]
-                       hover:bg-gray-100 dark:hover:bg-surface-hover
-                       disabled:opacity-50 transition-colors"
+            className="px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
+            style={{ color: 'var(--ink-3)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             {t('deleteMsgCancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-                       bg-red-500 hover:bg-red-600 text-white
-                       disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 transition-colors"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
             {t('deleteMsgConfirm')}

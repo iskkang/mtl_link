@@ -27,17 +27,17 @@ export function QuotedMessage({ reply, onClick }: Props) {
       role="button"
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick()}
-      className="border-l-4 border-mtl-cyan pl-2 py-1 mb-2 rounded-sm cursor-pointer
-                 hover:bg-black/5 dark:hover:bg-white/5 transition-colors min-w-0"
+      className="pl-2 py-1 mb-2 rounded-sm cursor-pointer
+                 hover:bg-black/5 dark:hover:bg-white/5 transition-colors min-w-0 border-l-4"
+      style={{ borderColor: 'var(--blue)' }}
     >
-      <div className="text-[11px] font-semibold text-mtl-cyan truncate">
+      <div className="text-[11px] font-semibold truncate" style={{ color: 'var(--blue)' }}>
         {reply.sender?.name ?? '알 수 없음'}
       </div>
-      <div className={`text-xs truncate leading-snug ${
-        reply.deleted_at
-          ? 'italic text-gray-400 dark:text-[#8696a0]'
-          : 'text-gray-600 dark:text-[#b0bec5]'
-      }`}>
+      <div
+        className={`text-xs truncate leading-snug ${reply.deleted_at ? 'italic' : ''}`}
+        style={{ color: 'var(--ink-3)' }}
+      >
         {getQuoteText()}
       </div>
     </div>

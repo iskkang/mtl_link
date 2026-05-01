@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { translateMessage } from '../services/translationService'
 import type { MessageWithSender } from '../types/chat'
+import { useMessageStore } from '../stores/messageStore'
 
 // Module-level cache — shared across all hook instances, persists for session
 const cache   = new Map<string, string>()
@@ -73,6 +74,9 @@ export function useMessageTranslation(
     })
       .then(text => {
         cache.set(key, text)
+        if (message.room_id) {
+          useMessageStore.getState().setTranslation(message.room_id, message.id, text)
+        }
         if (mounted.current) setTranslatedText(text)
       })
       .catch(err => {

@@ -56,11 +56,23 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
   }, {})
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-white dark:bg-[#111b21] overflow-hidden">
+    <div
+      className="absolute inset-0 z-30 flex flex-col overflow-hidden"
+      style={{ background: 'var(--card)' }}
+    >
       {/* 헤더 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-[#2a3942] flex-shrink-0">
-        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">통합검색</span>
-        <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#2a3942]">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0"
+        style={{ borderColor: 'var(--line)' }}
+      >
+        <span className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>통합검색</span>
+        <button
+          onClick={onClose}
+          className="p-1 rounded transition-colors"
+          style={{ color: 'var(--ink-3)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
           <X size={16} />
         </button>
       </div>
@@ -69,19 +81,22 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
       <div className="flex-1 overflow-y-auto">
         {loading && (
           <div className="flex justify-center py-8">
-            <Loader2 size={20} className="animate-spin text-gray-400" />
+            <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ink-4)' }} />
           </div>
         )}
 
         {!loading && searched && results.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
+          <div className="flex flex-col items-center justify-center py-12 text-sm" style={{ color: 'var(--ink-4)' }}>
             <span>검색 결과가 없습니다</span>
           </div>
         )}
 
         {!loading && Object.entries(grouped).map(([roomId, { roomName, items }]) => (
           <div key={roomId}>
-            <div className="px-4 py-1.5 text-[11px] font-semibold text-gray-400 dark:text-[#8696a0] bg-gray-50 dark:bg-[#182229] uppercase tracking-wide">
+            <div
+              className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide"
+              style={{ color: 'var(--ink-4)', background: 'var(--bg)' }}
+            >
               {roomName ?? '알 수 없는 방'}
             </div>
             {items.map(item => {
@@ -90,17 +105,20 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
                 <button
                   key={item.id}
                   onClick={() => onRoomSelect(roomId, item.id)}
-                  className="w-full text-left px-4 py-3 flex flex-col gap-0.5 hover:bg-gray-50 dark:hover:bg-[#182229] border-b border-gray-100 dark:border-[#2a3942]"
+                  className="w-full text-left px-4 py-3 flex flex-col gap-0.5 border-b transition-colors"
+                  style={{ borderColor: 'var(--line)' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-mtl-cyan dark:text-mtl-cyan truncate">
+                    <span className="text-[11px] font-medium truncate" style={{ color: 'var(--blue)' }}>
                       {item.sender_name ?? '알 수 없음'}
                     </span>
-                    <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex-shrink-0">
+                    <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--ink-4)' }}>
                       {formatMessageTime(item.created_at)}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-700 dark:text-[#e9edef] line-clamp-2 leading-relaxed">
+                  <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: 'var(--ink)' }}>
                     {highlightText(text, searched)}
                   </p>
                 </button>

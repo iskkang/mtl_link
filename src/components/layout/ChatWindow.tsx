@@ -171,18 +171,20 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     <div className="flex flex-col h-full">
 
       {/* ── 채팅창 헤더 ──────────────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-3 flex-shrink-0
-                          bg-white dark:bg-surface-panel
-                          border-b border-gray-200 dark:border-[#374045]
-                          shadow-sm dark:shadow-none">
+      <header className="flex items-center justify-between px-4 py-3 flex-shrink-0 chat-header"
+              style={{
+                background: 'var(--card)',
+                borderBottom: '1px solid var(--line)',
+                boxShadow: 'var(--shadow-header)',
+              }}>
 
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {onBack && (
             <button
               onClick={onBack}
-              className="md:hidden p-1.5 rounded-full flex-shrink-0
-                         hover:bg-gray-100 dark:hover:bg-surface-hover
-                         text-gray-500 dark:text-[#aebac1] transition-colors"
+              className="md:hidden p-1.5 rounded-full flex-shrink-0 transition-colors
+                         hover:bg-gray-100 dark:hover:bg-[#1E293B]
+                         text-gray-500 dark:text-[#94A3B8]"
               aria-label={t('backBtn')}
             >
               <ArrowLeft size={20} />
@@ -192,33 +194,30 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
           {room && displayName && avatarInfo ? (
             <div className="flex items-center gap-3 min-w-0">
               {isGroup ? (
-                <div className="w-9 h-9 rounded-full bg-mtl-slate dark:bg-surface-hover
-                                flex items-center justify-center flex-shrink-0">
-                  <Users size={17} className="text-gray-400 dark:text-[#8696a0]" />
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                     style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
+                  <Users size={16} className="text-white" />
                 </div>
               ) : (
                 <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} size="sm" />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate text-gray-900 dark:text-[#e9edef]">
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
                   {displayName}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-[#8696a0]">
+                <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
                   {isGroup ? t('memberCount', { count: memberCount }) : t('onlineStatus')}
                 </p>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2.5">
-              <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-100
-                              dark:border-0 dark:bg-transparent dark:p-0">
-                <img src="/mtl-logo.png" alt="MTL" className="h-8 w-auto object-contain" />
-              </div>
+              <img src="/mtl-logo.png" alt="MTL" className="h-8 w-auto object-contain" />
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-[#e9edef]">
+                <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
                   MTL Shipping Agency
                 </p>
-                <p className="text-xs text-gray-400 dark:text-[#8696a0]">{t('companySubtitle')}</p>
+                <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('companySubtitle')}</p>
               </div>
             </div>
           )}
@@ -228,20 +227,17 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
           {room && (
             <button
               onClick={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
-              className={`p-2 rounded-full transition-colors
-                         hover:bg-gray-100 dark:hover:bg-surface-hover
-                         ${searchOpen ? 'text-mtl-cyan' : 'text-gray-500 dark:text-[#aebac1]'}`}
+              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-[#1E293B]"
+              style={{ color: searchOpen ? 'var(--blue)' : 'var(--ink-3)' }}
               title="메시지 검색"
             >
-              <Search size={19} />
+              <Search size={18} />
             </button>
           )}
           <button
             onClick={toggle}
-            className="p-2 rounded-full
-                       hover:bg-gray-100 dark:hover:bg-surface-hover
-                       text-gray-500 dark:text-[#aebac1]
-                       transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1E293B] transition-colors"
+            style={{ color: 'var(--ink-3)' }}
             aria-label="테마 전환"
             title={t('themeToggle')}
           >
@@ -394,33 +390,32 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
 /* ── 방 미선택 빈 상태 ──────────────────────────── */
 function EmptyState({ t }: { t: (k: string) => string }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-8 select-none
-                    bg-[#efeae2] dark:bg-surface-chat"
-         style={{
-           backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-         }}
+    <div
+      className="flex-1 flex flex-col items-center justify-center px-8 select-none"
+      style={{ background: 'var(--chat-bg)' }}
     >
       <div className="flex flex-col items-center text-center">
-        <div className="mb-6 bg-white rounded-2xl p-5 shadow-lg dark:shadow-2xl
-                        border border-gray-100 dark:border-[#2a3942]">
+        <div
+          className="mb-6 rounded-2xl p-5"
+          style={{ background: 'var(--card)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line)' }}
+        >
           <img src="/mtl-logo.png" alt="MTL Shipping Agency" className="h-20 w-auto object-contain" />
         </div>
-        <h2 className="font-display text-2xl font-bold tracking-wide mb-2
-                       text-gray-600 dark:text-[#e9edef]">
+        <h2 className="text-2xl font-bold tracking-wide mb-2" style={{ color: 'var(--ink)' }}>
           MTL LINK
         </h2>
-        <p className="text-sm text-gray-400 dark:text-[#8696a0] mb-1">
+        <p className="text-sm mb-1" style={{ color: 'var(--ink-3)' }}>
           MTL Shipping Agency {t('companySubtitle')}
         </p>
-        <p className="text-xs text-gray-300 dark:text-[#556e78] mt-2 leading-relaxed whitespace-pre-line">
+        <p className="text-xs mt-2 leading-relaxed whitespace-pre-line" style={{ color: 'var(--ink-4)' }}>
           {t('welcomeDesc')}
         </p>
-        <div className="mt-8 flex items-center gap-3 text-gray-200 dark:text-[#2a3942]">
+        <div className="mt-8 flex items-center gap-3" style={{ color: 'var(--line)' }}>
           <span className="h-px w-16 bg-current" />
-          <MessageCircle size={14} className="text-gray-300 dark:text-[#374045]" />
+          <MessageCircle size={14} style={{ color: 'var(--ink-4)' }} />
           <span className="h-px w-16 bg-current" />
         </div>
-        <p className="mt-4 text-[11px] text-gray-300 dark:text-[#374045]">
+        <p className="mt-4 text-[11px]" style={{ color: 'var(--ink-4)' }}>
           {t('encryptedNotice')}
         </p>
       </div>

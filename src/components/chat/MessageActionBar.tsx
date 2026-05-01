@@ -41,9 +41,10 @@ export function MessageActionBar({
   const activeTranslation = targetLanguage && targetLanguage !== 'none'
 
   return (
-    <div className="flex items-center gap-0.5 px-3 py-1.5 flex-shrink-0
-                    bg-[#f9f9f9] dark:bg-surface-panel
-                    border-t border-gray-200 dark:border-[#374045]">
+    <div
+      className="flex items-center gap-0.5 px-3 py-1.5 flex-shrink-0 border-t"
+      style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+    >
 
       {/* ── 이모지 ──────────────────────────────── */}
       <div className="relative">
@@ -104,13 +105,16 @@ export function MessageActionBar({
         onClick={onOpenTranslationModal}
         disabled={disabled}
         title={t('translationSetting')}
-        className={`ml-1 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
-                    transition-colors border
-                    ${activeTranslation
-                      ? 'border-mtl-cyan/40 dark:border-accent/40 text-mtl-cyan dark:text-accent bg-mtl-cyan/5 dark:bg-accent/5 hover:bg-mtl-cyan/10 dark:hover:bg-accent/10'
-                      : 'border-gray-200 dark:border-[#374045] text-gray-400 dark:text-[#8696a0] hover:bg-gray-100 dark:hover:bg-surface-hover'
-                    }
-                    disabled:opacity-40 disabled:cursor-not-allowed`}
+        className="ml-1 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
+                   transition-colors border disabled:opacity-40 disabled:cursor-not-allowed"
+        style={activeTranslation ? {
+          borderColor: 'rgba(37,99,235,0.3)',
+          color: 'var(--blue)',
+          background: 'rgba(37,99,235,0.05)',
+        } : {
+          borderColor: 'var(--line)',
+          color: 'var(--ink-3)',
+        }}
         aria-label={t('translationSetting')}
       >
         <Globe size={11} />
@@ -141,14 +145,8 @@ function ActionBtn({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`
-        p-2 rounded-lg transition-colors duration-100
-        ${active
-          ? 'text-mtl-cyan dark:text-accent bg-mtl-cyan/10 dark:bg-accent/10'
-          : 'text-gray-400 dark:text-[#8696a0] hover:text-gray-600 dark:hover:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-surface-hover'
-        }
-        disabled:opacity-35 disabled:cursor-not-allowed
-      `}
+      className="p-2 rounded-lg transition-colors duration-100 disabled:opacity-35 disabled:cursor-not-allowed"
+      style={active ? { color: 'var(--blue)', background: 'rgba(37,99,235,0.08)' } : { color: 'var(--ink-3)' }}
     >
       {loading
         ? <span className="w-[19px] h-[19px] border-2 border-current/30 border-t-current rounded-full animate-spin block" />

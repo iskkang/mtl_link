@@ -30,13 +30,17 @@ export function MessageSearchBar({
   }, [])
 
   return (
-    <div className="flex items-center gap-1 px-2 py-1.5 bg-white dark:bg-[#1e2a35] border-b border-gray-200 dark:border-[#2a3942]">
+    <div
+      className="flex items-center gap-1 px-2 py-1.5 border-b"
+      style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+    >
       <input
         ref={inputRef}
         value={query}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 text-sm bg-transparent outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
+        className="flex-1 text-sm bg-transparent outline-none"
+        style={{ color: 'var(--ink)' }}
         onKeyDown={e => {
           if (e.nativeEvent.isComposing) return
           if (e.key === 'Enter') {
@@ -48,7 +52,7 @@ export function MessageSearchBar({
       />
 
       {query && total > 0 && (
-        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        <span className="text-xs whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>
           {currentIdx + 1}/{total}
         </span>
       )}
@@ -56,7 +60,10 @@ export function MessageSearchBar({
       <button
         onClick={onPrev}
         disabled={!canPrev}
-        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#2a3942] disabled:opacity-30"
+        className="p-1 rounded disabled:opacity-30 transition-colors"
+        style={{ color: 'var(--ink-3)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
         title="이전 결과 (∧)"
       >
         <ChevronUp size={16} />
@@ -65,7 +72,10 @@ export function MessageSearchBar({
       <button
         onClick={onNext}
         disabled={!canNext}
-        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#2a3942] disabled:opacity-30"
+        className="p-1 rounded disabled:opacity-30 transition-colors"
+        style={{ color: 'var(--ink-3)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
         title="다음 결과 (∨)"
       >
         <ChevronDown size={16} />
@@ -73,7 +83,10 @@ export function MessageSearchBar({
 
       <button
         onClick={onGlobal}
-        className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-gray-100 dark:hover:bg-[#2a3942] text-gray-600 dark:text-gray-300"
+        className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors"
+        style={{ color: 'var(--ink-3)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
         title={labelGlobal}
       >
         <Globe size={14} />
@@ -82,7 +95,10 @@ export function MessageSearchBar({
 
       <button
         onClick={onClose}
-        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#2a3942]"
+        className="p-1 rounded transition-colors"
+        style={{ color: 'var(--ink-3)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         <X size={16} />
       </button>

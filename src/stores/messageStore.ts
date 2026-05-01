@@ -12,6 +12,7 @@ interface MessageStore {
   addAttachment:        (roomId: string, messageId: string, att: Attachment) => void
   updateStatus:         (roomId: string, localIdOrId: string, status: MessageWithSender['_status']) => void
   refetchSinceLastSeen: (roomId: string) => Promise<void>
+  setTranslation:      (roomId: string, messageId: string, text: string) => void
 }
 
 export const MSG_SELECT = `
@@ -179,4 +180,14 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       get().upsertMessage(roomId, msg)
     }
   },
+
+  setTranslation: (roomId, messageId, text) => set(s => {
+    const list = s.messagesByRoom[roomId] ?? []
+    const idx = list.findIndex(m => m.id === messageId)
+    if (idx < 0) return {}
+    if (list[idx]._translatedText === text) return {}
+    const next = [...list]
+    next[idx] = { ...next[idx], _translatedText: text }
+    return { messagesByRoom: { ...s.messagesByRoom, [roomId]: next } }
+  }),
 }))

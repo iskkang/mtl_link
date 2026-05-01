@@ -9,9 +9,7 @@ interface Props {
   selected:   string[]
   onChange:   (ids: string[]) => void
   excludeId?: string
-  /** single 모드에서 선택 즉시 호출 (방 생성 트리거) */
   onPickSingle?: (userId: string) => void
-  /** 현재 생성 중인 1:1 대상 userId — 로딩 인디케이터용 */
   loadingId?: string | null
 }
 
@@ -51,10 +49,10 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
       <div className="flex flex-col gap-2 px-1 py-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 px-2 py-2">
-            <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-surface-hover animate-pulse flex-shrink-0" />
+            <div className="w-9 h-9 rounded-full animate-pulse flex-shrink-0" style={{ background: 'var(--line)' }} />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3 w-24 bg-gray-200 dark:bg-surface-hover rounded animate-pulse" />
-              <div className="h-2.5 w-32 bg-gray-100 dark:bg-[#374045] rounded animate-pulse" />
+              <div className="h-3 w-24 rounded animate-pulse" style={{ background: 'var(--line)' }} />
+              <div className="h-2.5 w-32 rounded animate-pulse" style={{ background: 'var(--bg)' }} />
             </div>
           </div>
         ))}
@@ -66,23 +64,27 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
     <div className="flex flex-col min-h-0">
       {/* 검색 */}
       <div className="px-4 pb-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg
-                        bg-gray-100 dark:bg-surface-input">
-          <Search size={14} className="text-gray-400 dark:text-[#8696a0] flex-shrink-0" />
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg"
+          style={{ background: 'var(--bg)' }}
+        >
+          <Search size={14} className="flex-shrink-0" style={{ color: 'var(--ink-4)' }} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="이름, 부서로 검색"
-            className="flex-1 bg-transparent text-sm outline-none
-                       text-gray-700 dark:text-[#e9edef]
-                       placeholder-gray-400 dark:placeholder-[#8696a0]"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: 'var(--ink)' }}
             autoFocus
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-[#e9edef] text-xs"
+              className="text-xs transition-colors"
+              style={{ color: 'var(--ink-4)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-4)')}
             >✕</button>
           )}
         </div>
@@ -91,7 +93,7 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
       {/* 유저 목록 */}
       <div className="overflow-y-auto scrollbar-thin flex-1">
         {filtered.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 dark:text-[#8696a0] py-8">
+          <p className="text-center text-sm py-8" style={{ color: 'var(--ink-4)' }}>
             {search ? '검색 결과가 없습니다' : '사용자가 없습니다'}
           </p>
         ) : (
@@ -104,17 +106,17 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
                 key={profile.id}
                 onClick={() => toggle(profile.id)}
                 disabled={isLoading}
-                className={`
-                  w-full flex items-center gap-3 px-4 py-2.5 text-left
-                  transition-colors duration-100
-                  ${isSelected && mode === 'multi'
-                    ? 'bg-accent/10 dark:bg-accent/10'
-                    : 'hover:bg-gray-50 dark:hover:bg-surface-hover'
-                  }
-                  disabled:opacity-60
-                `}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors duration-100 disabled:opacity-60"
+                style={{ background: isSelected && mode === 'multi' ? 'rgba(37,99,235,0.08)' : 'transparent' }}
+                onMouseEnter={e => {
+                  if (!(isSelected && mode === 'multi'))
+                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)'
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    isSelected && mode === 'multi' ? 'rgba(37,99,235,0.08)' : 'transparent'
+                }}
               >
-                {/* 아바타 */}
                 <div className="relative flex-shrink-0">
                   <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
                   {isLoading && (
@@ -124,28 +126,25 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
                   )}
                 </div>
 
-                {/* 이름 + 부서 */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-gray-900 dark:text-[#e9edef]">
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>
                     {profile.name}
                   </p>
                   {(profile.department || profile.position) && (
-                    <p className="text-xs truncate text-gray-400 dark:text-[#8696a0]">
+                    <p className="text-xs truncate" style={{ color: 'var(--ink-4)' }}>
                       {[profile.department, profile.position].filter(Boolean).join(' · ')}
                     </p>
                   )}
                 </div>
 
-                {/* 선택 표시 */}
                 {mode === 'multi' && (
-                  <div className={`
-                    w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                    transition-colors
-                    ${isSelected
-                      ? 'bg-accent border-accent'
-                      : 'border-gray-300 dark:border-[#556e78]'
+                  <div
+                    className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors"
+                    style={isSelected
+                      ? { background: 'var(--blue)', borderColor: 'var(--blue)' }
+                      : { background: 'transparent', borderColor: 'var(--line)' }
                     }
-                  `}>
+                  >
                     {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
                   </div>
                 )}
