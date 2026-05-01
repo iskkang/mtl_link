@@ -72,9 +72,20 @@ export function useRealtimeMessages(roomId: string | null) {
         if (err) console.error('[Realtime] messages error:', err)
       })
 
+    // Broadcast 채널: postgres_changes RLS 우회 경로
+    // markAsRead 호출 시 read:${roomId}에 브로드캐스트 → 즉시 읽음 표시 반영
+    const readCh = supabase
+      .channel(`read:${roomId}`)
+      .on('broadcast', { event: 'read_receipt' }, ({ payload }) => {
+        const { userId, lastReadAt } = payload as { userId: string; lastReadAt: string }
+        if (userId && lastReadAt) updateMemberReadAt(roomId, userId, lastReadAt)
+      })
+      .subscribe()
+
     channelRef.current = channel
     return () => {
       channel.unsubscribe()
+      readCh.unsubscribe()
       channelRef.current = null
     }
   }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen, updateMemberReadAt])

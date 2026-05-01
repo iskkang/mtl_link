@@ -79,11 +79,25 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
 export async function markAsRead(roomId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
+  const now = new Date().toISOString()
+
   await supabase
     .from('room_members')
-    .update({ last_read_at: new Date().toISOString() })
+    .update({ last_read_at: now })
     .eq('room_id', roomId)
     .eq('user_id', user.id)
+
+  // postgres_changes RLS가 크로스-유저 이벤트를 막을 수 있으므로
+  // Broadcast를 보조 신호로 전송 (fire-and-forget)
+  const ch = supabase.channel(`read:${roomId}`)
+  ch.subscribe(status => {
+    if (status !== 'SUBSCRIBED') return
+    ch.send({
+      type:    'broadcast',
+      event:   'read_receipt',
+      payload: { userId: user.id, lastReadAt: now },
+    }).catch(() => null).finally(() => ch.unsubscribe())
+  })
 }
 
 // ─── 방 생성 ────────────────────────────────────────────────────
