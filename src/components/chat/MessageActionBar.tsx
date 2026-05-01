@@ -3,6 +3,7 @@ import { Smile, Paperclip, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EmojiPickerPopup } from '../emoji/EmojiPickerPopup'
 import { VoiceRecorderButton } from '../voice/VoiceRecorderButton'
+import { OcrButton } from './OcrButton'
 import { useState } from 'react'
 
 const LANG_LABELS: Record<string, string> = {
@@ -83,6 +84,14 @@ export function MessageActionBar({
 
       {/* ── 음성 번역 ──────────────────────────── */}
       <VoiceRecorderButton
+        roomId={roomId}
+        targetLanguage={targetLanguage}
+        disabled={disabled}
+        onError={onError}
+      />
+
+      {/* ── OCR 번역 ───────────────────────────── */}
+      <OcrButton
         roomId={roomId}
         targetLanguage={targetLanguage}
         disabled={disabled}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mic, Globe, AlertCircle, Clock, CornerDownLeft } from 'lucide-react'
+import { Mic, Globe, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -61,6 +61,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   }
 
   const isVoice   = message.message_type === 'voice_translated'
+  const isOcr     = message.message_type === 'text_translated' && !!message.content_original
   const isFailed  = message._status === 'failed'
   const isSending = message._status === 'sending'
   const isSent    = message._status === 'sent' || !message._status
@@ -70,7 +71,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const canEdit   = isOwn && isSent && message.message_type === 'text' && isWithin5Min(message.created_at)
 
   // 2단 레이아웃 조건
-  const voiceTwoPanel = isVoice && !!message.content_original
+  const voiceTwoPanel = (isVoice || isOcr) && !!message.content_original
   const textTwoPanel  = isTranslatable && !!translatedText
   const showTwoPanel  = voiceTwoPanel || textTwoPanel
 
@@ -183,10 +184,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           ) : showTwoPanel ? (
             <div className="space-y-2">
               <p className="text-xs italic text-gray-400 dark:text-white/50 leading-relaxed whitespace-pre-wrap break-words">
-                {isVoice ? message.content_original : message.content}
+                {(isVoice || isOcr) ? message.content_original : message.content}
               </p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                {isVoice ? message.content : translatedText}
+                {(isVoice || isOcr) ? message.content : translatedText}
               </p>
             </div>
           ) : (
@@ -257,6 +258,17 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             {isVoice && !isFailed && !isSending && (
               <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
                 <Mic size={9} />
+                {message.source_language?.toUpperCase()}
+                {message.target_language && (
+                  <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
+                )}
+              </span>
+            )}
+
+            {/* OCR 번역 배지 */}
+            {isOcr && !isFailed && !isSending && (
+              <span className="text-[10px] text-gray-400 dark:text-[#8696a0] flex items-center gap-0.5">
+                <ScanText size={9} />
                 {message.source_language?.toUpperCase()}
                 {message.target_language && (
                   <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(sed -i \"s/attachment_type: 'image' | 'document' | 'archive'/attachment_type: 'image' | 'video' | 'document' | 'archive' | 'other'/g\" \"c:/Users/DELL/Documents/MTL_Link/src/types/database.ts\")",
+      "Bash(sed -i \"s/attachment_type?:  'image' | 'document' | 'archive'/attachment_type?:  'image' | 'video' | 'document' | 'archive' | 'other'/g\" \"c:/Users/DELL/Documents/MTL_Link/src/types/database.ts\")",
+      "Bash(sed -i \"s/attachment_type:  'image' | 'document' | 'archive'/attachment_type:  'image' | 'video' | 'document' | 'archive' | 'other'/g\" \"c:/Users/DELL/Documents/MTL_Link/src/types/database.ts\")"
+    ]
+  }
+}

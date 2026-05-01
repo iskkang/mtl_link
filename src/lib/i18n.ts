@@ -152,6 +152,8 @@ const resources = {
       msgReply:           '답장',
       replyingTo:         '{{name}}에게 답장',
       msgDeletedRef:      '삭제된 메시지',
+      // ── OCR 번역 ─────────────────────────────────────────────
+      ocrBtn:             'OCR 번역 (사진 → 텍스트 번역)',
     },
   },
 
@@ -274,6 +276,7 @@ const resources = {
       msgReply:           'Reply',
       replyingTo:         'Replying to {{name}}',
       msgDeletedRef:      'Original message deleted',
+      ocrBtn:             'OCR Translation (Photo → Text)',
     },
   },
 
@@ -396,6 +399,7 @@ const resources = {
       msgReply:           'Ответить',
       replyingTo:         'Ответ {{name}}',
       msgDeletedRef:      'Сообщение удалено',
+      ocrBtn:             'OCR перевод (фото → текст)',
     },
   },
 
@@ -518,6 +522,7 @@ const resources = {
       msgReply:           'Javob berish',
       replyingTo:         '{{name}}ga javob',
       msgDeletedRef:      'Xabar o\'chirildi',
+      ocrBtn:             'OCR tarjima (rasm → matn)',
     },
   },
 
@@ -640,6 +645,7 @@ const resources = {
       msgReply:           '回复',
       replyingTo:         '回复 {{name}}',
       msgDeletedRef:      '原消息已删除',
+      ocrBtn:             'OCR翻译（照片→文字）',
     },
   },
 
@@ -762,6 +768,7 @@ const resources = {
       msgReply:           '返信',
       replyingTo:         '{{name}}へ返信',
       msgDeletedRef:      'メッセージは削除されました',
+      ocrBtn:             'OCR翻訳（写真→テキスト）',
     },
   },
 }
