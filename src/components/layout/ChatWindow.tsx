@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Sun, Moon, MessageCircle, ArrowLeft, Users, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Sun, Moon, MessageCircle, ArrowLeft, Users, X, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessages } from '../../hooks/useMessages'
+import { useMessageSearch } from '../../hooks/useMessageSearch'
 import { useRoomStore } from '../../stores/roomStore'
 import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
 import { sendFileMessage } from '../../services/messageService'
@@ -21,15 +22,18 @@ import { RoomMenu } from '../chat/RoomMenu'
 import { LeaveRoomModal } from '../chat/LeaveRoomModal'
 import { DeleteRoomModal } from '../chat/DeleteRoomModal'
 import { ReplyPreview } from '../chat/ReplyPreview'
+import { MessageSearchBar } from '../chat/MessageSearchBar'
+import { GlobalSearchPanel } from '../chat/GlobalSearchPanel'
 import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
 interface Props {
   roomId:           string | null
   onBack?:          () => void
   onLeaveOrDelete?: (toast: string) => void
+  onRoomSelect?:    (roomId: string) => void
 }
 
-export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
+export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Props) {
   const { t } = useTranslation()
   const { mode, toggle } = useTheme()
   const { user } = useAuth()
@@ -47,12 +51,41 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
   const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
   const [fileUploading,   setFileUploading]  = useState(false)
 
+  // 검색 상태
+  const [searchOpen,   setSearchOpen]   = useState(false)
+  const [searchQuery,  setSearchQuery]  = useState('')
+  const [globalOpen,   setGlobalOpen]   = useState(false)
+  const prevResultIdRef = useRef<string | null>(null)
+
+  const {
+    currentIdx: searchIdx,
+    total: searchTotal,
+    current: searchCurrent,
+    goNext: searchGoNext,
+    goPrev: searchGoPrev,
+    canGoNext: searchCanGoNext,
+    canGoPrev: searchCanGoPrev,
+  } = useMessageSearch(messages, searchOpen ? searchQuery : '')
+
+  // 검색 결과 변경 시 자동 스크롤
+  useEffect(() => {
+    if (!searchCurrent) return
+    if (searchCurrent.id === prevResultIdRef.current) return
+    prevResultIdRef.current = searchCurrent.id
+    const el = document.querySelector<HTMLElement>(`[data-message-id="${searchCurrent.id}"]`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [searchCurrent])
+
   // 방이 바뀌면 초기화
   useEffect(() => {
     setDraft('')
     setReplyTo(null)
     setTargetLanguage(null)
     setPendingFiles([])
+    setSearchOpen(false)
+    setSearchQuery('')
+    setGlobalOpen(false)
     if (!roomId) return
 
     Promise.resolve(
@@ -195,6 +228,17 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+          {room && (
+            <button
+              onClick={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
+              className={`p-2 rounded-full transition-colors
+                         hover:bg-gray-100 dark:hover:bg-surface-hover
+                         ${searchOpen ? 'text-mtl-cyan' : 'text-gray-500 dark:text-[#aebac1]'}`}
+              title="메시지 검색"
+            >
+              <Search size={19} />
+            </button>
+          )}
           <button
             onClick={toggle}
             className="p-2 rounded-full
@@ -218,6 +262,24 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
         </div>
       </header>
 
+      {/* ── 검색 바 ──────────────────────────────────── */}
+      {searchOpen && room && (
+        <MessageSearchBar
+          query={searchQuery}
+          onChange={setSearchQuery}
+          onClose={() => { setSearchOpen(false); setSearchQuery(''); setGlobalOpen(false) }}
+          total={searchTotal}
+          currentIdx={searchIdx}
+          onNext={searchGoNext}
+          onPrev={searchGoPrev}
+          canNext={searchCanGoNext}
+          canPrev={searchCanGoPrev}
+          onGlobal={() => setGlobalOpen(v => !v)}
+          placeholder="메시지 검색"
+          labelGlobal="통합검색"
+        />
+      )}
+
       {/* ── 메시지 영역 ──────────────────────────────── */}
       {roomId && room ? (
         <DragDropZone
@@ -237,17 +299,37 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete }: Props) {
             </div>
           )}
 
-          <MessageList
-            messages={messages}
-            loading={loading}
-            hasMore={hasMore}
-            currentUserId={currentUserId}
-            isGroupRoom={isGroup}
-            members={room.members}
-            onLoadMore={loadMore}
-            onReply={setReplyTo}
-            onScrollToMessage={scrollToMessage}
-          />
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            <MessageList
+              messages={messages}
+              loading={loading}
+              hasMore={hasMore}
+              currentUserId={currentUserId}
+              isGroupRoom={isGroup}
+              members={room.members}
+              onLoadMore={loadMore}
+              onReply={setReplyTo}
+              onScrollToMessage={scrollToMessage}
+              searchQuery={searchOpen ? searchQuery : ''}
+              currentResultId={searchCurrent?.id ?? null}
+            />
+            {globalOpen && (
+              <GlobalSearchPanel
+                query={searchQuery}
+                onClose={() => setGlobalOpen(false)}
+                onRoomSelect={(rid, msgId) => {
+                  setGlobalOpen(false)
+                  setSearchOpen(false)
+                  setSearchQuery('')
+                  if (rid !== roomId) {
+                    onRoomSelect?.(rid)
+                  } else {
+                    scrollToMessage(msgId)
+                  }
+                }}
+              />
+            )}
+          </div>
 
           <MessageActionBar
             roomId={roomId}

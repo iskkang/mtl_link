@@ -14,9 +14,11 @@ interface Props {
   onLoadMore:        () => void
   onReply:           (msg: MessageWithSender) => void
   onScrollToMessage: (messageId: string) => void
+  searchQuery?:      string
+  currentResultId?:  string | null
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLenRef = useRef(0)
@@ -114,6 +116,8 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 members={members}
                 currentUserId={currentUserId}
                 isGroup={isGroupRoom}
+                searchQuery={searchQuery}
+                isCurrentResult={msg.id === currentResultId}
               />
             )}
           </div>

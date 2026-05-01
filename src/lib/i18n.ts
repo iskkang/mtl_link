@@ -154,6 +154,10 @@ const resources = {
       msgDeletedRef:      '삭제된 메시지',
       // ── OCR 번역 ─────────────────────────────────────────────
       ocrBtn:             'OCR 번역 (사진 → 텍스트 번역)',
+      // ── 메시지 검색 ──────────────────────────────────────────
+      searchPlaceholder:  '메시지 검색',
+      searchGlobal:       '통합검색',
+      searchNoResult:     '검색 결과가 없습니다',
     },
   },
 
@@ -277,6 +281,9 @@ const resources = {
       replyingTo:         'Replying to {{name}}',
       msgDeletedRef:      'Original message deleted',
       ocrBtn:             'OCR Translation (Photo → Text)',
+      searchPlaceholder:  'Search messages',
+      searchGlobal:       'Global Search',
+      searchNoResult:     'No results found',
     },
   },
 
@@ -400,6 +407,9 @@ const resources = {
       replyingTo:         'Ответ {{name}}',
       msgDeletedRef:      'Сообщение удалено',
       ocrBtn:             'OCR перевод (фото → текст)',
+      searchPlaceholder:  'Поиск сообщений',
+      searchGlobal:       'Общий поиск',
+      searchNoResult:     'Ничего не найдено',
     },
   },
 
@@ -523,6 +533,9 @@ const resources = {
       replyingTo:         '{{name}}ga javob',
       msgDeletedRef:      'Xabar o\'chirildi',
       ocrBtn:             'OCR tarjima (rasm → matn)',
+      searchPlaceholder:  'Xabarlarni qidirish',
+      searchGlobal:       'Umumiy qidiruv',
+      searchNoResult:     'Natija topilmadi',
     },
   },
 
@@ -646,6 +659,9 @@ const resources = {
       replyingTo:         '回复 {{name}}',
       msgDeletedRef:      '原消息已删除',
       ocrBtn:             'OCR翻译（照片→文字）',
+      searchPlaceholder:  '搜索消息',
+      searchGlobal:       '全局搜索',
+      searchNoResult:     '未找到结果',
     },
   },
 
@@ -769,6 +785,9 @@ const resources = {
       replyingTo:         '{{name}}へ返信',
       msgDeletedRef:      'メッセージは削除されました',
       ocrBtn:             'OCR翻訳（写真→テキスト）',
+      searchPlaceholder:  'メッセージを検索',
+      searchGlobal:       '全体検索',
+      searchNoResult:     '検索結果がありません',
     },
   },
 }

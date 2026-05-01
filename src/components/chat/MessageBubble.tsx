@@ -28,13 +28,27 @@ interface Props {
   members:            RoomListItem['members']
   currentUserId:      string
   isGroup:            boolean
+  searchQuery?:       string
+  isCurrentResult?:   boolean
+}
+
+function highlightText(text: string, query: string): React.ReactNode {
+  const q = query.trim()
+  if (!q) return text
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  const parts = text.split(re)
+  return parts.map((p, i) =>
+    re.test(p)
+      ? <mark key={i} className="bg-yellow-300 dark:bg-yellow-600/70 text-inherit rounded-sm px-px">{p}</mark>
+      : p,
+  )
 }
 
 function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage, members, currentUserId, isGroup }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
@@ -157,7 +171,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             ? 'bg-[#d9fdd3] dark:bg-bubble-own text-gray-800 dark:text-[#e9edef] rounded-br-sm'
             : 'bg-white dark:bg-bubble-other text-gray-800 dark:text-[#e9edef] rounded-bl-sm shadow-sm dark:shadow-none border border-gray-100 dark:border-0'
           }
-          ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : ''}
+          ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
           ${isSending ? 'opacity-60' : ''}
         `}>
 
@@ -184,31 +198,37 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           ) : showTwoPanel ? (
             <div className="space-y-2">
               <p className="text-xs italic text-gray-400 dark:text-white/50 leading-relaxed whitespace-pre-wrap break-words">
-                {(isVoice || isOcr) ? message.content_original : message.content}
+                {(isVoice || isOcr)
+                  ? (searchQuery ? highlightText(message.content_original ?? '', searchQuery) : message.content_original)
+                  : (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)}
               </p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                {(isVoice || isOcr) ? message.content : translatedText}
+                {(isVoice || isOcr)
+                  ? (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)
+                  : translatedText}
               </p>
             </div>
           ) : (
             <>
               {message.content && (
                 <span>
-                  {linkifyText(message.content).map((part, i) =>
-                    typeof part === 'string'
-                      ? <span key={i}>{part}</span>
-                      : (
-                        <a
-                          key={i}
-                          href={part.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline text-blue-600 dark:text-blue-400 break-all"
-                        >
-                          {part.href}
-                        </a>
-                      ),
-                  )}
+                  {searchQuery
+                    ? highlightText(message.content, searchQuery)
+                    : linkifyText(message.content).map((part, i) =>
+                        typeof part === 'string'
+                          ? <span key={i}>{part}</span>
+                          : (
+                            <a
+                              key={i}
+                              href={part.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline text-blue-600 dark:text-blue-400 break-all"
+                            >
+                              {part.href}
+                            </a>
+                          ),
+                      )}
                 </span>
               )}
               {isTranslating && (
