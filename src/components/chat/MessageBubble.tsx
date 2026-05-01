@@ -159,7 +159,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           )}
 
           {/* 인용 메시지 */}
-          {!editing && message.reply_message && (
+          {!editing && message.reply_to_id && message.reply_message?.id && (
             <QuotedMessage
               reply={message.reply_message}
               onClick={() => message.reply_to_id && onScrollToMessage?.(message.reply_to_id)}
@@ -174,11 +174,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               onCancel={() => setEditing(false)}
             />
           ) : showTwoPanel ? (
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-xs italic text-gray-400 dark:text-white/50 leading-relaxed whitespace-pre-wrap break-words">
                 {isVoice ? message.content_original : message.content}
               </p>
-              <div className="border-t border-black/10 dark:border-white/15" />
               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                 {isVoice ? message.content : translatedText}
               </p>
