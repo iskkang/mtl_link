@@ -18,12 +18,12 @@ export const MSG_SELECT = `
   *,
   sender:profiles!sender_id(id, name, avatar_url),
   attachments:message_attachments(*),
-  reply_message:messages!messages_reply_to_id_fkey(
+  reply_message:reply_to_id(
     id,
     content,
     message_type,
     deleted_at,
-    sender:profiles!messages_sender_id_fkey(id, name)
+    sender:profiles(id, name)
   )
 ` as const
 
