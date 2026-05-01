@@ -61,12 +61,9 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
   }),
 
   updateMemberReadAt: (roomId, userId, lastReadAt) => set(s => {
-    console.log('[READ-8] updateMemberReadAt 호출', { roomId, userId, lastReadAt })
     const idx = s.rooms.findIndex(r => r.id === roomId)
-    if (idx < 0) {
-      console.log('[READ-8] 방을 찾지 못함', { roomId, rooms: s.rooms.map(r => r.id) })
-      return {}
-    }
+    if (idx < 0) return {}
+
     const next = [...s.rooms]
     next[idx] = {
       ...next[idx],

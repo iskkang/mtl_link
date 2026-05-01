@@ -59,24 +59,19 @@ export function useRealtimeMessages(roomId: string | null) {
         'broadcast',
         { event: 'read_receipt' },
         ({ payload }) => {
-          console.log('[READ-6] broadcast read_receipt 수신', payload)
           const { userId, lastReadAt } = payload as { userId: string; lastReadAt: string }
           if (userId && lastReadAt) updateMemberReadAt(roomId, userId, lastReadAt)
         },
       )
       .subscribe((status, err) => {
-        console.log('[READ-7] channel 구독 상태', status)
         if (status === 'SUBSCRIBED') {
           refetchSinceLastSeen(roomId).catch(console.error)
-          // 방 진입(SUBSCRIBED) 시 같은 채널 다른 멤버에게 읽음 알림 직접 broadcast
           if (user?.id) {
-            console.log('[READ-3] SUBSCRIBED → read_receipt broadcast 전송', { userId: user.id })
             channel.send({
               type:    'broadcast',
               event:   'read_receipt',
               payload: { userId: user.id, lastReadAt: new Date().toISOString() },
-            }).then(r  => console.log('[READ-4] broadcast 결과', r))
-              .catch(e => console.error('[READ-4] broadcast 오류', e))
+            }).catch(console.error)
           }
         }
         if (err) console.error('[Realtime] messages error:', err)

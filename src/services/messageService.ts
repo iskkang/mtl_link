@@ -142,13 +142,18 @@ export async function sendFileMessage(
     // 2. 파일 병렬 업로드 → chat-attachments (public bucket)
     const results = await Promise.allSettled(
       files.map(async (file, idx) => {
-        const safe = file.name.replace(/[^\w.\-가-힣]/g, '_')
-        const path = `${roomId}/${msg.id}/${Date.now()}_${idx}_${safe}`
+        const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+        const path = `${roomId}/${msg.id}/${Date.now()}_${idx}.${ext}`
+        // file.type이 빈 문자열인 경우(예: .md, .csv on Windows) 폴백
+        const contentType = file.type || 'application/octet-stream'
 
         const { error: upErr } = await supabase.storage
           .from('chat-attachments')
-          .upload(path, file, { contentType: file.type })
-        if (upErr) throw upErr
+          .upload(path, file, { contentType })
+        if (upErr) {
+          console.error('[sendFileMessage] storage upload error:', upErr)
+          throw new Error(upErr.message)
+        }
 
         const kind = validation.results![idx].kind ?? 'other'
         const { error: attErr } = await supabase
@@ -163,14 +168,21 @@ export async function sendFileMessage(
             mime_type:       file.type,
             attachment_type: kind,
           })
-        if (attErr) throw attErr
+        if (attErr) {
+          console.error('[sendFileMessage] attachment insert error:', attErr)
+          throw new Error(attErr.message)
+        }
       }),
     )
 
-    useMessageStore.getState().updateStatus(roomId, msg.id, 'sent')
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 
-    const failed = results.filter(r => r.status === 'rejected')
-    if (failed.length > 0) throw new Error(`${failed.length}개 파일 업로드 실패`)
+    useMessageStore.getState().updateStatus(roomId, msg.id, failed.length > 0 ? 'failed' : 'sent')
+
+    if (failed.length > 0) {
+      const reasons = failed.map(r => r.reason instanceof Error ? r.reason.message : String(r.reason))
+      throw new Error(reasons[0])
+    }
 
   } finally {
     window.removeEventListener('beforeunload', onBeforeUnload)

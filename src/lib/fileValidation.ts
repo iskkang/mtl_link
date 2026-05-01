@@ -39,7 +39,7 @@ export function validateFile(file: File): ValidationResult {
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   if (BLOCKED_EXT.has(ext))
-    return { ok: false, error: `차단된 확장자: .${ext}` }
+    return { ok: false, error: '업로드가 안되는 파일양식입니다' }
 
   if (IMAGE_TYPES[file.type] || file.type.startsWith('image/'))
     return { ok: true, kind: 'image' }

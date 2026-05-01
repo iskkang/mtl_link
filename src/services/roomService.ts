@@ -81,13 +81,12 @@ export async function markAsRead(roomId: string): Promise<void> {
   if (!user) return
   const now = new Date().toISOString()
 
-  console.log('[READ-1] markAsRead DB update 시작', { roomId, userId: user.id, now })
   const { error: updateError } = await supabase
     .from('room_members')
     .update({ last_read_at: now })
     .eq('room_id', roomId)
     .eq('user_id', user.id)
-  console.log('[READ-2] markAsRead DB update 완료', { error: updateError ?? null })
+  if (updateError) console.error('[markAsRead]', updateError)
   // broadcast는 useRealtimeMessages에서 postgres_changes relay로 처리
 }
 
