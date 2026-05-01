@@ -21,7 +21,6 @@ export function useRealtimeMessages(roomId: string | null) {
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
         async payload => {
           const msg = payload.new as Message
-          // Optimistically show with partial data
           upsertMessage(roomId, {
             ...msg,
             _status:       'sent',
@@ -29,7 +28,6 @@ export function useRealtimeMessages(roomId: string | null) {
             attachments:   [],
             reply_message: null,
           })
-          // Fetch full data with joins (sender, reply_message)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data } = await (supabase.from('messages') as any)
             .select(MSG_SELECT)
@@ -58,33 +56,6 @@ export function useRealtimeMessages(roomId: string | null) {
         },
       )
       .on(
-        'postgres_changes',
-        // room_members UPDATE: 자신의 last_read_at 변경 시 → 브로드캐스트로 다른 멤버에게 relay
-        // RLS로 인해 타인의 UPDATE는 전달 안 되므로, 자신 것만 받아서 broadcast로 전파
-        { event: 'UPDATE', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
-        payload => {
-          const row = payload.new as { room_id: string; user_id: string; last_read_at: string | null }
-          if (!row.room_id || !row.user_id || !row.last_read_at) return
-
-          if (row.user_id === user?.id) {
-            // 자신의 last_read_at 변경 → 같은 방의 다른 멤버에게 broadcast로 전달
-            console.log('[READ-3] 자신의 room_members UPDATE 수신, broadcast relay', { userId: row.user_id, lastReadAt: row.last_read_at })
-            channel.send({
-              type:    'broadcast',
-              event:   'read_receipt',
-              payload: { userId: row.user_id, lastReadAt: row.last_read_at },
-            }).then(result => {
-              console.log('[READ-4] broadcast relay 결과', result)
-            }).catch(err => {
-              console.error('[READ-4] broadcast relay 오류', err)
-            })
-          } else {
-            // 타인의 UPDATE가 드물게 전달될 때 직접 반영 (RLS가 허용하는 경우)
-            updateMemberReadAt(row.room_id, row.user_id, row.last_read_at)
-          }
-        },
-      )
-      .on(
         'broadcast',
         { event: 'read_receipt' },
         ({ payload }) => {
@@ -95,7 +66,19 @@ export function useRealtimeMessages(roomId: string | null) {
       )
       .subscribe((status, err) => {
         console.log('[READ-7] channel 구독 상태', status)
-        if (status === 'SUBSCRIBED') refetchSinceLastSeen(roomId).catch(console.error)
+        if (status === 'SUBSCRIBED') {
+          refetchSinceLastSeen(roomId).catch(console.error)
+          // 방 진입(SUBSCRIBED) 시 같은 채널 다른 멤버에게 읽음 알림 직접 broadcast
+          if (user?.id) {
+            console.log('[READ-3] SUBSCRIBED → read_receipt broadcast 전송', { userId: user.id })
+            channel.send({
+              type:    'broadcast',
+              event:   'read_receipt',
+              payload: { userId: user.id, lastReadAt: new Date().toISOString() },
+            }).then(r  => console.log('[READ-4] broadcast 결과', r))
+              .catch(e => console.error('[READ-4] broadcast 오류', e))
+          }
+        }
         if (err) console.error('[Realtime] messages error:', err)
       })
 
