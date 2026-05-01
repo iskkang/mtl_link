@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { useMessageStore } from '../stores/messageStore'
+import { useRoomStore } from '../stores/roomStore'
 import { validateFiles } from '../lib/fileValidation'
 import type { ReplyRef } from '../types/chat'
 
@@ -43,6 +44,8 @@ export async function sendTextMessage(
     attachments:          [],
     reply_message:        replyMessage ?? null,
   })
+  // sender 측 room preview 즉시 반영 (rooms UPDATE Realtime 의존 불필요)
+  useRoomStore.getState().updateLastMessage(roomId, trimmed, now)
 
   try {
     const { data, error } = await supabase
