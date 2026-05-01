@@ -2,11 +2,13 @@ import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useMessageStore, MSG_SELECT, normaliseMsgs } from '../stores/messageStore'
 import { useRoomStore } from '../stores/roomStore'
+import { useAuth } from './useAuth'
 import type { Message, Attachment } from '../types/chat'
 
 export function useRealtimeMessages(roomId: string | null) {
   const { upsertMessage, addAttachment, refetchSinceLastSeen } = useMessageStore()
   const updateMemberReadAt = useRoomStore(s => s.updateMemberReadAt)
+  const { user } = useAuth()
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
@@ -57,40 +59,50 @@ export function useRealtimeMessages(roomId: string | null) {
       )
       .on(
         'postgres_changes',
-        // room_members UPDATE: 멤버의 last_read_at 변경 → 읽음 표시 즉시 반영
-        // room_id=eq 필터로 검증된 패턴 사용 (neq 대신)
+        // room_members UPDATE: 자신의 last_read_at 변경 시 → 브로드캐스트로 다른 멤버에게 relay
+        // RLS로 인해 타인의 UPDATE는 전달 안 되므로, 자신 것만 받아서 broadcast로 전파
         { event: 'UPDATE', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
         payload => {
           const row = payload.new as { room_id: string; user_id: string; last_read_at: string | null }
-          if (row.room_id && row.user_id && row.last_read_at) {
+          if (!row.room_id || !row.user_id || !row.last_read_at) return
+
+          if (row.user_id === user?.id) {
+            // 자신의 last_read_at 변경 → 같은 방의 다른 멤버에게 broadcast로 전달
+            console.log('[READ-3] 자신의 room_members UPDATE 수신, broadcast relay', { userId: row.user_id, lastReadAt: row.last_read_at })
+            channel.send({
+              type:    'broadcast',
+              event:   'read_receipt',
+              payload: { userId: row.user_id, lastReadAt: row.last_read_at },
+            }).then(result => {
+              console.log('[READ-4] broadcast relay 결과', result)
+            }).catch(err => {
+              console.error('[READ-4] broadcast relay 오류', err)
+            })
+          } else {
+            // 타인의 UPDATE가 드물게 전달될 때 직접 반영 (RLS가 허용하는 경우)
             updateMemberReadAt(row.room_id, row.user_id, row.last_read_at)
           }
         },
       )
+      .on(
+        'broadcast',
+        { event: 'read_receipt' },
+        ({ payload }) => {
+          console.log('[READ-6] broadcast read_receipt 수신', payload)
+          const { userId, lastReadAt } = payload as { userId: string; lastReadAt: string }
+          if (userId && lastReadAt) updateMemberReadAt(roomId, userId, lastReadAt)
+        },
+      )
       .subscribe((status, err) => {
+        console.log('[READ-7] channel 구독 상태', status)
         if (status === 'SUBSCRIBED') refetchSinceLastSeen(roomId).catch(console.error)
         if (err) console.error('[Realtime] messages error:', err)
-      })
-
-    // Broadcast 채널: postgres_changes RLS 우회 경로
-    // markAsRead 호출 시 read:${roomId}에 브로드캐스트 → 즉시 읽음 표시 반영
-    console.log('[READ-5] readCh 구독 시작', { roomId })
-    const readCh = supabase
-      .channel(`read:${roomId}`)
-      .on('broadcast', { event: 'read_receipt' }, ({ payload }) => {
-        console.log('[READ-6] broadcast read_receipt 수신', payload)
-        const { userId, lastReadAt } = payload as { userId: string; lastReadAt: string }
-        if (userId && lastReadAt) updateMemberReadAt(roomId, userId, lastReadAt)
-      })
-      .subscribe(status => {
-        console.log('[READ-7] readCh 구독 상태', status)
       })
 
     channelRef.current = channel
     return () => {
       channel.unsubscribe()
-      readCh.unsubscribe()
       channelRef.current = null
     }
-  }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen, updateMemberReadAt])
+  }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen, updateMemberReadAt, user?.id])
 }
