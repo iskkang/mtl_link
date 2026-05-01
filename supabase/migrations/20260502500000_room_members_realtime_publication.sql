@@ -13,3 +13,7 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- REPLICA IDENTITY FULL 설정: room_id 등 비PK 컬럼으로 UPDATE 필터링 시 필수
+-- DEFAULT(d)이면 postgres_changes UPDATE 이벤트가 room_id 필터를 무시함
+ALTER TABLE public.room_members REPLICA IDENTITY FULL;
