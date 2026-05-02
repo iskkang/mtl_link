@@ -16,8 +16,25 @@ export const supabase = createClient<Database>(url, anonKey, {
     persistSession:      true,
     autoRefreshToken:    true,
     detectSessionInUrl:  true,
+    storage:             window.localStorage,
   },
   realtime: {
     params: { eventsPerSecond: 10 },
   },
 })
+
+/** Call at service / hook level when an API call returns a 403 or JWT error. */
+export function handleAuthError(error: { status?: number; message?: string } | null): boolean {
+  if (!error) return false
+  if (
+    error.status === 401 ||
+    error.status === 403 ||
+    error.message?.includes('JWT') ||
+    error.message?.includes('token')
+  ) {
+    console.log('[Auth] Token expired or forbidden, signing out')
+    supabase.auth.signOut().catch(() => {})
+    return true
+  }
+  return false
+}

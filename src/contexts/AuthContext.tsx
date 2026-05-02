@@ -53,8 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * setTimeout(fn, 0) 으로 마이크로태스크 큐 밖에서 실행한다.
      */
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_, session) => {
+      (event, session) => {
         if (!active) return
+
+        console.log('[Auth] Event:', event)
+
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[Auth] Token refreshed successfully')
+        }
+
         const currentUser = session?.user ?? null
         setUser(currentUser)
 
@@ -79,6 +86,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           useRoomStore.getState().reset()
           setProfile(null)
           setLoading(false)
+
+          if (event === 'SIGNED_OUT') {
+            const publicPaths = ['/login', '/signup', '/pending', '/rejected', '/install', '/change-password']
+            const isPublic = publicPaths.some(p => window.location.pathname.startsWith(p))
+            if (!isPublic) {
+              console.log('[Auth] Session ended, redirecting to login')
+              window.location.href = '/login'
+            }
+          }
         }
       },
     )
