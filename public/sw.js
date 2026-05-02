@@ -1,14 +1,22 @@
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  console.log('[SW] Push received');
 
-  const data = event.data.json();
+  let data = { title: 'MTL Link', body: '새 메시지가 도착했습니다', roomId: null, url: '/' };
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      console.error('[SW] Push data parse error:', e);
+    }
+  }
 
   const options = {
     body: data.body,
     icon: '/mtl-logo.png',
     badge: '/mtl-logo.png',
-    tag: data.roomId,
+    tag: data.roomId || 'default',
     renotify: true,
+    requireInteraction: false,
     data: {
       roomId: data.roomId,
       url: data.url || '/',
@@ -17,19 +25,22 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     self.registration.showNotification(data.title, options)
+      .then(() => console.log('[SW] Notification shown'))
+      .catch(err => console.error('[SW] showNotification error:', err))
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked');
   event.notification.close();
-  const roomId = event.notification.data?.roomId;
-  const url = roomId ? `/?room=${roomId}` : '/';
+
+  const url = event.notification.data?.url || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if ('focus' in client) {
-          client.postMessage({ type: 'NAVIGATE_TO_ROOM', roomId });
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.postMessage({ type: 'NAVIGATE', url });
           return client.focus();
         }
       }
