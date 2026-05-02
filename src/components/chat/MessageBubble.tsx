@@ -67,7 +67,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
   if (message.deleted_at) {
     return (
-      <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-3`}>
+      <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-2 md:px-3`}>
         <span className="text-xs italic px-3 py-1.5" style={{ color: 'var(--ink-4)' }}>
           {t('msgDeleted')}
         </span>
@@ -118,7 +118,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
   return (
     <div
-      className={`flex items-end gap-2 px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`flex items-end gap-2 px-2 md:px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -157,7 +157,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         </div>
       )}
 
-      <div className={`flex flex-col max-w-[72%] md:max-w-[60%] ${isOwn ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
 
         {/* 발신자 이름 (그룹방, 첫 메시지) */}
         {showSenderInfo && !isOwn && !isContinuation && message.sender && (
@@ -221,7 +221,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             />
           ) : showTwoPanel ? (
             <div className="space-y-1.5">
-              <p className="text-[10px] italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
+              <p className="text-[10px] italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)', opacity: 0.55 }}>
                 {isOcr
                   ? (searchQuery ? highlightText(message.content_original ?? '', searchQuery) : message.content_original)
                   : (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)}
@@ -231,16 +231,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                   ? (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)
                   : translatedText}
               </p>
-              {/* 번역 방향 깃발 배지 */}
-              {message.source_language && (
-                <p className="text-[11px] leading-none" style={{ color: 'var(--ink-4)' }}>
-                  {getLangFlag(message.source_language)}
-                  {' → '}
-                  {isOcr && message.target_language
-                    ? getLangFlag(message.target_language)
-                    : getLangFlag(myLanguage)}
-                </p>
-              )}
             </div>
           ) : (
             <>
@@ -427,12 +417,6 @@ function VoiceBubbleContent({
         </p>
       )}
 
-      {/* 번역 방향 배지 */}
-      {showLangBadge && !isTranslating && (
-        <span className="text-[11px] leading-none" style={{ color: 'var(--ink-4)' }}>
-          {getLangFlag(sourceLanguage!)}{' → '}{getLangFlag(targetLanguage ?? myLanguage)}
-        </span>
-      )}
     </div>
   )
 }

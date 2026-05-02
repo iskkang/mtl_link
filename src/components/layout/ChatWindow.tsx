@@ -288,7 +288,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
           )}
 
           {/* Light / Dark 토글 */}
-          <div className="flex items-center rounded-full border overflow-hidden ml-1"
+          <div className="hidden md:flex items-center rounded-full border overflow-hidden ml-1"
                style={{ borderColor: 'var(--line)' }}>
             <button
               onClick={() => mode === 'dark' && toggle()}

@@ -139,7 +139,7 @@ export function MessageActionBar({
   // ── 기본 액션 버튼들 ─────────────────────────────────
   return (
     <div
-      className="flex items-center gap-0.5 px-3 py-1.5 flex-shrink-0 border-t"
+      className="flex items-center gap-0.5 px-2 md:px-3 py-1 md:py-1.5 flex-shrink-0 border-t"
       style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
     >
       {/* 이모지 */}

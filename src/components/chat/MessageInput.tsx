@@ -70,8 +70,8 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
 
   return (
     <div
-      className="composer-panel flex-shrink-0 px-3 pt-2 pb-2 border-t"
-      style={{ background: 'var(--card)', borderColor: 'var(--line)', boxShadow: 'var(--shadow-panel)' }}
+      className="composer-panel flex-shrink-0 px-3 pt-2 border-t"
+      style={{ background: 'var(--card)', borderColor: 'var(--line)', boxShadow: 'var(--shadow-panel)', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
     >
       {error && (
         <div className="mb-2 px-3 py-1.5 rounded-lg text-xs"

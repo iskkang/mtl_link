@@ -203,4 +203,7 @@ body, .chat-panel, .chat-header, .composer-panel,
     scrollbar-width: thin;
     scrollbar-color: var(--side-row) transparent;
   }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
