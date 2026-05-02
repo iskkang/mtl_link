@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText, Play } from 'lucide-react'
+import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -375,19 +375,17 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
 /* ── 음성 메시지 버블 컨텐츠 ─────────────────────────── */
 function VoiceBubbleContent({
-  messageId,
   displayText,
   spokenText,
   sourceLanguage,
   targetLanguage,
   myLanguage,
   isTranslating,
-  isOwn,
   searchQuery,
 }: {
   messageId:      string
-  displayText:    string | null   // 뷰어 언어로 번역된 최종 텍스트
-  spokenText:     string | null   // 실제 발화 원문
+  displayText:    string | null
+  spokenText:     string | null
   sourceLanguage: string | null
   targetLanguage: string | null
   myLanguage:     string
@@ -395,44 +393,19 @@ function VoiceBubbleContent({
   isOwn:          boolean
   searchQuery:    string
 }) {
-  // 메시지 ID 기반 결정론적 파형
-  const barCount = 22
-  const bars = Array.from({ length: barCount }, (_, i) => {
-    const seed = messageId.charCodeAt(i % messageId.length) * 13 + i * 7
-    return Math.max(20, seed % 80)
-  })
-
-  // 번역 방향 표시 여부: 원문 언어가 뷰어 언어와 다를 때
   const showLangBadge = sourceLanguage && sourceLanguage !== myLanguage
 
   return (
-    <div className="flex flex-col gap-2 min-w-[180px]">
-      {/* 플레이 버튼 + 파형 */}
-      <div className="flex items-center gap-2.5">
-        <button
-          type="button"
-          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-80"
-          style={{ background: isOwn ? '#2563EB' : '#6366F1' }}
-          onClick={e => e.stopPropagation()}
-          title="재생"
-        >
-          <Play size={14} className="text-white ml-0.5" />
-        </button>
-        <div className="flex items-center gap-px flex-1 h-8">
-          {bars.map((h, i) => (
-            <div
-              key={i}
-              className="w-1 rounded-full flex-shrink-0"
-              style={{
-                height: `${h * 0.32}px`,
-                background: isOwn ? 'rgba(37,99,235,0.6)' : 'rgba(99,102,241,0.5)',
-              }}
-            />
-          ))}
-        </div>
+    <div className="flex flex-col gap-1.5 min-w-[160px]">
+      {/* 헤더: 마이크 아이콘 + 레이블 */}
+      <div className="flex items-center gap-1.5">
+        <Mic size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+        <span className="text-[11px] font-medium tracking-wide" style={{ color: 'var(--ink-3)' }}>
+          음성 메시지
+        </span>
       </div>
 
-      {/* 뷰어 언어로 번역된 텍스트 */}
+      {/* 번역된 텍스트 */}
       {isTranslating ? (
         <span className="inline-flex items-center gap-1 text-xs" style={{ color: 'var(--ink-4)' }}>
           <span className="w-2.5 h-2.5 border border-current/30 border-t-current rounded-full animate-spin" />
@@ -444,7 +417,7 @@ function VoiceBubbleContent({
         </p>
       ) : null}
 
-      {/* 발화 원문 (뷰어 언어와 다를 때만 표시) */}
+      {/* 발화 원문 (번역된 텍스트와 다를 때만) */}
       {spokenText && displayText && spokenText !== displayText && (
         <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
           {searchQuery ? highlightText(spokenText, searchQuery) : spokenText}

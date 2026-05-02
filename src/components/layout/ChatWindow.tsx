@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Phone, Video, Globe, ChevronDown } from 'lucide-react'
+import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Globe, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -284,30 +284,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
             </button>
           )}
 
-          {/* 통화 버튼들 */}
-          {room && (
-            <>
-              <button
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: 'var(--ink-3)' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                title="음성 통화"
-              >
-                <Phone size={17} />
-              </button>
-              <button
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: 'var(--ink-3)' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                title="영상 통화"
-              >
-                <Video size={17} />
-              </button>
-            </>
-          )}
-
           {/* Light / Dark 토글 */}
           <div className="flex items-center rounded-full border overflow-hidden ml-1"
                style={{ borderColor: 'var(--line)' }}>
@@ -452,6 +428,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
             onFilesSelected={handleFilesSelected}
             uploading={fileUploading}
             targetLanguage={targetLanguage}
+            peerLanguage={effectivePeerLang ?? null}
             onOpenTranslationModal={() => setTranslationOpen(true)}
           />
 

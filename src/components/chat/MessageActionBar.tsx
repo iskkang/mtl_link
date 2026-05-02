@@ -22,32 +22,36 @@ interface Props {
   onError:                (msg: string) => void
   onFilesSelected:        (files: File[]) => void
   targetLanguage:         string | null
+  peerLanguage?:          string | null
   onOpenTranslationModal: () => void
 }
 
 export function MessageActionBar({
   roomId, disabled, uploading, onEmojiSelect, onError,
-  onFilesSelected, targetLanguage,
+  onFilesSelected, targetLanguage, peerLanguage,
 }: Props) {
   const { t } = useTranslation()
   const [emojiOpen, setEmojiOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { state: micState, request: requestMic } = useMicrophonePermission()
 
+  // 1:1 DM이면 상대방의 preferred_language를, 아니면 내 설정 언어를 사용
+  const effectiveTarget = peerLanguage ?? targetLanguage
+
   const handleBlob = useCallback(async (blob: Blob) => {
-    if (!targetLanguage || targetLanguage === 'none') return
+    if (!effectiveTarget || effectiveTarget === 'none') return
     try {
-      await sendVoiceTranslatedMessage({ roomId, audioBlob: blob, targetLanguage })
+      await sendVoiceTranslatedMessage({ roomId, audioBlob: blob, targetLanguage: effectiveTarget })
     } catch (err) {
       onError(getUserFriendlyMessage(err))
     }
-  }, [roomId, targetLanguage, onError])
+  }, [roomId, effectiveTarget, onError])
 
   const { recState, elapsedMs, start, stop, cancel } = useMediaRecorder(handleBlob)
 
   const isRecording  = recState === 'recording'
   const isProcessing = recState === 'processing'
-  const canVoice     = !!targetLanguage && targetLanguage !== 'none' && !disabled
+  const canVoice     = !!effectiveTarget && effectiveTarget !== 'none' && !disabled
 
   const handleMicClick = async () => {
     if (isProcessing) return
@@ -168,22 +172,13 @@ export function MessageActionBar({
       <input ref={fileInputRef} type="file" multiple hidden accept="*/*" onChange={handleFileChange} />
 
       {/* 마이크 */}
-      <button
-        type="button"
-        onClick={handleMicClick}
+      <ActionBtn
+        label={canVoice ? '음성 번역 (클릭하여 녹음)' : '번역 언어를 먼저 설정해 주세요'}
         disabled={isProcessing || disabled}
-        aria-label="음성 번역 녹음"
-        title={canVoice ? '음성 번역 (클릭하여 녹음)' : '번역 언어를 먼저 설정해 주세요'}
-        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                   transition-all duration-200 disabled:cursor-not-allowed"
-        style={{
-          background: canVoice ? '#EF4444' : 'var(--ink-4)',
-          color: 'white',
-          opacity: disabled ? 0.4 : 1,
-        }}
+        onClick={handleMicClick}
       >
-        <Mic size={17} />
-      </button>
+        <Mic size={19} />
+      </ActionBtn>
 
       {/* OCR */}
       <OcrButton
