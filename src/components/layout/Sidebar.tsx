@@ -12,22 +12,24 @@ import { NotificationToggle } from '../ui/NotificationToggle'
 import { ActionItemList } from '../actionitems/ActionItemList'
 import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
+import { RequestList } from '../requests/RequestList'
 
 interface Props {
-  selectedRoomId:  string | null
-  onSelectRoom:    (id: string) => void
-  onNewChat:       () => void
-  activeTab:       SidebarTab
-  onTabChange:     (tab: SidebarTab) => void
-  onSelectFriend:  (userId: string) => void
-  totalUnread:     number
-  notifEnabled:    boolean
-  onToggleNotif:   () => void
+  selectedRoomId:   string | null
+  onSelectRoom:     (id: string) => void
+  onNewChat:        () => void
+  activeTab:        SidebarTab
+  onTabChange:      (tab: SidebarTab) => void
+  onSelectFriend:   (userId: string) => void
+  totalUnread:      number
+  notifEnabled:     boolean
+  onToggleNotif:    () => void
+  onSelectRequest:  (roomId: string, messageId: string) => void
 }
 
 export function Sidebar({
   selectedRoomId, onSelectRoom, onNewChat,
-  activeTab, onTabChange, onSelectFriend,
+  activeTab, onTabChange, onSelectFriend, onSelectRequest,
   totalUnread, notifEnabled, onToggleNotif,
 }: Props) {
   const { t } = useTranslation()
@@ -35,6 +37,7 @@ export function Sidebar({
   const { rooms, loading } = useRooms()
   const { received, created, done, reload } = useActionItems()
   const pendingCount = received.length + created.length
+  const [requestCount, setRequestCount] = useState(0)
 
   useDueDateNotifications(received)
 
@@ -87,6 +90,7 @@ export function Sidebar({
         onChange={onTabChange}
         totalUnread={totalUnread}
         taskCount={pendingCount}
+        requestCount={requestCount}
       />
 
       {/* ── 채팅 탭 ──────────────────────────────────── */}
@@ -141,6 +145,16 @@ export function Sidebar({
             created={created}
             done={done}
             onReload={reload}
+          />
+        </div>
+      )}
+
+      {/* ── 요청 탭 ──────────────────────────────────── */}
+      {activeTab === 'requests' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <RequestList
+            onSelectRequest={onSelectRequest}
+            onCountChange={setRequestCount}
           />
         </div>
       )}

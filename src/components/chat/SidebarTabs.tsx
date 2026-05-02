@@ -1,22 +1,24 @@
-import { MessageSquare, Users, CheckSquare } from 'lucide-react'
+import { MessageSquare, Users, CheckSquare, Inbox } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-export type SidebarTab = 'chat' | 'friends' | 'tasks'
+export type SidebarTab = 'chat' | 'friends' | 'tasks' | 'requests'
 
 interface Props {
-  active:       SidebarTab
-  onChange:     (tab: SidebarTab) => void
-  totalUnread?: number
-  taskCount?:   number
+  active:         SidebarTab
+  onChange:       (tab: SidebarTab) => void
+  totalUnread?:   number
+  taskCount?:     number
+  requestCount?:  number
 }
 
-export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0 }: Props) {
+export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0, requestCount = 0 }: Props) {
   const { t } = useTranslation()
 
   const tabs: { id: SidebarTab; Icon: React.ElementType; label: string; badge: number }[] = [
-    { id: 'chat',    Icon: MessageSquare, label: t('tabChat'),    badge: totalUnread },
-    { id: 'friends', Icon: Users,         label: t('tabFriends'), badge: 0 },
-    { id: 'tasks',   Icon: CheckSquare,   label: t('tabTasks'),   badge: taskCount },
+    { id: 'chat',     Icon: MessageSquare, label: t('tabChat'),     badge: totalUnread  },
+    { id: 'friends',  Icon: Users,         label: t('tabFriends'),  badge: 0            },
+    { id: 'tasks',    Icon: CheckSquare,   label: t('tabTasks'),    badge: taskCount    },
+    { id: 'requests', Icon: Inbox,         label: t('tabRequests'), badge: requestCount },
   ]
 
   return (
@@ -28,8 +30,8 @@ export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0 }
             key={id}
             type="button"
             onClick={() => onChange(id)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5
-                       text-sm font-semibold border-b-2 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1 py-2.5
+                       text-xs font-semibold border-b-2 transition-colors"
             style={{
               borderColor: isActive ? 'var(--blue)' : 'transparent',
               color: isActive ? 'var(--side-text)' : 'var(--side-mute)',
@@ -41,12 +43,12 @@ export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0 }
               if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = 'var(--side-mute)'
             }}
           >
-            <Icon size={15} />
+            <Icon size={14} />
             {label}
             {badge > 0 && (
               <span
-                className="min-w-[18px] h-[18px] px-1 rounded-full
-                           text-white text-[10px] font-bold
+                className="min-w-[16px] h-[16px] px-1 rounded-full
+                           text-white text-[9px] font-bold
                            flex items-center justify-center leading-none"
                 style={{ background: id === 'chat' ? '#EF3F1A' : 'var(--blue)' }}
               >

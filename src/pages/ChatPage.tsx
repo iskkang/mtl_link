@@ -14,11 +14,12 @@ export default function ChatPage() {
   const { user } = useAuth()
   const rooms    = useRoomStore(s => s.rooms)
 
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
-  const [showChat,       setShowChat]       = useState(false)
-  const [newRoomOpen,    setNewRoomOpen]    = useState(false)
-  const [activeTab,      setActiveTab]      = useState<SidebarTab>('chat')
-  const [toast,          setToast]          = useState<string | null>(null)
+  const [selectedRoomId,    setSelectedRoomId]    = useState<string | null>(null)
+  const [showChat,          setShowChat]          = useState(false)
+  const [newRoomOpen,       setNewRoomOpen]       = useState(false)
+  const [activeTab,         setActiveTab]         = useState<SidebarTab>('chat')
+  const [toast,             setToast]             = useState<string | null>(null)
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const showToast = (msg: string) => {
@@ -51,6 +52,13 @@ export default function ChatPage() {
     setSelectedRoomId(null)
     setShowChat(false)
     showToast(toastMsg)
+  }
+
+  const handleSelectRequest = (roomId: string, messageId: string) => {
+    setSelectedRoomId(roomId)
+    setShowChat(true)
+    setHighlightMessageId(messageId)
+    // 요청 탭 유지 (채팅 탭으로 전환하지 않음)
   }
 
   // 현재 선택된 방이 외부에서 삭제됐을 때 (다른 멤버가 방을 삭제) 자동 해제
@@ -94,12 +102,14 @@ export default function ChatPage() {
           totalUnread={totalUnread}
           notifEnabled={notifEnabled}
           onToggleNotif={toggleNotif}
+          onSelectRequest={handleSelectRequest}
         />
       }>
         <ChatWindow
           roomId={selectedRoomId}
           onBack={() => setShowChat(false)}
           onLeaveOrDelete={handleLeaveOrDelete}
+          highlightMessageId={highlightMessageId}
         />
       </AppLayout>
 

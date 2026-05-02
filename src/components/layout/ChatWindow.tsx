@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Globe, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -28,13 +28,14 @@ import { GlobalSearchPanel } from '../chat/GlobalSearchPanel'
 import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
 interface Props {
-  roomId:           string | null
-  onBack?:          () => void
-  onLeaveOrDelete?: (toast: string) => void
-  onRoomSelect?:    (roomId: string) => void
+  roomId:              string | null
+  onBack?:             () => void
+  onLeaveOrDelete?:    (toast: string) => void
+  onRoomSelect?:       (roomId: string) => void
+  highlightMessageId?: string | null
 }
 
-export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Props) {
+export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId }: Props) {
   const { t } = useTranslation()
   const { mode, toggle } = useTheme()
   const { user } = useAuth()
@@ -76,7 +77,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     el.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'center' })
   }, [searchCurrent, searchIdx])
 
-  // 방이 바뀌면 초기화
+  // 방이 바뀌면 초기화 (processedHighlightRef는 scrollToMessage 선언 후 정의)
   useEffect(() => {
     setDraft('')
     setReplyTo(null)
@@ -177,6 +178,25 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     el.classList.add('highlight-pulse')
     setTimeout(() => el.classList.remove('highlight-pulse'), 1500)
   }, [])
+
+  // highlightMessageId 변경 시 처리 완료 ref 초기화
+  const processedHighlightRef = useRef<string | null>(null)
+  useEffect(() => {
+    processedHighlightRef.current = null
+  }, [highlightMessageId])
+
+  // 메시지 로드 후 해당 메시지로 스크롤 + 자동 답장 설정
+  useEffect(() => {
+    if (!highlightMessageId || loading || messages.length === 0) return
+    if (processedHighlightRef.current === highlightMessageId) return
+
+    const msg = messages.find(m => m.id === highlightMessageId)
+    if (!msg) return
+
+    processedHighlightRef.current = highlightMessageId
+    setReplyTo(msg)
+    setTimeout(() => scrollToMessage(highlightMessageId), 150)
+  }, [highlightMessageId, messages, loading, scrollToMessage])
 
   const handleLeave = async () => {
     if (!roomId) return
