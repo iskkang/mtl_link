@@ -206,11 +206,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               onCancel={() => setEditing(false)}
             />
           ) : isVoice ? (
-            /* 음성 메시지 전용 레이아웃 */
+            /* 음성 메시지 전용 레이아웃 — 뷰어 언어로 자동 번역된 텍스트 우선 사용 */
             <VoiceBubbleContent
               messageId={message.id}
-              translatedText={message.content ?? null}
-              originalText={message.content_original ?? null}
+              displayText={(isTranslatable && translatedText) ? translatedText : (message.content ?? null)}
+              spokenText={message.content_original ?? null}
+              sourceLanguage={message.source_language ?? null}
+              targetLanguage={message.target_language ?? null}
+              myLanguage={myLanguage}
+              isTranslating={isTranslating}
               isOwn={isOwn}
               searchQuery={searchQuery}
             />
@@ -372,14 +376,22 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 /* ── 음성 메시지 버블 컨텐츠 ─────────────────────────── */
 function VoiceBubbleContent({
   messageId,
-  translatedText,
-  originalText,
+  displayText,
+  spokenText,
+  sourceLanguage,
+  targetLanguage,
+  myLanguage,
+  isTranslating,
   isOwn,
   searchQuery,
 }: {
-  messageId:    string
-  translatedText: string | null
-  originalText:   string | null
+  messageId:      string
+  displayText:    string | null   // 뷰어 언어로 번역된 최종 텍스트
+  spokenText:     string | null   // 실제 발화 원문
+  sourceLanguage: string | null
+  targetLanguage: string | null
+  myLanguage:     string
+  isTranslating:  boolean
   isOwn:          boolean
   searchQuery:    string
 }) {
@@ -389,6 +401,9 @@ function VoiceBubbleContent({
     const seed = messageId.charCodeAt(i % messageId.length) * 13 + i * 7
     return Math.max(20, seed % 80)
   })
+
+  // 번역 방향 표시 여부: 원문 언어가 뷰어 언어와 다를 때
+  const showLangBadge = sourceLanguage && sourceLanguage !== myLanguage
 
   return (
     <div className="flex flex-col gap-2 min-w-[180px]">
@@ -417,18 +432,32 @@ function VoiceBubbleContent({
         </div>
       </div>
 
-      {/* 번역된 텍스트 */}
-      {translatedText && (
+      {/* 뷰어 언어로 번역된 텍스트 */}
+      {isTranslating ? (
+        <span className="inline-flex items-center gap-1 text-xs" style={{ color: 'var(--ink-4)' }}>
+          <span className="w-2.5 h-2.5 border border-current/30 border-t-current rounded-full animate-spin" />
+          번역 중…
+        </span>
+      ) : displayText ? (
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-          {searchQuery ? highlightText(translatedText, searchQuery) : translatedText}
+          {searchQuery ? highlightText(displayText, searchQuery) : displayText}
+        </p>
+      ) : null}
+
+      {/* 발화 원문 (뷰어 언어와 다를 때만 표시) */}
+      {spokenText && displayText && spokenText !== displayText && (
+        <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
+          {searchQuery ? highlightText(spokenText, searchQuery) : spokenText}
         </p>
       )}
 
-      {/* 원문 (번역 전) */}
-      {originalText && translatedText && originalText !== translatedText && (
-        <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
-          {searchQuery ? highlightText(originalText, searchQuery) : originalText}
-        </p>
+      {/* 번역 방향 배지 */}
+      {showLangBadge && !isTranslating && (
+        <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
+          <Mic size={9} />
+          <span>✦</span>
+          {sourceLanguage.toUpperCase()} → {(targetLanguage ?? myLanguage).toUpperCase()}
+        </span>
       )}
     </div>
   )
