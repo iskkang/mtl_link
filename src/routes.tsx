@@ -9,6 +9,7 @@ const RejectedPage       = lazy(() => import('./pages/RejectedPage'))
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const ChatPage           = lazy(() => import('./pages/ChatPage'))
 const AdminPage          = lazy(() => import('./pages/AdminPage'))
+const InstallPage        = lazy(() => import('./pages/InstallPage'))
 
 const PageFallback = (
   <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-mtl-ocean">
@@ -20,6 +21,7 @@ export function AppRoutes() {
   return (
     <Suspense fallback={PageFallback}>
       <Routes>
+        <Route path="/install"  element={<InstallPage />} />
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/signup"   element={<SignUpPage />} />
         <Route path="/pending"  element={<PendingPage />} />
