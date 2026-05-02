@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2, CheckSquare } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CheckSquare, Clock, CheckCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  canEdit:      boolean
-  canDelete:    boolean
-  onEdit:       () => void
-  onDelete:     () => void
-  onCreateTask: () => void
+  canEdit:          boolean
+  canDelete:        boolean
+  onEdit:           () => void
+  onDelete:         () => void
+  onCreateTask:     () => void
+  needsResponse?:   boolean
+  responseReceived?:boolean
+  onMarkFollowup?:  () => void
+  onMarkReceived?:  () => void
 }
 
-export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask }: Props) {
+export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask, needsResponse, responseReceived, onMarkFollowup, onMarkReceived }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -56,6 +60,39 @@ export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask
             <CheckSquare size={13} className="flex-shrink-0" />
             {t('msgCreateTask')}
           </button>
+
+          {/* Follow-up options — own messages only */}
+          {canDelete && (onMarkFollowup || onMarkReceived) && (
+            <>
+              <div className="my-0.5 mx-2 border-t" style={{ borderColor: 'var(--line)' }} />
+
+              {!needsResponse && onMarkFollowup && (
+                <button
+                  onClick={() => { setOpen(false); onMarkFollowup() }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
+                  style={{ color: 'var(--ink)' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+                >
+                  <Clock size={13} className="flex-shrink-0" />
+                  {t('followupMark')}
+                </button>
+              )}
+
+              {needsResponse && !responseReceived && onMarkReceived && (
+                <button
+                  onClick={() => { setOpen(false); onMarkReceived() }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
+                  style={{ color: '#22c55e' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+                >
+                  <CheckCheck size={13} className="flex-shrink-0" />
+                  {t('followupMarkReceived')}
+                </button>
+              )}
+            </>
+          )}
 
           {/* Edit / Delete only for own messages */}
           {canDelete && (

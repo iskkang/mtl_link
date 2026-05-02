@@ -185,6 +185,9 @@ export type Database = {
           created_at:           string
           edited_at:            string | null
           deleted_at:           string | null
+          needs_response:       boolean
+          response_received:    boolean
+          followup_reminded_at: string | null
         }
         Insert: {
           id?:                   string
@@ -200,6 +203,9 @@ export type Database = {
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null
+          needs_response?:       boolean
+          response_received?:    boolean
+          followup_reminded_at?: string | null
         }
         Update: {
           id?:                   string
@@ -215,6 +221,9 @@ export type Database = {
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null
+          needs_response?:       boolean
+          response_received?:    boolean
+          followup_reminded_at?: string | null
         }
         Relationships: [
           {

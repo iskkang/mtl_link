@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { FollowupBadge } from './FollowupBadge'
+import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
 import { getLangFlag } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
@@ -55,10 +57,33 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
 
-  const [hovered,     setHovered]     = useState(false)
-  const [editing,     setEditing]     = useState(false)
-  const [deleteOpen,  setDeleteOpen]  = useState(false)
-  const [taskOpen,    setTaskOpen]    = useState(false)
+  const [hovered,       setHovered]       = useState(false)
+  const [editing,       setEditing]       = useState(false)
+  const [deleteOpen,    setDeleteOpen]    = useState(false)
+  const [taskOpen,      setTaskOpen]      = useState(false)
+  const [followupBusy,  setFollowupBusy]  = useState(false)
+
+  const hoursSince = message.needs_response
+    ? Math.floor((Date.now() - new Date(message.created_at).getTime()) / 3_600_000)
+    : 0
+
+  const handleMarkFollowup = async () => {
+    if (followupBusy) return
+    setFollowupBusy(true)
+    try {
+      await toggleNeedsResponse(message.id, true)
+      upsertMessage(message.room_id!, { ...message, needs_response: true })
+    } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
+  }
+
+  const handleMarkReceived = async () => {
+    if (followupBusy) return
+    setFollowupBusy(true)
+    try {
+      await markResponseReceived(message.id)
+      upsertMessage(message.room_id!, { ...message, response_received: true })
+    } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
+  }
 
   const myLanguage = profile?.preferred_language ?? 'ko'
 
@@ -156,6 +181,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             onEdit={() => setEditing(true)}
             onDelete={() => setDeleteOpen(true)}
             onCreateTask={() => setTaskOpen(true)}
+            needsResponse={message.needs_response}
+            responseReceived={message.response_received}
+            onMarkFollowup={handleMarkFollowup}
+            onMarkReceived={handleMarkReceived}
           />
         </div>
       )}
@@ -325,6 +354,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               </span>
             )}
 
+            {/* 후속 추적 배지 (본인 메시지) */}
+            {isOwn && isSent && (
+              <FollowupBadge
+                needsResponse={message.needs_response ?? false}
+                responseReceived={message.response_received ?? false}
+                hoursSince={hoursSince}
+              />
+            )}
+
             {/* 수정됨 배지 */}
             {message.edited_at && !isFailed && !isSending && (
               <span className="text-[10px] italic" style={{ color: 'var(--ink-4)' }}>
@@ -364,6 +402,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               onCreateTask={() => setTaskOpen(true)}
             />
           )}
+
         </div>
       )}
 
