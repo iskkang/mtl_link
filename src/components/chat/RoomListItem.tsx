@@ -2,6 +2,7 @@ import { Users } from 'lucide-react'
 import { Avatar } from '../ui/Avatar'
 import { formatRoomTime } from '../../lib/date'
 import { getRoomDisplayName, getRoomAvatarInfo } from '../../services/roomService'
+import { getLangFlag } from '../../lib/langFlags'
 import type { RoomListItem } from '../../types/chat'
 
 interface Props {
@@ -9,10 +10,6 @@ interface Props {
   isSelected:    boolean
   currentUserId: string
   onClick:       () => void
-}
-
-const LANG_SHORT: Record<string, string> = {
-  ko: 'KO', en: 'EN', ru: 'RU', zh: 'ZH', ja: 'JA', uz: 'UZ',
 }
 
 export function RoomListItemView({ room, isSelected, currentUserId, onClick }: Props) {
@@ -91,25 +88,21 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
           )}
         </div>
 
-        {/* 언어 배지 */}
+        {/* 언어 배지 (깃발 이모지) */}
         {memberLangs.length > 0 && (
-          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             {memberLangs.map(lang => (
               <span
                 key={lang}
-                className="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono-ui leading-none"
-                style={{
-                  background: 'rgba(96,165,250,0.12)',
-                  color: 'var(--blue)',
-                  border: '1px solid rgba(96,165,250,0.2)',
-                }}
+                className="text-[13px] leading-none"
+                title={lang.toUpperCase()}
               >
-                {LANG_SHORT[lang] ?? lang.toUpperCase()}
+                {getLangFlag(lang)}
               </span>
             ))}
             {room.room_type === 'group' && (
               <span
-                className="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono-ui leading-none"
+                className="text-[10px] font-bold font-mono-ui leading-none px-1 py-0.5 rounded"
                 style={{
                   background: 'rgba(99,102,241,0.12)',
                   color: '#818CF8',

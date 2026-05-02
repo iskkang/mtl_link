@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
+import { getLangFlag } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -219,8 +220,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               searchQuery={searchQuery}
             />
           ) : showTwoPanel ? (
-            <div className="space-y-2">
-              <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
+            <div className="space-y-1.5">
+              <p className="text-[10px] italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
                 {isOcr
                   ? (searchQuery ? highlightText(message.content_original ?? '', searchQuery) : message.content_original)
                   : (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)}
@@ -230,6 +231,16 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                   ? (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)
                   : translatedText}
               </p>
+              {/* 번역 방향 깃발 배지 */}
+              {message.source_language && (
+                <p className="text-[11px] leading-none" style={{ color: 'var(--ink-4)' }}>
+                  {getLangFlag(message.source_language)}
+                  {' → '}
+                  {isOcr && message.target_language
+                    ? getLangFlag(message.target_language)
+                    : getLangFlag(myLanguage)}
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -298,34 +309,27 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             )}
 
             {/* 음성 번역 배지 */}
-            {isVoice && !isFailed && !isSending && (
-              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
-                <Mic size={9} />
-                <span className="mx-0.5">✦</span>
-                {message.source_language?.toUpperCase()}
-                {message.target_language && (
-                  <> → {message.target_language.toUpperCase()}</>
-                )}
+            {isVoice && !isFailed && !isSending && message.source_language && (
+              <span className="text-[11px] flex items-center gap-0.5 leading-none" style={{ color: 'var(--ink-4)' }}>
+                <Mic size={9} className="flex-shrink-0" />
+                {getLangFlag(message.source_language)}
+                {message.target_language && <>{' → '}{getLangFlag(message.target_language)}</>}
               </span>
             )}
 
             {/* OCR 번역 배지 */}
-            {isOcr && !isFailed && !isSending && (
-              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
-                <ScanText size={9} />
-                <span className="mx-0.5">✦</span>
-                {message.source_language?.toUpperCase()}
-                {message.target_language && (
-                  <> → {message.target_language.toUpperCase()}</>
-                )}
+            {isOcr && !isFailed && !isSending && message.source_language && (
+              <span className="text-[11px] flex items-center gap-0.5 leading-none" style={{ color: 'var(--ink-4)' }}>
+                <ScanText size={9} className="flex-shrink-0" />
+                {getLangFlag(message.source_language)}
+                {message.target_language && <>{' → '}{getLangFlag(message.target_language)}</>}
               </span>
             )}
 
             {/* 자동 텍스트 번역 배지 */}
-            {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && (
-              <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
-                <span>✦</span>
-                {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
+            {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && message.source_language && (
+              <span className="text-[11px] leading-none" style={{ color: 'var(--ink-4)' }}>
+                {getLangFlag(message.source_language)}{' → '}{getLangFlag(myLanguage)}
               </span>
             )}
 
@@ -399,11 +403,10 @@ function VoiceBubbleContent({
     <div className="flex flex-col gap-1.5 min-w-[160px]">
       {/* 헤더: 마이크 아이콘 + 레이블 */}
       <div className="flex items-center gap-1.5">
-        <Mic size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-        <span className="text-[11px] font-medium tracking-wide" style={{ color: 'var(--ink-3)' }}>
-          음성 메시지
-        </span>
+        <Mic size={12} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+        <span className="text-[11px] italic" style={{ color: 'var(--ink-3)' }}>음성</span>
       </div>
+      <div style={{ height: '1px', background: 'var(--line)' }} />
 
       {/* 번역된 텍스트 */}
       {isTranslating ? (
@@ -426,10 +429,8 @@ function VoiceBubbleContent({
 
       {/* 번역 방향 배지 */}
       {showLangBadge && !isTranslating && (
-        <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
-          <Mic size={9} />
-          <span>✦</span>
-          {sourceLanguage.toUpperCase()} → {(targetLanguage ?? myLanguage).toUpperCase()}
+        <span className="text-[11px] leading-none" style={{ color: 'var(--ink-4)' }}>
+          {getLangFlag(sourceLanguage!)}{' → '}{getLangFlag(targetLanguage ?? myLanguage)}
         </span>
       )}
     </div>

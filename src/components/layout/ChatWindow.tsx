@@ -8,6 +8,7 @@ import { useMessageSearch } from '../../hooks/useMessageSearch'
 import { useRoomStore } from '../../stores/roomStore'
 import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
 import { sendFileMessage } from '../../services/messageService'
+import { getLangFlag } from '../../lib/langFlags'
 import { validateFiles } from '../../lib/fileValidation'
 import { getUserFriendlyMessage } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
@@ -105,10 +106,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     ? room.members.find(m => m.id !== currentUserId) ?? null
     : null
 
-  const LANG_KO: Record<string, string> = {
-    ko: '한국어', en: '영어', ru: '러시아어', zh: '중국어', ja: '일본어', uz: '우즈벡어',
-  }
-
   // DM 피어 프로필을 fresh하게 가져와서 최신 언어 표시
   useEffect(() => {
     if (!peer?.id) { setFreshPeerLang(null); return }
@@ -121,21 +118,16 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
   }, [peer?.id])
 
   const effectivePeerLang = freshPeerLang ?? peer?.preferred_language
-  const groupLangs = isGroup
-    ? [...new Set(room!.members.map(m => LANG_KO[m.preferred_language] ?? m.preferred_language))].join(', ')
+
+  const groupFlags = isGroup
+    ? [...new Set(room!.members.map(m => getLangFlag(m.preferred_language ?? 'ko')))].join(' ')
     : ''
 
   const headerSubtitle = isGroup
-    ? `${memberCount}명 · ${groupLangs}`
+    ? `${memberCount}명 · ${groupFlags}`
     : effectivePeerLang
-      ? `온라인 · ${LANG_KO[effectivePeerLang] ?? effectivePeerLang} 사용`
-      : t('onlineStatus')
-
-  const langBtnLabel = isGroup
-    ? '각자 모국어로'
-    : (targetLanguage && targetLanguage !== 'none')
-      ? `내 언어: ${LANG_KO[targetLanguage] ?? targetLanguage.toUpperCase()}`
-      : '내 언어 설정'
+      ? `🟢 · ${getLangFlag(effectivePeerLang)}`
+      : '🟢'
 
   // 파일 선택/드롭 → 검증 후 pendingFiles에 추가
   const handleFilesSelected = useCallback((newFiles: File[]) => {
@@ -263,12 +255,12 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-          {/* 번역 언어 버튼 */}
+          {/* 번역 언어 버튼: 메시지가 전달될 언어 표시 */}
           {room && (
             <button
               onClick={() => !isGroup && setTranslationOpen(true)}
               disabled={isGroup}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-medium
                          transition-colors border"
               style={{
                 borderColor: 'rgba(37,99,235,0.3)',
@@ -276,11 +268,22 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
                 background: 'rgba(37,99,235,0.05)',
                 cursor: isGroup ? 'default' : 'pointer',
               }}
-              title={isGroup ? '' : t('translationSetting')}
+              title={isGroup ? '' : '번역 언어 설정'}
             >
-              <Globe size={13} />
-              {langBtnLabel}
-              {!isGroup && <ChevronDown size={11} />}
+              {isGroup ? (
+                <Globe size={14} />
+              ) : effectivePeerLang ? (
+                <>
+                  <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-3)' }}>→</span>
+                  <span className="text-[16px] leading-none">{getLangFlag(effectivePeerLang)}</span>
+                  <ChevronDown size={10} />
+                </>
+              ) : (
+                <>
+                  <Globe size={13} />
+                  <ChevronDown size={10} />
+                </>
+              )}
             </button>
           )}
 
