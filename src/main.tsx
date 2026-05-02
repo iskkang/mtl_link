@@ -8,6 +8,21 @@ import './lib/i18n'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing
+          if (!newWorker) return
+          newWorker.addEventListener('statechange', () => {
+            // Reload only when a NEW SW activates over an existing one.
+            // navigator.serviceWorker.controller being non-null means there
+            // was already a SW controlling this page (i.e. not the first install).
+            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+              console.log('[SW] New version activated, reloading...')
+              window.location.reload()
+            }
+          })
+        })
+      })
       .catch(err => console.warn('[SW] registration failed:', err))
   })
 }

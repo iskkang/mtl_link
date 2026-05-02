@@ -1,6 +1,9 @@
-const CACHE_NAME = 'mtl-link-v1';
+// Bump CACHE_NAME on every deployment to invalidate all old caches.
+const CACHE_NAME = 'mtl-link-v2';
+
+// Only precache static assets — never cache index.html here.
+// index.html must always come from the network so new deploys are reflected.
 const PRECACHE = [
-  '/',
   '/manifest.webmanifest',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
@@ -17,27 +20,42 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    Promise.all([
+      // Delete every cache that doesn't match the current version.
+      caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      ),
+      self.clients.claim(),
+    ])
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET navigation requests for offline fallback
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  // Skip Supabase API, fonts, external resources
-  if (!url.origin.includes(self.location.hostname)) return;
+  // Only handle same-origin requests.
+  if (url.origin !== self.location.origin) return;
 
+  if (event.request.mode === 'navigate') {
+    // Navigation: network-first so the browser always gets the latest HTML.
+    // Cache the fresh response so the app still loads offline.
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() =>
+          caches.match(event.request).then(cached => cached || Response.error())
+        )
+    );
+    return;
+  }
+
+  // Static assets (icons, manifest): cache-first.
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).catch(() =>
-        // Offline fallback: serve cached root for navigation
-        event.request.mode === 'navigate' ? caches.match('/') : Response.error()
-      );
-    })
+    caches.match(event.request).then(cached => cached || fetch(event.request))
   );
 });
 
