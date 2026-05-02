@@ -398,6 +398,66 @@ export type Database = {
         ]
       }
 
+      // ─── action_items ────────────────────────────────────────────────────────
+      action_items: {
+        Row: {
+          id:            string
+          message_id:    string | null
+          room_id:       string
+          created_by:    string
+          assigned_to:   string
+          title:         string
+          due_date:      string | null
+          status:        'pending' | 'done' | 'cancelled' | 'snoozed'
+          snoozed_until: string | null
+          created_at:    string
+          updated_at:    string
+        }
+        Insert: {
+          id?:            string
+          message_id?:    string | null
+          room_id:        string
+          created_by:     string
+          assigned_to:    string
+          title:          string
+          due_date?:      string | null
+          status?:        'pending' | 'done' | 'cancelled' | 'snoozed'
+          snoozed_until?: string | null
+          created_at?:    string
+          updated_at?:    string
+        }
+        Update: {
+          title?:         string
+          due_date?:      string | null
+          status?:        'pending' | 'done' | 'cancelled' | 'snoozed'
+          snoozed_until?: string | null
+          updated_at?:    string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'action_items_message_id_fkey'
+            columns: ['message_id']
+            isOneToOne: false
+            referencedRelation: 'messages'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'action_items_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'action_items_assigned_to_fkey'
+            columns: ['assigned_to']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+
       // ─── push_subscriptions ───────────────────────────────────────────────────
       push_subscriptions: {
         Row: {

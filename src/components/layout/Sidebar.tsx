@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { SquarePen, LogOut, Search, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
@@ -8,6 +9,9 @@ import { FriendsList } from '../chat/FriendsList'
 import { SidebarTabs, type SidebarTab } from '../chat/SidebarTabs'
 import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { NotificationToggle } from '../ui/NotificationToggle'
+import { ActionItemList } from '../actionitems/ActionItemList'
+import { useActionItems } from '../../hooks/useActionItems'
+import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 
 interface Props {
   selectedRoomId:  string | null
@@ -29,6 +33,10 @@ export function Sidebar({
   const { t } = useTranslation()
   const { profile, user, signOut } = useAuth()
   const { rooms, loading } = useRooms()
+  const { received, created, done, reload } = useActionItems()
+  const pendingCount = received.length + created.length
+
+  useDueDateNotifications(received)
 
   return (
     <div className="flex flex-col h-full sidebar-panel">
@@ -74,7 +82,12 @@ export function Sidebar({
       </header>
 
       {/* ── 탭 ───────────────────────────────────────── */}
-      <SidebarTabs active={activeTab} onChange={onTabChange} totalUnread={totalUnread} />
+      <SidebarTabs
+        active={activeTab}
+        onChange={onTabChange}
+        totalUnread={totalUnread}
+        taskCount={pendingCount}
+      />
 
       {/* ── 채팅 탭 ──────────────────────────────────── */}
       {activeTab === 'chat' && (
@@ -119,6 +132,19 @@ export function Sidebar({
         </div>
       )}
 
+      {/* ── 할 일 탭 ─────────────────────────────────── */}
+      {activeTab === 'tasks' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          {/* sub-tabs: received / created / done */}
+          <TasksPanel
+            received={received}
+            created={created}
+            done={done}
+            onReload={reload}
+          />
+        </div>
+      )}
+
       {/* ── 프로필 푸터 ──────────────────────────────── */}
       {profile && (
         <footer
@@ -151,6 +177,67 @@ export function Sidebar({
         </footer>
       )}
     </div>
+  )
+}
+
+/* ── TasksPanel ─────────────────────────────────── */
+import type { ActionItem } from '../../services/actionItemService'
+
+type TaskTab = 'received' | 'created' | 'done'
+
+function TasksPanel({
+  received, created, done, onReload,
+}: {
+  received: ActionItem[]
+  created:  ActionItem[]
+  done:     ActionItem[]
+  onReload: () => void
+}) {
+  const { t } = useTranslation()
+  const [tab, setTab] = useState<TaskTab>('received')
+
+  const tabs: { id: TaskTab; label: string; count?: number }[] = [
+    { id: 'received', label: t('taskTabReceived'), count: received.length },
+    { id: 'created',  label: t('taskTabCreated'),  count: created.length },
+    { id: 'done',     label: t('taskTabDone') },
+  ]
+
+  const items = tab === 'received' ? received : tab === 'created' ? created : done
+
+  return (
+    <>
+      {/* sub tab bar */}
+      <div className="flex flex-shrink-0 border-b text-xs" style={{ borderColor: 'var(--side-line)' }}>
+        {tabs.map(({ id, label, count }) => {
+          const isActive = tab === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold
+                         border-b-2 transition-colors"
+              style={{
+                borderColor: isActive ? 'var(--blue)' : 'transparent',
+                color: isActive ? 'var(--side-text)' : 'var(--side-mute)',
+              }}
+            >
+              {label}
+              {count !== undefined && count > 0 && (
+                <span
+                  className="min-w-[14px] h-[14px] px-0.5 rounded-full text-white text-[9px]
+                             font-bold flex items-center justify-center"
+                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--blue)' }}
+                >
+                  {count > 99 ? '99+' : count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      <ActionItemList items={items} onReload={onReload} view={tab} />
+    </>
   )
 }
 

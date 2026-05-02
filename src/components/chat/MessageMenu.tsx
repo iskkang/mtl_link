@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CheckSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  canEdit:   boolean
-  canDelete: boolean
-  onEdit:    () => void
-  onDelete:  () => void
+  canEdit:      boolean
+  canDelete:    boolean
+  onEdit:       () => void
+  onDelete:     () => void
+  onCreateTask: () => void
 }
 
-export function MessageMenu({ canEdit, canDelete, onEdit, onDelete }: Props) {
+export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -22,8 +23,6 @@ export function MessageMenu({ canEdit, canDelete, onEdit, onDelete }: Props) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
-
-  if (!canDelete) return null
 
   return (
     <div ref={ref} className="relative">
@@ -38,7 +37,7 @@ export function MessageMenu({ canEdit, canDelete, onEdit, onDelete }: Props) {
 
       {open && (
         <div
-          className="absolute bottom-full mb-1 right-0 z-50 min-w-[110px] rounded-xl py-1 border text-sm"
+          className="absolute bottom-full mb-1 right-0 z-50 min-w-[130px] rounded-xl py-1 border text-sm"
           style={{
             background: 'var(--card)',
             borderColor: 'var(--line)',
@@ -46,29 +45,48 @@ export function MessageMenu({ canEdit, canDelete, onEdit, onDelete }: Props) {
             color: 'var(--ink)',
           }}
         >
+          {/* Create task — always visible */}
           <button
-            onClick={() => { if (canEdit) { setOpen(false); onEdit() } }}
-            disabled={!canEdit}
-            title={canEdit ? undefined : t('msgEditExpired')}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
-              ${canEdit ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+            onClick={() => { setOpen(false); onCreateTask() }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
             style={{ color: 'var(--ink)' }}
-            onMouseEnter={e => { if (canEdit) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-          >
-            <Pencil size={13} className="flex-shrink-0" />
-            {t('msgEdit')}
-          </button>
-
-          <button
-            onClick={() => { setOpen(false); onDelete() }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors text-red-500 dark:text-red-400"
-            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.06)')}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
             onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
           >
-            <Trash2 size={13} className="flex-shrink-0" />
-            {t('msgDelete')}
+            <CheckSquare size={13} className="flex-shrink-0" />
+            {t('msgCreateTask')}
           </button>
+
+          {/* Edit / Delete only for own messages */}
+          {canDelete && (
+            <>
+              <div className="my-0.5 mx-2 border-t" style={{ borderColor: 'var(--line)' }} />
+
+              <button
+                onClick={() => { if (canEdit) { setOpen(false); onEdit() } }}
+                disabled={!canEdit}
+                title={canEdit ? undefined : t('msgEditExpired')}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
+                  ${canEdit ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+                style={{ color: 'var(--ink)' }}
+                onMouseEnter={e => { if (canEdit) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+              >
+                <Pencil size={13} className="flex-shrink-0" />
+                {t('msgEdit')}
+              </button>
+
+              <button
+                onClick={() => { setOpen(false); onDelete() }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors text-red-500 dark:text-red-400"
+                onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.06)')}
+                onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+              >
+                <Trash2 size={13} className="flex-shrink-0" />
+                {t('msgDelete')}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

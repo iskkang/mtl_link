@@ -1,28 +1,33 @@
-import { MessageSquare, Users } from 'lucide-react'
+import { MessageSquare, Users, CheckSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-export type SidebarTab = 'chat' | 'friends'
+export type SidebarTab = 'chat' | 'friends' | 'tasks'
 
 interface Props {
-  active:      SidebarTab
-  onChange:    (tab: SidebarTab) => void
+  active:       SidebarTab
+  onChange:     (tab: SidebarTab) => void
   totalUnread?: number
+  taskCount?:   number
 }
 
-export function SidebarTabs({ active, onChange, totalUnread = 0 }: Props) {
+export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0 }: Props) {
   const { t } = useTranslation()
+
+  const tabs: { id: SidebarTab; Icon: React.ElementType; label: string; badge: number }[] = [
+    { id: 'chat',    Icon: MessageSquare, label: t('tabChat'),    badge: totalUnread },
+    { id: 'friends', Icon: Users,         label: t('tabFriends'), badge: 0 },
+    { id: 'tasks',   Icon: CheckSquare,   label: t('tabTasks'),   badge: taskCount },
+  ]
+
   return (
     <div className="flex flex-shrink-0 border-b" style={{ borderColor: 'var(--side-line)' }}>
-      {(['chat', 'friends'] as const).map(tab => {
-        const isActive = active === tab
-        const Icon     = tab === 'chat' ? MessageSquare : Users
-        const label    = tab === 'chat' ? t('tabChat') : t('tabFriends')
-        const badge    = tab === 'chat' && totalUnread > 0 ? totalUnread : 0
+      {tabs.map(({ id, Icon, label, badge }) => {
+        const isActive = active === id
         return (
           <button
-            key={tab}
+            key={id}
             type="button"
-            onClick={() => onChange(tab)}
+            onClick={() => onChange(id)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5
                        text-sm font-semibold border-b-2 transition-colors"
             style={{
@@ -43,7 +48,7 @@ export function SidebarTabs({ active, onChange, totalUnread = 0 }: Props) {
                 className="min-w-[18px] h-[18px] px-1 rounded-full
                            text-white text-[10px] font-bold
                            flex items-center justify-center leading-none"
-                style={{ background: '#EF3F1A' }}
+                style={{ background: id === 'chat' ? '#EF3F1A' : 'var(--blue)' }}
               >
                 {badge > 99 ? '99+' : badge}
               </span>

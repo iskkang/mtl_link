@@ -10,6 +10,7 @@ const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const ChatPage           = lazy(() => import('./pages/ChatPage'))
 const AdminPage          = lazy(() => import('./pages/AdminPage'))
 const InstallPage        = lazy(() => import('./pages/InstallPage'))
+const ActionItemsPage    = lazy(() => import('./pages/ActionItemsPage'))
 
 const PageFallback = (
   <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-mtl-ocean">
@@ -39,6 +40,11 @@ export function AppRoutes() {
         <Route path="/admin" element={
           <ProtectedRoute adminOnly>
             <AdminPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/tasks" element={
+          <ProtectedRoute>
+            <ActionItemsPage />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

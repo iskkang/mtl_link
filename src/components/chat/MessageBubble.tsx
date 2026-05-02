@@ -8,6 +8,7 @@ import { LinkPreviewCard } from './LinkPreviewCard'
 import { MessageMenu } from './MessageMenu'
 import { MessageEditInput } from './MessageEditInput'
 import { DeleteMessageModal } from './DeleteMessageModal'
+import { CreateActionItemModal } from './CreateActionItemModal'
 import { QuotedMessage } from './QuotedMessage'
 import { ReadReceipt } from './ReadReceipt'
 import { useReadStatus } from '../../hooks/useReadStatus'
@@ -57,6 +58,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const [hovered,     setHovered]     = useState(false)
   const [editing,     setEditing]     = useState(false)
   const [deleteOpen,  setDeleteOpen]  = useState(false)
+  const [taskOpen,    setTaskOpen]    = useState(false)
 
   const myLanguage = profile?.preferred_language ?? 'ko'
 
@@ -136,7 +138,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       )}
 
       {/* 액션 버튼 (호버 시) - own: 버블 왼쪽 */}
-      {isOwn && (hovered || deleteOpen || editing) && !editing && (
+      {isOwn && (hovered || deleteOpen || editing || taskOpen) && !editing && (
         <div className="self-end mb-1 flex-shrink-0 flex items-center gap-1.5">
           <button
             onClick={onReply}
@@ -153,6 +155,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             canDelete={canDelete}
             onEdit={() => setEditing(true)}
             onDelete={() => setDeleteOpen(true)}
+            onCreateTask={() => setTaskOpen(true)}
           />
         </div>
       )}
@@ -340,8 +343,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       </div>
 
       {/* 수신 메시지 답장 버튼 (버블 오른쪽) */}
-      {!isOwn && hovered && (
-        <div className="self-end mb-1 flex-shrink-0">
+      {!isOwn && (hovered || taskOpen) && (
+        <div className="self-end mb-1 flex-shrink-0 flex items-center gap-1.5">
           <button
             onClick={onReply}
             title={t('msgReply')}
@@ -352,6 +355,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           >
             <CornerDownLeft size={16} />
           </button>
+          {isSent && (
+            <MessageMenu
+              canEdit={false}
+              canDelete={false}
+              onEdit={() => {}}
+              onDelete={() => {}}
+              onCreateTask={() => setTaskOpen(true)}
+            />
+          )}
         </div>
       )}
 
@@ -360,6 +372,19 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         <DeleteMessageModal
           onConfirm={handleDelete}
           onClose={() => setDeleteOpen(false)}
+        />
+      )}
+
+      {/* 할 일 만들기 모달 */}
+      {taskOpen && message.room_id && (
+        <CreateActionItemModal
+          open={taskOpen}
+          onClose={() => setTaskOpen(false)}
+          messageId={message.id}
+          roomId={message.room_id}
+          initialTitle={message.content ?? ''}
+          members={members}
+          currentUserId={currentUserId}
         />
       )}
     </div>
