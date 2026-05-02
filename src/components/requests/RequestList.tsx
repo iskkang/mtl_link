@@ -9,10 +9,9 @@ type Tab = 'received' | 'sent'
 
 interface Props {
   onSelectRequest: (roomId: string, messageId: string) => void
-  onCountChange?:  (receivedCount: number) => void
 }
 
-export function RequestList({ onSelectRequest, onCountChange }: Props) {
+export function RequestList({ onSelectRequest }: Props) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab]   = useState<Tab>('received')
   const [received,  setReceived]    = useState<RequestItem[]>([])
@@ -25,8 +24,7 @@ export function RequestList({ onSelectRequest, onCountChange }: Props) {
     setReceived(r)
     setSent(s)
     setLoading(false)
-    onCountChange?.(r.length)
-  }, [onCountChange])
+  }, [])
 
   useEffect(() => {
     load()

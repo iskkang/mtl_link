@@ -13,6 +13,7 @@ import { ActionItemList } from '../actionitems/ActionItemList'
 import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { RequestList } from '../requests/RequestList'
+import { useRequestStore } from '../../stores/requestStore'
 
 interface Props {
   selectedRoomId:   string | null
@@ -37,7 +38,7 @@ export function Sidebar({
   const { rooms, loading } = useRooms()
   const { received, created, done, reload } = useActionItems()
   const pendingCount = received.length + created.length
-  const [requestCount, setRequestCount] = useState(0)
+  const requestCount = useRequestStore(s => s.receivedCount)
 
   useDueDateNotifications(received)
 
@@ -154,7 +155,6 @@ export function Sidebar({
         <div className="flex flex-col flex-1 min-h-0">
           <RequestList
             onSelectRequest={onSelectRequest}
-            onCountChange={setRequestCount}
           />
         </div>
       )}

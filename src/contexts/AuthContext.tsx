@@ -9,6 +9,7 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useRoomStore } from '../stores/roomStore'
+import { useRequestStore } from '../stores/requestStore'
 import { subscribeToPushNotifications } from '../services/pushNotificationService'
 import type { Profile } from '../types/chat'
 
@@ -80,10 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 subscribeToPushNotifications().catch(() => {})
               }
             })
+            void useRequestStore.getState().loadCounts()
           }, 0)
         } else {
           // 로그아웃 또는 세션 만료 시 stale 데이터 제거
           useRoomStore.getState().reset()
+          useRequestStore.setState({ receivedCount: 0, sentCount: 0 })
           setProfile(null)
           setLoading(false)
 
@@ -104,6 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe()
     }
   }, [fetchProfile])
+
+  // Realtime subscription for request counts — active whenever a user is logged in
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel('request-counts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        void useRequestStore.getState().loadCounts()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user?.id])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
