@@ -8,11 +8,13 @@ import { createDirectRoom }   from '../services/roomService'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
 import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
+import { usePollingRefresh } from '../hooks/usePollingRefresh'
 import type { SidebarTab }    from '../components/chat/SidebarTabs'
 
 export default function ChatPage() {
   const { user } = useAuth()
   const rooms    = useRoomStore(s => s.rooms)
+  usePollingRefresh()
 
   const [selectedRoomId,    setSelectedRoomId]    = useState<string | null>(null)
   const [showChat,          setShowChat]          = useState(false)

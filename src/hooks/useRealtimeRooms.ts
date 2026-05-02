@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRoomStore } from '../stores/roomStore'
+import { fetchRooms } from '../services/roomService'
 import type { Room, Message } from '../types/chat'
 
 function msgPreview(msg: Message): string | null {
@@ -56,7 +57,13 @@ export function useRealtimeRooms(userId: string | undefined) {
           if (roomId) removeRoom(roomId)
         },
       )
-      .subscribe((_status, err) => {
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[Realtime] ${status} on rooms channel, refetching`)
+          fetchRooms()
+            .then(rooms => useRoomStore.getState().setRooms(rooms))
+            .catch(console.error)
+        }
         if (err) console.error('[Realtime] rooms error:', err)
       })
 

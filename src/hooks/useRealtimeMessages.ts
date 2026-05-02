@@ -74,6 +74,10 @@ export function useRealtimeMessages(roomId: string | null) {
             }).catch(console.error)
           }
         }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[Realtime] ${status} on room:${roomId}, refetching messages`)
+          refetchSinceLastSeen(roomId).catch(console.error)
+        }
         if (err) console.error('[Realtime] messages error:', err)
       })
 
