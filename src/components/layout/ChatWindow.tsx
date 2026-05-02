@@ -48,6 +48,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
   const [leaveOpen,       setLeaveOpen]       = useState(false)
   const [deleteOpen,      setDeleteOpen]      = useState(false)
   const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
+  const [freshPeerLang,   setFreshPeerLang]   = useState<string | null>(null)
   const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
   const [fileUploading,   setFileUploading]  = useState(false)
 
@@ -108,15 +109,26 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     ko: '한국어', en: '영어', ru: '러시아어', zh: '중국어', ja: '일본어', uz: '우즈벡어',
   }
 
-  const peerLang = peer?.preferred_language
+  // DM 피어 프로필을 fresh하게 가져와서 최신 언어 표시
+  useEffect(() => {
+    if (!peer?.id) { setFreshPeerLang(null); return }
+    void supabase
+      .from('profiles')
+      .select('preferred_language')
+      .eq('id', peer.id)
+      .single()
+      .then(({ data }) => { if (data?.preferred_language) setFreshPeerLang(data.preferred_language) })
+  }, [peer?.id])
+
+  const effectivePeerLang = freshPeerLang ?? peer?.preferred_language
   const groupLangs = isGroup
     ? [...new Set(room!.members.map(m => LANG_KO[m.preferred_language] ?? m.preferred_language))].join(', ')
     : ''
 
   const headerSubtitle = isGroup
     ? `${memberCount}명 · ${groupLangs}`
-    : peerLang
-      ? `온라인 · ${LANG_KO[peerLang]} 사용`
+    : effectivePeerLang
+      ? `온라인 · ${LANG_KO[effectivePeerLang] ?? effectivePeerLang} 사용`
       : t('onlineStatus')
 
   const langBtnLabel = isGroup

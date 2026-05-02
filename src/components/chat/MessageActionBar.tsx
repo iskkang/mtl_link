@@ -1,10 +1,18 @@
-import { useRef } from 'react'
-import { Smile, Paperclip } from 'lucide-react'
+import { useRef, useCallback } from 'react'
+import { Smile, Paperclip, Mic, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EmojiPickerPopup } from '../emoji/EmojiPickerPopup'
-import { VoiceRecorderButton } from '../voice/VoiceRecorderButton'
 import { OcrButton } from './OcrButton'
 import { useState } from 'react'
+import { useMicrophonePermission } from '../../hooks/useMicrophonePermission'
+import { useMediaRecorder } from '../../hooks/useMediaRecorder'
+import { sendVoiceTranslatedMessage } from '../../services/voiceMessageService'
+import { getUserFriendlyMessage } from '../../lib/errors'
+
+function fmtTime(ms: number) {
+  const s = Math.floor(ms / 1000)
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
 
 interface Props {
   roomId:                 string
@@ -24,6 +32,40 @@ export function MessageActionBar({
   const { t } = useTranslation()
   const [emojiOpen, setEmojiOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { state: micState, request: requestMic } = useMicrophonePermission()
+
+  const handleBlob = useCallback(async (blob: Blob) => {
+    if (!targetLanguage || targetLanguage === 'none') return
+    try {
+      await sendVoiceTranslatedMessage({ roomId, audioBlob: blob, targetLanguage })
+    } catch (err) {
+      onError(getUserFriendlyMessage(err))
+    }
+  }, [roomId, targetLanguage, onError])
+
+  const { recState, elapsedMs, start, stop, cancel } = useMediaRecorder(handleBlob)
+
+  const isRecording  = recState === 'recording'
+  const isProcessing = recState === 'processing'
+  const canVoice     = !!targetLanguage && targetLanguage !== 'none' && !disabled
+
+  const handleMicClick = async () => {
+    if (isProcessing) return
+    if (!canVoice) {
+      onError('번역 언어를 먼저 헤더에서 설정해 주세요')
+      return
+    }
+    if (micState === 'denied') {
+      onError('마이크 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요.')
+      return
+    }
+    if (micState !== 'granted') {
+      const ok = await requestMic()
+      if (!ok) { onError('마이크 권한이 필요합니다.'); return }
+    }
+    const ok = await start()
+    if (!ok) onError('녹음을 시작할 수 없습니다.')
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -32,13 +74,71 @@ export function MessageActionBar({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  // ── 녹음 중: 전체 너비 배너 ─────────────────────────
+  if (isRecording) {
+    return (
+      <div
+        className="flex items-center gap-3 px-4 py-2.5 flex-shrink-0"
+        style={{ background: 'var(--blue-soft)', borderTop: '1px solid rgba(37,99,235,0.15)' }}
+      >
+        {/* 빨간 점 + 타이머 */}
+        <span
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse"
+          style={{ background: '#EF4444' }}
+        />
+        <span
+          className="text-sm font-mono-ui font-semibold tabular-nums flex-shrink-0 min-w-[36px]"
+          style={{ color: '#EF4444' }}
+        >
+          {fmtTime(elapsedMs)}
+        </span>
+        <span className="flex-1 text-sm" style={{ color: 'var(--ink-3)' }}>
+          말씀해 주세요…
+        </span>
+        {/* 취소 */}
+        <button
+          onClick={cancel}
+          className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+          style={{ color: 'var(--ink-3)', border: '1px solid var(--line)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          취소
+        </button>
+        {/* 전송 */}
+        <button
+          onClick={stop}
+          className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5 flex-shrink-0"
+          style={{ background: 'var(--blue)' }}
+        >
+          <Send size={13} />
+          전송
+        </button>
+      </div>
+    )
+  }
+
+  // ── 처리 중 ───────────────────────────────────────────
+  if (isProcessing) {
+    return (
+      <div
+        className="flex items-center justify-center gap-2 px-4 py-2.5 flex-shrink-0"
+        style={{ background: 'var(--card)', borderTop: '1px solid var(--line)' }}
+      >
+        <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin block"
+              style={{ color: 'var(--blue)' }} />
+        <span className="text-sm" style={{ color: 'var(--ink-3)' }}>음성 번역 중…</span>
+      </div>
+    )
+  }
+
+  // ── 기본 액션 버튼들 ─────────────────────────────────
   return (
     <div
       className="flex items-center gap-0.5 px-3 py-1.5 flex-shrink-0 border-t"
       style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
     >
-
-      {/* ── 이모지 ──────────────────────────────── */}
+      {/* 이모지 */}
       <div className="relative">
         <ActionBtn
           label={t('emojiBtn')}
@@ -48,7 +148,6 @@ export function MessageActionBar({
         >
           <Smile size={19} />
         </ActionBtn>
-
         {emojiOpen && (
           <EmojiPickerPopup
             onSelect={emoji => { onEmojiSelect(emoji); setEmojiOpen(false) }}
@@ -57,7 +156,7 @@ export function MessageActionBar({
         )}
       </div>
 
-      {/* ── 파일 첨부 ──────────────────────────── */}
+      {/* 파일 첨부 */}
       <ActionBtn
         label={t('attachBtn')}
         disabled={disabled || uploading}
@@ -66,24 +165,27 @@ export function MessageActionBar({
       >
         <Paperclip size={19} />
       </ActionBtn>
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        hidden
-        accept="*/*"
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" multiple hidden accept="*/*" onChange={handleFileChange} />
 
-      {/* ── 음성 번역 ──────────────────────────── */}
-      <VoiceRecorderButton
-        roomId={roomId}
-        targetLanguage={targetLanguage}
-        disabled={disabled}
-        onError={onError}
-      />
+      {/* 마이크 */}
+      <button
+        type="button"
+        onClick={handleMicClick}
+        disabled={isProcessing || disabled}
+        aria-label="음성 번역 녹음"
+        title={canVoice ? '음성 번역 (클릭하여 녹음)' : '번역 언어를 먼저 설정해 주세요'}
+        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+                   transition-all duration-200 disabled:cursor-not-allowed"
+        style={{
+          background: canVoice ? '#EF4444' : 'var(--ink-4)',
+          color: 'white',
+          opacity: disabled ? 0.4 : 1,
+        }}
+      >
+        <Mic size={17} />
+      </button>
 
-      {/* ── OCR 번역 ───────────────────────────── */}
+      {/* OCR */}
       <OcrButton
         roomId={roomId}
         targetLanguage={targetLanguage}
@@ -94,7 +196,6 @@ export function MessageActionBar({
   )
 }
 
-/* ── 공통 아이콘 버튼 ────────────────────────────── */
 function ActionBtn({
   children, label, disabled, active, loading, onClick,
 }: {

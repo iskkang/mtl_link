@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
+import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText, Play } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -205,15 +205,24 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               onSave={handleSave}
               onCancel={() => setEditing(false)}
             />
+          ) : isVoice ? (
+            /* 음성 메시지 전용 레이아웃 */
+            <VoiceBubbleContent
+              messageId={message.id}
+              translatedText={message.content ?? null}
+              originalText={message.content_original ?? null}
+              isOwn={isOwn}
+              searchQuery={searchQuery}
+            />
           ) : showTwoPanel ? (
             <div className="space-y-2">
               <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
-                {(isVoice || isOcr)
+                {isOcr
                   ? (searchQuery ? highlightText(message.content_original ?? '', searchQuery) : message.content_original)
                   : (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)}
               </p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                {(isVoice || isOcr)
+                {isOcr
                   ? (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)
                   : translatedText}
               </p>
@@ -355,6 +364,71 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           onConfirm={handleDelete}
           onClose={() => setDeleteOpen(false)}
         />
+      )}
+    </div>
+  )
+}
+
+/* ── 음성 메시지 버블 컨텐츠 ─────────────────────────── */
+function VoiceBubbleContent({
+  messageId,
+  translatedText,
+  originalText,
+  isOwn,
+  searchQuery,
+}: {
+  messageId:    string
+  translatedText: string | null
+  originalText:   string | null
+  isOwn:          boolean
+  searchQuery:    string
+}) {
+  // 메시지 ID 기반 결정론적 파형
+  const barCount = 22
+  const bars = Array.from({ length: barCount }, (_, i) => {
+    const seed = messageId.charCodeAt(i % messageId.length) * 13 + i * 7
+    return Math.max(20, seed % 80)
+  })
+
+  return (
+    <div className="flex flex-col gap-2 min-w-[180px]">
+      {/* 플레이 버튼 + 파형 */}
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-80"
+          style={{ background: isOwn ? '#2563EB' : '#6366F1' }}
+          onClick={e => e.stopPropagation()}
+          title="재생"
+        >
+          <Play size={14} className="text-white ml-0.5" />
+        </button>
+        <div className="flex items-center gap-px flex-1 h-8">
+          {bars.map((h, i) => (
+            <div
+              key={i}
+              className="w-1 rounded-full flex-shrink-0"
+              style={{
+                height: `${h * 0.32}px`,
+                background: isOwn ? 'rgba(37,99,235,0.6)' : 'rgba(99,102,241,0.5)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 번역된 텍스트 */}
+      {translatedText && (
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+          {searchQuery ? highlightText(translatedText, searchQuery) : translatedText}
+        </p>
+      )}
+
+      {/* 원문 (번역 전) */}
+      {originalText && translatedText && originalText !== translatedText && (
+        <p className="text-xs italic leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--ink-4)' }}>
+          {searchQuery ? highlightText(originalText, searchQuery) : originalText}
+        </p>
       )}
     </div>
   )
