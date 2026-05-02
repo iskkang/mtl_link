@@ -25,20 +25,8 @@ export function useMessageTranslation(
   message: MessageWithSender,
   myLanguage: string,
 ): TranslationState {
-  const [translatedText, setTranslatedText] = useState<string | null>(() => {
-    // Hydrate from cache immediately on mount
-    const key = `${message.id}:${myLanguage}`
-    return cache.get(key) ?? null
-  })
-  const [isTranslating, setIsTranslating] = useState(false)
-  const mounted = useRef(true)
+  const srcLang = message.source_language
 
-  useEffect(() => {
-    mounted.current = true
-    return () => { mounted.current = false }
-  }, [])
-
-  const srcLang  = message.source_language
   const isTranslatable =
     message.message_type === 'text' &&
     message._status === 'sent' &&
@@ -48,18 +36,45 @@ export function useMessageTranslation(
     srcLang !== myLanguage &&
     !shouldSkip(message.content)
 
+  const [translatedText, setTranslatedText] = useState<string | null>(() => {
+    if (!isTranslatable) return null
+    const key = `${message.id}:${myLanguage}`
+    // 1. In-memory cache (fastest)
+    if (cache.has(key)) return cache.get(key)!
+    // 2. DB-cached translation joined from message_translations
+    const dbText = message.translations?.find(t => t.language === myLanguage)?.translated_text
+    if (dbText) { cache.set(key, dbText); return dbText }
+    return null
+  })
+
+  const [isTranslating, setIsTranslating] = useState(false)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
   useEffect(() => {
     if (!isTranslatable || !message.content || !srcLang) return
 
     const key = `${message.id}:${myLanguage}`
 
-    // Memory cache hit — already set in initializer or previous effect
+    // 1. Memory cache hit
     if (cache.has(key)) {
       setTranslatedText(cache.get(key)!)
       return
     }
 
-    // Deduplicate in-flight requests for the same key
+    // 2. DB-cached translation from joined data (populated after fetch/re-fetch)
+    const dbText = message.translations?.find(t => t.language === myLanguage)?.translated_text
+    if (dbText) {
+      cache.set(key, dbText)
+      setTranslatedText(dbText)
+      return
+    }
+
+    // 3. Deduplicate in-flight Edge Function requests
     if (pending.has(key)) return
 
     pending.add(key)
@@ -86,7 +101,9 @@ export function useMessageTranslation(
         pending.delete(key)
         if (mounted.current) setIsTranslating(false)
       })
-  }, [message.id, message.content, message.room_id, myLanguage, isTranslatable, srcLang])
+  // message.translations added: re-run when DB join data arrives after Realtime re-fetch
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message.id, message.content, message.room_id, message.translations, myLanguage, isTranslatable, srcLang])
 
   return { translatedText, isTranslating, isTranslatable }
 }

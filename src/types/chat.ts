@@ -21,6 +21,8 @@ export interface MessageWithSender extends Message {
   sender:        Pick<Profile, 'id' | 'name' | 'avatar_url'> | null
   attachments:   Attachment[]
   reply_message: ReplyRef | null
+  /** DB에서 join된 번역 캐시 (message_translations 테이블) */
+  translations?: { language: string; translated_text: string }[]
   /** Optimistic UI용 로컬 ID */
   _localId?: string
   /** 전송 상태 */

@@ -25,7 +25,8 @@ export const MSG_SELECT = `
     message_type,
     deleted_at,
     sender:profiles(id, name)
-  )
+  ),
+  translations:message_translations(language, translated_text)
 ` as const
 
 type RawReplyMessage = {
@@ -115,6 +116,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         ...next[idIdx],
         ...incoming,
         attachments:   next[idIdx].attachments,
+        translations:  incoming.translations  ?? next[idIdx].translations,
         sender:        incoming.sender        ?? next[idIdx].sender,
         reply_message: incoming.reply_message ?? next[idIdx].reply_message,
       }
