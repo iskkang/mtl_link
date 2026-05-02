@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mic, Globe, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
+import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -288,9 +288,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             {isVoice && !isFailed && !isSending && (
               <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
                 <Mic size={9} />
+                <span className="mx-0.5">✦</span>
                 {message.source_language?.toUpperCase()}
                 {message.target_language && (
-                  <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
+                  <> → {message.target_language.toUpperCase()}</>
                 )}
               </span>
             )}
@@ -299,9 +300,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             {isOcr && !isFailed && !isSending && (
               <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
                 <ScanText size={9} />
+                <span className="mx-0.5">✦</span>
                 {message.source_language?.toUpperCase()}
                 {message.target_language && (
-                  <><Globe size={9} className="ml-0.5" />{message.target_language.toUpperCase()}</>
+                  <> → {message.target_language.toUpperCase()}</>
                 )}
               </span>
             )}
@@ -309,7 +311,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             {/* 자동 텍스트 번역 배지 */}
             {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && (
               <span className="text-[10px] flex items-center gap-0.5" style={{ color: 'var(--ink-4)' }}>
-                <Globe size={9} />
+                <span>✦</span>
                 {message.source_language?.toUpperCase()} → {myLanguage.toUpperCase()}
               </span>
             )}

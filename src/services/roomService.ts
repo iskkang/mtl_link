@@ -35,7 +35,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
   const memberIds = [...new Set((allMems ?? []).map(m => m.user_id))]
   const { data: profiles, error: e4 } = await supabase
     .from('profiles')
-    .select('id, name, avatar_url')
+    .select('id, name, avatar_url, preferred_language')
     .in('id', memberIds)
   if (e4) throw e4
 
@@ -58,7 +58,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
 
   // 조합
   const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
-  const membersByRoom: Record<string, (Pick<Profile, 'id' | 'name' | 'avatar_url'> & { last_read_at: string | null })[]> = {}
+  const membersByRoom: Record<string, (Pick<Profile, 'id' | 'name' | 'avatar_url' | 'preferred_language'> & { last_read_at: string | null })[]> = {}
   for (const m of allMems ?? []) {
     if (!membersByRoom[m.room_id]) membersByRoom[m.room_id] = []
     const p = profileMap[m.user_id]

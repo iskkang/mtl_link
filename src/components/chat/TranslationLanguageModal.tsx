@@ -1,16 +1,15 @@
 import { useState } from 'react'
-import { X, Globe } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { TranslationTarget } from '../../types/chat'
 
 const LANGUAGES = [
-  { code: 'ko',   name: '한국어',    flag: '🇰🇷' },
-  { code: 'en',   name: 'English',   flag: '🇺🇸' },
-  { code: 'ru',   name: 'Русский',   flag: '🇷🇺' },
-  { code: 'zh',   name: '中文',      flag: '🇨🇳' },
-  { code: 'ja',   name: '日本語',    flag: '🇯🇵' },
-  { code: 'uz',   name: "O'zbek",   flag: '🇺🇿' },
-  { code: 'none', name: '번역 안 함', flag: '🚫' },
+  { code: 'ko', flagCode: 'KR', name: '한국어',  nativeName: '한국어'    },
+  { code: 'ru', flagCode: 'RU', name: '러시아어', nativeName: 'Русский'  },
+  { code: 'en', flagCode: 'US', name: '영어',    nativeName: 'English'  },
+  { code: 'uz', flagCode: 'UZ', name: '우즈벡어', nativeName: "O'zbek"  },
+  { code: 'zh', flagCode: 'CN', name: '중국어',  nativeName: '中文'     },
+  { code: 'ja', flagCode: 'JP', name: '일본어',  nativeName: '日本語'   },
 ]
 
 interface Props {
@@ -23,35 +22,28 @@ interface Props {
 
 export function TranslationLanguageModal({
   toUserId,
-  toUserName,
+  toUserName: _toUserName,
   currentLanguage,
   onSaved,
   onClose,
 }: Props) {
-  const [selected, setSelected] = useState(currentLanguage || 'none')
+  const [selected, setSelected] = useState(currentLanguage === 'none' ? 'ko' : currentLanguage)
   const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
 
-  const handleSave = async () => {
-    if (!toUserId) return
+  const handleSelect = async (code: string) => {
+    if (code === selected || !toUserId) return
+    setSelected(code)
     setSaving(true)
-    setError(null)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('인증되지 않았습니다')
-
-      const { error: upsertError } = await supabase
+      if (!user) return
+      await supabase
         .from('translation_preferences')
         .upsert(
-          { from_user_id: user.id, to_user_id: toUserId, target_language: selected as TranslationTarget },
+          { from_user_id: user.id, to_user_id: toUserId, target_language: code as TranslationTarget },
           { onConflict: 'from_user_id,to_user_id' },
         )
-      if (upsertError) throw upsertError
-
-      onSaved(selected)
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '저장 실패')
+      onSaved(code)
     } finally {
       setSaving(false)
     }
@@ -59,92 +51,91 @@ export function TranslationLanguageModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={onClose}
     >
       <div
-        className="relative w-80 rounded-2xl shadow-2xl border p-5"
-        style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+        className="relative w-[340px] rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: 'var(--card)', border: '1px solid var(--line)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Globe size={16} style={{ color: 'var(--blue)' }} />
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-              {toUserName}에게 번역 언어
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg transition-colors"
-            style={{ color: 'var(--ink-4)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            aria-label="닫기"
-          >
-            <X size={15} />
-          </button>
+        <div className="px-5 pt-5 pb-3">
+          <h3 className="text-[15px] font-bold mb-1" style={{ color: 'var(--ink)' }}>
+            받는 언어 변경
+          </h3>
+          <p className="text-[12px] leading-relaxed" style={{ color: 'var(--ink-3)' }}>
+            상대방이 어떤 언어로 보내든, 내가 선택한 언어로 번역되어 도착해요.
+          </p>
         </div>
 
+        {/* 구분선 */}
+        <div style={{ height: '1px', background: 'var(--line)' }} />
+
         {/* 언어 목록 */}
-        <div className="space-y-0.5 mb-4">
-          {LANGUAGES.map(l => {
-            const isSelected = selected === l.code
+        <div className="py-1">
+          {LANGUAGES.map(lang => {
+            const isActive = selected === lang.code
             return (
-              <label
-                key={l.code}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
+              <button
+                key={lang.code}
+                onClick={() => handleSelect(lang.code)}
+                disabled={saving}
+                className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left"
                 style={{
-                  background: isSelected ? 'rgba(37,99,235,0.08)' : 'transparent',
-                  color: isSelected ? 'var(--ink)' : 'var(--ink-2)',
+                  background: isActive ? 'rgba(37,99,235,0.07)' : 'transparent',
+                  border: isActive ? '1px solid rgba(37,99,235,0.18)' : '1px solid transparent',
+                  borderRadius: isActive ? '10px' : '0',
+                  margin: isActive ? '2px 8px' : '0',
+                  width: isActive ? 'calc(100% - 16px)' : '100%',
                 }}
-                onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLLabelElement).style.background = 'var(--bg)' }}
-                onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLLabelElement).style.background = 'transparent' }}
+                onMouseEnter={e => {
+                  if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)'
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
               >
-                <input
-                  type="radio"
-                  name="lang"
-                  value={l.code}
-                  checked={isSelected}
-                  onChange={e => setSelected(e.target.value)}
-                  className="sr-only"
-                />
-                <span className="text-base leading-none">{l.flag}</span>
-                <span className="text-sm font-medium">{l.name}</span>
-                {isSelected && (
-                  <span
-                    className="ml-auto w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--blue)' }}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                  </span>
+                {/* 국가 코드 */}
+                <span
+                  className="w-8 text-[11px] font-black font-mono-ui text-center flex-shrink-0"
+                  style={{ color: isActive ? 'var(--blue)' : 'var(--ink-3)' }}
+                >
+                  {lang.flagCode}
+                </span>
+
+                {/* 언어 이름 */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--ink)' }}>
+                    {lang.name}
+                  </p>
+                  <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--ink-4)' }}>
+                    {lang.nativeName}
+                  </p>
+                </div>
+
+                {/* 체크마크 */}
+                {isActive && (
+                  <Check size={16} className="flex-shrink-0" style={{ color: 'var(--blue)' }} />
                 )}
-              </label>
+              </button>
             )
           })}
         </div>
 
-        {error && <p className="mb-3 text-xs text-red-500">{error}</p>}
+        {/* 구분선 */}
+        <div style={{ height: '1px', background: 'var(--line)' }} />
 
-        {/* 버튼 */}
-        <div className="flex gap-2 justify-end">
+        {/* 닫기 버튼 */}
+        <div className="flex justify-end px-5 py-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-xl transition-colors"
-            style={{ color: 'var(--ink-3)' }}
+            className="px-5 py-2 text-[13px] font-medium rounded-xl transition-colors"
+            style={{ color: 'var(--ink-2)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            취소
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !toUserId}
-            className="px-4 py-2 text-sm rounded-xl font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            style={{ background: 'var(--blue)' }}
-          >
-            {saving ? '저장 중…' : '저장'}
+            닫기
           </button>
         </div>
       </div>

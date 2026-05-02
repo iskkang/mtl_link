@@ -57,7 +57,7 @@ export function Sidebar({
               className="text-[9px] leading-none font-mono-ui tracking-widest uppercase mt-0.5 block"
               style={{ color: 'var(--side-mute)' }}
             >
-              logistics
+              multilingual chat
             </span>
           </div>
         </div>

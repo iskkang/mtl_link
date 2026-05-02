@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Sun, Moon, MessageCircle, ArrowLeft, Users, X, Search } from 'lucide-react'
+import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Phone, Video, Globe, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -104,6 +104,27 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     ? room.members.find(m => m.id !== currentUserId) ?? null
     : null
 
+  const LANG_KO: Record<string, string> = {
+    ko: '한국어', en: '영어', ru: '러시아어', zh: '중국어', ja: '일본어', uz: '우즈벡어',
+  }
+
+  const peerLang = peer?.preferred_language
+  const groupLangs = isGroup
+    ? [...new Set(room!.members.map(m => LANG_KO[m.preferred_language] ?? m.preferred_language))].join(', ')
+    : ''
+
+  const headerSubtitle = isGroup
+    ? `${memberCount}명 · ${groupLangs}`
+    : peerLang
+      ? `온라인 · ${LANG_KO[peerLang]} 사용`
+      : t('onlineStatus')
+
+  const langBtnLabel = isGroup
+    ? '각자 모국어로'
+    : (targetLanguage && targetLanguage !== 'none')
+      ? `내 언어: ${LANG_KO[targetLanguage] ?? targetLanguage.toUpperCase()}`
+      : '내 언어 설정'
+
   // 파일 선택/드롭 → 검증 후 pendingFiles에 추가
   const handleFilesSelected = useCallback((newFiles: File[]) => {
     const combined = [...pendingFiles, ...newFiles]
@@ -171,7 +192,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
     <div className="flex flex-col h-full">
 
       {/* ── 채팅창 헤더 ──────────────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-3 flex-shrink-0 chat-header"
+      <header className="flex items-center justify-between px-4 py-2.5 flex-shrink-0 chat-header"
               style={{
                 background: 'var(--card)',
                 borderBottom: '1px solid var(--line)',
@@ -194,19 +215,25 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
           {room && displayName && avatarInfo ? (
             <div className="flex items-center gap-3 min-w-0">
               {isGroup ? (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-[11px] font-bold"
                      style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
-                  <Users size={16} className="text-white" />
+                  {(displayName ?? '그룹').slice(0, 2)}
                 </div>
               ) : (
-                <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} size="sm" />
+                <div className="relative flex-shrink-0">
+                  <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} size="sm" />
+                  <span
+                    className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
+                    style={{ background: 'var(--green)', borderColor: 'var(--card)' }}
+                  />
+                </div>
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
+                <p className="text-[13px] font-semibold truncate leading-tight" style={{ color: 'var(--ink)' }}>
                   {displayName}
                 </p>
-                <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
-                  {isGroup ? t('memberCount', { count: memberCount }) : t('onlineStatus')}
+                <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--ink-3)' }}>
+                  {headerSubtitle}
                 </p>
               </div>
             </div>
@@ -224,33 +251,100 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+          {/* 번역 언어 버튼 */}
           {room && (
             <button
-              onClick={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
-              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-[#1E293B]"
-              style={{ color: searchOpen ? 'var(--blue)' : 'var(--ink-3)' }}
-              title="메시지 검색"
+              onClick={() => !isGroup && setTranslationOpen(true)}
+              disabled={isGroup}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium
+                         transition-colors border"
+              style={{
+                borderColor: 'rgba(37,99,235,0.3)',
+                color: 'var(--blue)',
+                background: 'rgba(37,99,235,0.05)',
+                cursor: isGroup ? 'default' : 'pointer',
+              }}
+              title={isGroup ? '' : t('translationSetting')}
             >
-              <Search size={18} />
+              <Globe size={13} />
+              {langBtnLabel}
+              {!isGroup && <ChevronDown size={11} />}
             </button>
           )}
-          <button
-            onClick={toggle}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1E293B] transition-colors"
-            style={{ color: 'var(--ink-3)' }}
-            aria-label="테마 전환"
-            title={t('themeToggle')}
-          >
-            {mode === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-          </button>
 
+          {/* 통화 버튼들 */}
           {room && (
-            <RoomMenu
-              isOwner={isOwner}
-              isDirect={isDirect}
-              onLeave={() => setLeaveOpen(true)}
-              onDelete={() => setDeleteOpen(true)}
-            />
+            <>
+              <button
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ink-3)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                title="음성 통화"
+              >
+                <Phone size={17} />
+              </button>
+              <button
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ink-3)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                title="영상 통화"
+              >
+                <Video size={17} />
+              </button>
+            </>
+          )}
+
+          {/* Light / Dark 토글 */}
+          <div className="flex items-center rounded-full border overflow-hidden ml-1"
+               style={{ borderColor: 'var(--line)' }}>
+            <button
+              onClick={() => mode === 'dark' && toggle()}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+              style={{
+                color: mode === 'light' ? 'var(--card)' : 'var(--ink-3)',
+                background: mode === 'light' ? 'var(--ink-2)' : 'transparent',
+              }}
+              title="라이트 모드"
+            >
+              <Sun size={12} />
+              Light
+            </button>
+            <button
+              onClick={() => mode === 'light' && toggle()}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+              style={{
+                color: mode === 'dark' ? 'var(--card)' : 'var(--ink-3)',
+                background: mode === 'dark' ? 'var(--ink-2)' : 'transparent',
+              }}
+              title="다크 모드"
+            >
+              <Moon size={12} />
+              Dark
+            </button>
+          </div>
+
+          {/* 검색 + 방 메뉴 */}
+          {room && (
+            <>
+              <button
+                onClick={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: searchOpen ? 'var(--blue)' : 'var(--ink-3)' }}
+                onMouseEnter={e => { if (!searchOpen) (e.currentTarget.style.background = 'var(--bg)') }}
+                onMouseLeave={e => { if (!searchOpen) (e.currentTarget.style.background = 'transparent') }}
+                title="메시지 검색"
+              >
+                <Search size={17} />
+              </button>
+              <RoomMenu
+                isOwner={isOwner}
+                isDirect={isDirect}
+                onLeave={() => setLeaveOpen(true)}
+                onDelete={() => setDeleteOpen(true)}
+              />
+            </>
           )}
         </div>
       </header>
@@ -294,6 +388,20 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
           )}
 
           <div className="flex-1 flex flex-col overflow-hidden relative">
+            {/* 번역 안내 배너 */}
+            {targetLanguage && targetLanguage !== 'none' && (
+              <div
+                className="mx-4 mt-3 mb-1 px-4 py-2.5 rounded-xl text-[12px] text-center leading-relaxed flex-shrink-0"
+                style={{
+                  background: 'var(--blue-soft)',
+                  color: 'var(--ink-2)',
+                  border: '1px solid rgba(37,99,235,0.12)',
+                }}
+              >
+                ✦ <strong style={{ color: 'var(--blue)' }}>MTL Link</strong>이 자동으로 메시지를 번역하고 있어요.
+                메시지를 클릭하면 원문을 볼 수 있습니다.
+              </div>
+            )}
             <MessageList
               messages={messages}
               loading={loading}
@@ -352,6 +460,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect }: Pr
             onChange={setDraft}
             onSend={handleSend}
             hasPendingFiles={pendingFiles.length > 0}
+            targetLanguage={targetLanguage}
+            roomName={displayName ?? undefined}
           />
         </DragDropZone>
       ) : (

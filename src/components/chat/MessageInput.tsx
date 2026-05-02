@@ -4,17 +4,23 @@ import { useTranslation } from 'react-i18next'
 import { getUserFriendlyMessage } from '../../lib/errors'
 
 interface Props {
-  value:           string
-  onChange:        (v: string) => void
-  onSend:          (content: string) => Promise<void>
-  disabled?:       boolean
+  value:            string
+  onChange:         (v: string) => void
+  onSend:           (content: string) => Promise<void>
+  disabled?:        boolean
   hasPendingFiles?: boolean
+  targetLanguage?:  string | null
+  roomName?:        string
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles }: Props) {
+const LANG_KO: Record<string, string> = {
+  ko: '한국어', en: '영어', ru: '러시아어', zh: '중국어', ja: '일본어', uz: '우즈벡어',
+}
+
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage }: Props) {
   const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
   const [error,     setError]     = useState<string | null>(null)
@@ -59,10 +65,12 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
   }
 
   const remaining = MAX_LEN - value.length
+  const activeTranslation = targetLanguage && targetLanguage !== 'none'
+  const myLangName = activeTranslation ? (LANG_KO[targetLanguage!] ?? targetLanguage!.toUpperCase()) : null
 
   return (
     <div
-      className="composer-panel flex-shrink-0 px-3 py-3 border-t"
+      className="composer-panel flex-shrink-0 px-3 pt-2 pb-2 border-t"
       style={{ background: 'var(--card)', borderColor: 'var(--line)', boxShadow: 'var(--shadow-panel)' }}
     >
       {error && (
@@ -122,6 +130,23 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
             : <Send size={15} className="translate-x-0.5" />
           }
         </button>
+      </div>
+
+      {/* 키보드 힌트 */}
+      <div className="flex items-center justify-between mt-1.5 px-1">
+        <p className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
+          <kbd className="font-mono-ui">Enter</kbd>
+          <span className="mx-1" style={{ color: 'var(--ink-4)' }}>전송 ·</span>
+          <kbd className="font-mono-ui">Shift</kbd>
+          <span className="mx-0.5">+</span>
+          <kbd className="font-mono-ui">Enter</kbd>
+          <span className="ml-1">줄바꿈</span>
+        </p>
+        {myLangName && (
+          <p className="text-[10px] text-right" style={{ color: 'var(--ink-4)' }}>
+            ✦ {myLangName}로 입력하면 상대방의 언어로 자동 번역됩니다
+          </p>
+        )}
       </div>
     </div>
   )

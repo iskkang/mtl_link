@@ -31,7 +31,7 @@ export interface MessageWithSender extends Message {
 
 /** 방 목록 아이템 (사이드바용) */
 export interface RoomListItem extends Room {
-  members:      (Pick<Profile, 'id' | 'name' | 'avatar_url'> & { last_read_at: string | null })[]
+  members:      (Pick<Profile, 'id' | 'name' | 'avatar_url' | 'preferred_language'> & { last_read_at: string | null })[]
   unread_count: number
   is_pinned:    boolean
   is_muted:     boolean
