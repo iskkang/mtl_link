@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRoomStore } from '../stores/roomStore'
 import { getRoomDisplayName } from '../services/roomService'
+import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '../services/pushNotificationService'
 import type { Message } from '../types/chat'
 
 const NOTIF_KEY = 'mtl_notif'
@@ -37,13 +38,23 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
   const [showPrompt, setShowPrompt] = useState(false)
   const promptShownRef = useRef(false)
 
-  const toggleNotif = () => {
+  const toggleNotif = async () => {
     const next = !notifEnabledRef.current
     setNotifEnabled(next)
     notifEnabledRef.current = next
     localStorage.setItem(NOTIF_KEY, next ? 'on' : 'off')
-    if (next && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
+
+    if (next) {
+      if ('Notification' in window && Notification.permission === 'default') {
+        const perm = await Notification.requestPermission()
+        if (perm === 'granted') {
+          subscribeToPushNotifications().catch(() => {})
+        }
+      } else if (Notification.permission === 'granted') {
+        subscribeToPushNotifications().catch(() => {})
+      }
+    } else {
+      unsubscribeFromPushNotifications().catch(() => {})
     }
   }
 
@@ -56,6 +67,7 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
         setNotifEnabled(true)
         notifEnabledRef.current = true
         localStorage.setItem(NOTIF_KEY, 'on')
+        subscribeToPushNotifications().catch(() => {})
       }
     }
   }

@@ -69,6 +69,11 @@ export async function sendTextMessage(
       attachments:   [],
       reply_message: replyMessage ?? null,
     })
+
+    // 푸시 알림 (실패해도 메시지 전송에 영향 없음)
+    supabase.functions.invoke('send-push-notification', {
+      body: { roomId, senderId: user.id, body: trimmed.slice(0, 100) },
+    }).catch(() => {})
   } catch (err) {
     useMessageStore.getState().updateStatus(roomId, localId, 'failed')
     throw err
@@ -183,6 +188,12 @@ export async function sendFileMessage(
       const reasons = failed.map(r => r.reason instanceof Error ? r.reason.message : String(r.reason))
       throw new Error(reasons[0])
     }
+
+    // 푸시 알림
+    const pushBody = msgType === 'image' ? '📷 사진' : '📎 파일'
+    supabase.functions.invoke('send-push-notification', {
+      body: { roomId, senderId: user.id, body: pushBody },
+    }).catch(() => {})
 
   } finally {
     window.removeEventListener('beforeunload', onBeforeUnload)

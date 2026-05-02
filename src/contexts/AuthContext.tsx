@@ -9,6 +9,7 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useRoomStore } from '../stores/roomStore'
+import { subscribeToPushNotifications } from '../services/pushNotificationService'
 import type { Profile } from '../types/chat'
 
 interface AuthContextValue {
@@ -61,7 +62,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => {
             if (!active) return
             fetchProfile(currentUser.id).finally(() => {
-              if (active) setLoading(false)
+              if (!active) return
+              setLoading(false)
+              // 이미 알림 허용된 경우 구독 갱신 (조용히)
+              if (
+                localStorage.getItem('mtl_notif') !== 'off' &&
+                'Notification' in window &&
+                Notification.permission === 'granted'
+              ) {
+                subscribeToPushNotifications().catch(() => {})
+              }
             })
           }, 0)
         } else {

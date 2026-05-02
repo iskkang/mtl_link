@@ -62,4 +62,9 @@ export async function sendVoiceTranslatedMessage({
     attachments:   [],
     reply_message: null,
   })
+
+  // 푸시 알림
+  supabase.functions.invoke('send-push-notification', {
+    body: { roomId, senderId: user.id, body: '🎤 음성 메시지' },
+  }).catch(() => {})
 }
