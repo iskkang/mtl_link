@@ -12,6 +12,7 @@ export async function sendTextMessage(
   sourceLanguage?: string,
   replyToId?: string | null,
   replyMessage?: ReplyRef | null,
+  needsResponse?: boolean,
 ): Promise<void> {
   const trimmed = content.trim()
   if (!trimmed) throw new Error('메시지가 비어있습니다')
@@ -40,7 +41,7 @@ export async function sendTextMessage(
     created_at:           now,
     edited_at:            null,
     deleted_at:           null,
-    needs_response:       false,
+    needs_response:       needsResponse ?? false,
     response_received:    false,
     followup_reminded_at: null,
     sender:               null,
@@ -59,6 +60,7 @@ export async function sendTextMessage(
         content:         trimmed,
         source_language: srcLang,
         reply_to_id:     replyToId ?? null,
+        needs_response:  needsResponse || false,
       })
       .select()
       .single()

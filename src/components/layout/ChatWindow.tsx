@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Globe, ChevronDown } from 'lucide-react'
+import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Globe, ChevronDown, ClipboardCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -53,6 +53,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [freshPeerLang,   setFreshPeerLang]   = useState<string | null>(null)
   const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
   const [fileUploading,   setFileUploading]  = useState(false)
+  const [isRequest,       setIsRequest]       = useState(false)
 
   // 검색 상태
   const [searchOpen,   setSearchOpen]   = useState(false)
@@ -83,6 +84,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     setReplyTo(null)
     setTargetLanguage(null)
     setPendingFiles([])
+    setIsRequest(false)
     setSearchOpen(false)
     setSearchQuery('')
     setGlobalOpen(false)
@@ -150,7 +152,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const handleSend = useCallback(async (content: string) => {
     if (!roomId) return
     const current = replyTo
+    const reqFlag = isRequest
     setReplyTo(null)
+    setIsRequest(false)
     const ref: ReplyRef | null = current
       ? { id: current.id, content: current.content, message_type: current.message_type, deleted_at: current.deleted_at, sender: current.sender }
       : null
@@ -167,9 +171,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         setFileUploading(false)
       }
     } else {
-      await send(content, current?.id ?? null, ref)
+      await send(content, current?.id ?? null, ref, reqFlag)
     }
-  }, [replyTo, send, pendingFiles, roomId])
+  }, [replyTo, isRequest, send, pendingFiles, roomId])
 
   const scrollToMessage = useCallback((messageId: string) => {
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
@@ -453,7 +457,32 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
             targetLanguage={targetLanguage}
             peerLanguage={effectivePeerLang ?? null}
             onOpenTranslationModal={() => setTranslationOpen(true)}
+            isRequest={isRequest}
+            onToggleRequest={() => setIsRequest(v => !v)}
           />
+
+          {/* 요청 활성 배너 */}
+          {isRequest && (
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 flex-shrink-0 border-t text-xs"
+              style={{
+                background: 'rgba(234,179,8,0.08)',
+                borderColor: 'rgba(234,179,8,0.3)',
+                color: '#CA8A04',
+              }}
+            >
+              <ClipboardCheck size={13} className="flex-shrink-0" />
+              <span>{t('inputRequestActive')}</span>
+              <button
+                onClick={() => setIsRequest(false)}
+                className="ml-auto flex-shrink-0"
+                style={{ color: 'var(--ink-4)' }}
+                aria-label="요청 취소"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
 
           {/* 전송 전 파일 미리보기 */}
           {pendingFiles.length > 0 && (

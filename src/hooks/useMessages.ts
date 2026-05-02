@@ -38,8 +38,8 @@ export function useMessages(roomId: string | null) {
     messages: roomId ? (store.messagesByRoom[roomId] ?? []) : [],
     loading:  roomId ? (store.loadingByRoom[roomId] ?? false) : false,
     hasMore:  roomId ? (store.hasMoreByRoom[roomId] ?? false) : false,
-    send: (content: string, replyToId?: string | null, replyMessage?: ReplyRef | null) =>
-      sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage),
+    send: (content: string, replyToId?: string | null, replyMessage?: ReplyRef | null, needsResponse?: boolean) =>
+      sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage, needsResponse),
     loadMore,
   }
 }

@@ -60,6 +60,15 @@ export async function getReceivedRequests(): Promise<RequestItem[]> {
   return (data ?? []).map(m => toItem(m as Record<string, unknown>, now))
 }
 
+/** 요청 플래그 토글 */
+export async function toggleRequestFlag(messageId: string, value: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('messages')
+    .update({ needs_response: value })
+    .eq('id', messageId)
+  if (error) throw error
+}
+
 /** 내가 보냈는데 아직 답변 못 받은 질문 */
 export async function getSentRequests(): Promise<RequestItem[]> {
   const { data: { user } } = await supabase.auth.getUser()

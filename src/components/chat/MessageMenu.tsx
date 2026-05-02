@@ -3,18 +3,19 @@ import { MoreHorizontal, Pencil, Trash2, CheckSquare, Clock, CheckCheck } from '
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  canEdit:          boolean
-  canDelete:        boolean
-  onEdit:           () => void
-  onDelete:         () => void
-  onCreateTask:     () => void
-  needsResponse?:   boolean
-  responseReceived?:boolean
-  onMarkFollowup?:  () => void
-  onMarkReceived?:  () => void
+  canEdit:           boolean
+  canDelete:         boolean
+  onEdit:            () => void
+  onDelete:          () => void
+  onCreateTask:      () => void
+  needsResponse?:    boolean
+  responseReceived?: boolean
+  onMarkFollowup?:   () => void
+  onUnmarkRequest?:  () => void
+  onMarkReceived?:   () => void
 }
 
-export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask, needsResponse, responseReceived, onMarkFollowup, onMarkReceived }: Props) {
+export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask, needsResponse, responseReceived, onMarkFollowup, onUnmarkRequest, onMarkReceived }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -61,8 +62,8 @@ export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask
             {t('msgCreateTask')}
           </button>
 
-          {/* Follow-up options — own messages only */}
-          {canDelete && (onMarkFollowup || onMarkReceived) && (
+          {/* Request options — own messages only */}
+          {canDelete && (onMarkFollowup || onUnmarkRequest || onMarkReceived) && (
             <>
               <div className="my-0.5 mx-2 border-t" style={{ borderColor: 'var(--line)' }} />
 
@@ -75,7 +76,20 @@ export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask
                   onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
                 >
                   <Clock size={13} className="flex-shrink-0" />
-                  {t('followupMark')}
+                  {t('msgMenuMarkRequest')}
+                </button>
+              )}
+
+              {needsResponse && onUnmarkRequest && (
+                <button
+                  onClick={() => { setOpen(false); onUnmarkRequest() }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
+                  style={{ color: 'var(--ink-3)' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+                >
+                  <Clock size={13} className="flex-shrink-0 opacity-50" />
+                  {t('msgMenuUnmarkRequest')}
                 </button>
               )}
 

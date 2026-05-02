@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { FollowupBadge } from './FollowupBadge'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
-import { Mic, AlertCircle, Clock, CornerDownLeft, ScanText } from 'lucide-react'
+import { useRequestStore } from '../../stores/requestStore'
+import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, CornerDownLeft, ScanText } from 'lucide-react'
 import { getLangFlag } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -73,6 +74,17 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
     try {
       await toggleNeedsResponse(message.id, true)
       upsertMessage(message.room_id!, { ...message, needs_response: true })
+      void useRequestStore.getState().loadCounts()
+    } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
+  }
+
+  const handleUnmarkRequest = async () => {
+    if (followupBusy) return
+    setFollowupBusy(true)
+    try {
+      await toggleNeedsResponse(message.id, false)
+      upsertMessage(message.room_id!, { ...message, needs_response: false })
+      void useRequestStore.getState().loadCounts()
     } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
   }
 
@@ -82,6 +94,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
     try {
       await markResponseReceived(message.id)
       upsertMessage(message.room_id!, { ...message, response_received: true })
+      void useRequestStore.getState().loadCounts()
     } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
   }
 
@@ -101,6 +114,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       </div>
     )
   }
+
+  const isRequestPending  = (message.needs_response ?? false) && !(message.response_received ?? false)
+  const isRequestAnswered = (message.needs_response ?? false) && (message.response_received ?? false)
 
   const isVoice   = message.message_type === 'voice_translated'
   const isOcr     = message.message_type === 'text_translated' && !!message.content_original
@@ -184,6 +200,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             needsResponse={message.needs_response}
             responseReceived={message.response_received}
             onMarkFollowup={handleMarkFollowup}
+            onUnmarkRequest={handleUnmarkRequest}
             onMarkReceived={handleMarkReceived}
           />
         </div>
@@ -206,17 +223,35 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
             ${isSending ? 'opacity-60' : ''}
           `}
-          style={isOwn ? {
-            background: 'var(--bubble-out)',
-            border: '1px solid var(--bubble-out-bd)',
-            color: 'var(--ink)',
-          } : {
-            background: 'var(--bubble-in)',
-            border: '1px solid var(--line)',
-            color: 'var(--ink)',
-            boxShadow: 'var(--shadow-sm)',
+          style={{
+            ...(isOwn ? {
+              background: 'var(--bubble-out)',
+              border: '1px solid var(--bubble-out-bd)',
+              color: 'var(--ink)',
+            } : {
+              background: 'var(--bubble-in)',
+              border: '1px solid var(--line)',
+              color: 'var(--ink)',
+              boxShadow: 'var(--shadow-sm)',
+            }),
+            ...(isRequestPending  ? { borderLeft: '3px solid #EAB308' } : {}),
+            ...(isRequestAnswered ? { borderLeft: '3px solid #22C55E' } : {}),
           }}
         >
+
+          {/* 요청 표시 (수신 메시지에만 노출 — 발신은 meta 행의 FollowupBadge로 표시) */}
+          {!isOwn && isRequestPending && (
+            <div className="flex items-center gap-1 mb-1.5" style={{ fontSize: '10px', color: '#CA8A04' }}>
+              <ClipboardCheck size={10} style={{ flexShrink: 0 }} />
+              <span>{t('followupWaiting')}</span>
+            </div>
+          )}
+          {!isOwn && isRequestAnswered && (
+            <div className="flex items-center gap-1 mb-1.5" style={{ fontSize: '10px', color: '#22C55E' }}>
+              <CheckCheck size={10} style={{ flexShrink: 0 }} />
+              <span>{t('followupReceived')}</span>
+            </div>
+          )}
 
           {/* 첨부파일 */}
           {message.attachments && message.attachments.length > 0 && (
