@@ -213,7 +213,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               displayText={(isTranslatable && translatedText) ? translatedText : (message.content ?? null)}
               spokenText={message.content_original ?? null}
               sourceLanguage={message.source_language ?? null}
-              targetLanguage={message.target_language ?? null}
               myLanguage={myLanguage}
               isTranslating={isTranslating}
               isOwn={isOwn}
@@ -371,9 +370,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 function VoiceBubbleContent({
   displayText,
   spokenText,
-  sourceLanguage,
-  targetLanguage,
-  myLanguage,
   isTranslating,
   searchQuery,
 }: {
@@ -381,14 +377,11 @@ function VoiceBubbleContent({
   displayText:    string | null
   spokenText:     string | null
   sourceLanguage: string | null
-  targetLanguage: string | null
   myLanguage:     string
   isTranslating:  boolean
   isOwn:          boolean
   searchQuery:    string
 }) {
-  const showLangBadge = sourceLanguage && sourceLanguage !== myLanguage
-
   return (
     <div className="flex flex-col gap-1.5 min-w-[160px]">
       {/* 헤더: 마이크 아이콘 + 레이블 */}
