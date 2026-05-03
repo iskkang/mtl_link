@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
+import { Dashboard }          from './Dashboard'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom }   from '../services/roomService'
@@ -109,14 +110,18 @@ export default function ChatPage() {
         notifEnabled={notifEnabled}
         onToggleNotif={toggleNotif}
       >
-        <ChatWindow
-          roomId={selectedRoomId}
-          onBack={() => setShowChat(false)}
-          onLeaveOrDelete={handleLeaveOrDelete}
-          highlightMessageId={highlightMessageId}
-          notifEnabled={notifEnabled}
-          onToggleNotif={toggleNotif}
-        />
+        {selectedRoomId ? (
+          <ChatWindow
+            roomId={selectedRoomId}
+            onBack={() => setShowChat(false)}
+            onLeaveOrDelete={handleLeaveOrDelete}
+            highlightMessageId={highlightMessageId}
+            notifEnabled={notifEnabled}
+            onToggleNotif={toggleNotif}
+          />
+        ) : (
+          <Dashboard onSectionChange={setActiveSection} />
+        )}
       </AppLayout>
 
       <NewRoomModal

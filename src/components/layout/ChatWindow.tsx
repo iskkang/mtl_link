@@ -381,6 +381,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           />
         </DragDropZone>
       ) : (
+        // NOTE: This empty state is no longer reached in normal flow.
+        // Dashboard renders at ChatPage level when selectedRoomId is null.
+        // Kept as defensive fallback in case roomId is unexpectedly null.
         <EmptyState t={t} />
       )}
 
