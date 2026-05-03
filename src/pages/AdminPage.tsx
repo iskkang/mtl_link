@@ -134,7 +134,7 @@ export default function AdminPage() {
         {/* ── 통계 카드 ─────────────────────────────── */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: '전체 직원', value: profiles.length, color: 'text-mtl-cyan dark:text-accent' },
+            { label: '전체 직원', value: profiles.length, color: 'text-mtl-cyan dark:text-brand-500' },
             { label: '재직 중',   value: totalActive,     color: 'text-emerald-500 dark:text-emerald-400' },
             { label: '관리자',    value: totalAdmin,      color: 'text-mtl-navy dark:text-mtl-mist' },
             { label: '승인 대기', value: totalPending,    color: totalPending > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-[#8696a0]' },
@@ -188,8 +188,8 @@ export default function AdminPage() {
           <button
             onClick={() => setAddOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-                       bg-mtl-cyan dark:bg-accent text-white
-                       hover:bg-mtl-cyan/90 dark:hover:bg-accent-hover
+                       bg-mtl-cyan dark:bg-brand-500 text-white
+                       hover:bg-mtl-cyan/90 dark:hover:bg-brand-600
                        transition-colors shadow-sm flex-shrink-0"
           >
             <UserPlus size={15} /> 직원 추가
@@ -288,8 +288,8 @@ function EmployeeRow({
             <p className="text-sm font-medium text-gray-800 dark:text-[#e9edef] truncate flex items-center gap-1.5">
               {p.name}
               {isSelf && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-mtl-cyan/10 dark:bg-accent/10
-                                 text-mtl-cyan dark:text-accent font-medium">나</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-mtl-cyan/10 dark:bg-brand-500/10
+                                 text-mtl-cyan dark:text-brand-500 font-medium">나</span>
               )}
             </p>
             <p className="text-xs text-gray-400 dark:text-[#8696a0] truncate">{p.email}</p>
@@ -507,8 +507,8 @@ function AddUserModal({
             <button
               onClick={onCreated}
               className="w-full py-2.5 rounded-xl text-sm font-medium
-                         bg-mtl-cyan dark:bg-accent text-white
-                         hover:bg-mtl-cyan/90 dark:hover:bg-accent-hover transition-colors"
+                         bg-mtl-cyan dark:bg-brand-500 text-white
+                         hover:bg-mtl-cyan/90 dark:hover:bg-brand-600 transition-colors"
             >
               확인
             </button>
@@ -593,8 +593,8 @@ function AddUserModal({
                 type="submit"
                 disabled={submitting || !form.email.trim() || !form.name.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium
-                           bg-mtl-cyan dark:bg-accent text-white
-                           hover:bg-mtl-cyan/90 dark:hover:bg-accent-hover
+                           bg-mtl-cyan dark:bg-brand-500 text-white
+                           hover:bg-mtl-cyan/90 dark:hover:bg-brand-600
                            disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting

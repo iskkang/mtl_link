@@ -73,7 +73,7 @@ export function MessageEditInput({ initialValue, onSave, onCancel }: Props) {
           onClick={handleSave}
           disabled={loading || !value.trim()}
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50 transition-colors"
-          style={{ background: 'var(--blue)' }}
+          style={{ background: 'var(--brand)' }}
         >
           {loading && <Loader2 size={11} className="animate-spin" />}
           {t('msgEditSave')}

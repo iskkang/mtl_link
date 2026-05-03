@@ -232,7 +232,7 @@ function TasksPanel({
               className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold
                          border-b-2 transition-colors"
               style={{
-                borderColor: isActive ? 'var(--blue)' : 'transparent',
+                borderColor: isActive ? 'var(--brand)' : 'transparent',
                 color: isActive ? 'var(--side-text)' : 'var(--side-mute)',
               }}
             >
@@ -241,7 +241,7 @@ function TasksPanel({
                 <span
                   className="min-w-[14px] h-[14px] px-0.5 rounded-full text-white text-[9px]
                              font-bold flex items-center justify-center"
-                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--blue)' }}
+                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--brand)' }}
                 >
                   {count > 99 ? '99+' : count}
                 </span>
@@ -274,7 +274,7 @@ function EmptyRoomList({ onNewChat, t }: { onNewChat: () => void; t: (k: string)
         onClick={onNewChat}
         className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold
                    text-white transition-colors"
-        style={{ background: 'var(--blue)' }}
+        style={{ background: 'var(--brand)' }}
         onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
         onMouseLeave={e => (e.currentTarget.style.filter = '')}
       >

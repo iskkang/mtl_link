@@ -67,8 +67,8 @@ export function LanguageSwitcher() {
                 onClick={() => handleSelect(lang.code)}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors"
                 style={{
-                  color: isActive ? 'var(--blue)' : 'var(--ink)',
-                  background: isActive ? 'rgba(37,99,235,0.05)' : 'transparent',
+                  color: isActive ? 'var(--brand)' : 'var(--ink)',
+                  background: isActive ? 'rgba(51,144,236,0.05)' : 'transparent',
                   fontWeight: isActive ? 600 : 400,
                 }}
                 onMouseEnter={e => {
@@ -81,7 +81,7 @@ export function LanguageSwitcher() {
                 <span className="text-base leading-none">{lang.flag}</span>
                 <span>{lang.label}</span>
                 {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'var(--blue)' }} />
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'var(--brand)' }} />
                 )}
               </button>
             )

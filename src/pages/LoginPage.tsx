@@ -134,7 +134,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-center gap-2 mb-1">
-              <Ship size={16} style={{ color: 'var(--blue)' }} />
+              <Ship size={16} style={{ color: 'var(--brand)' }} />
               <span className="text-2xl font-bold tracking-wide" style={{ color: 'var(--ink)' }}>
                 MTL LINK
               </span>
@@ -221,7 +221,7 @@ export default function LoginPage() {
           <div className="mt-5 text-center">
             <Link
               to="/signup"
-              className="inline-block text-xs font-medium text-mtl-cyan dark:text-accent
+              className="inline-block text-xs font-medium text-mtl-cyan dark:text-brand-500
                          hover:underline transition-colors"
             >
               {t('signupBtn')}

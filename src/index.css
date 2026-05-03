@@ -4,24 +4,93 @@
 
 /* ── Design tokens — light mode ─────────────────────────────── */
 :root {
-  /* Text */
-  --ink:    #0F172A;
-  --ink-2:  #334155;
-  --ink-3:  #64748B;
-  --ink-4:  #94A3B8;
+  /* New semantic tokens */
+  --bg-base:     #FFFFFF;
+  --bg-primary:  #F4F4F5;
+  --bg-elevated: #FFFFFF;
+  --bg-hover:    #F0F0F1;
 
-  /* Layout */
-  --line:   #E2E8F0;
-  --bg:     #F8FAFC;
-  --card:   #FFFFFF;
+  --text-primary:   #000000;
+  --text-secondary: #707579;
+  --text-tertiary:  #A2ACB4;
 
-  /* Accent */
-  --blue:      #2563EB;
-  --blue-soft: #EFF6FF;
+  --bubble-own:   #DCEBFF;
+  --bubble-other: #FFFFFF;
+
+  --border: rgba(0,0,0,0.08);
+  --brand:  #3390EC;
+
+  /* Legacy remaps — existing components use these */
+  --ink:   var(--text-primary);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--text-tertiary);
+  --ink-4: var(--text-tertiary);
+
+  --line:      var(--border);
+  --bg:        var(--bg-base);
+  --card:      var(--bg-elevated);
+  --blue:      var(--brand);
+  --blue-soft: #E7F3FF;
   --green:     #10B981;
   --red:       #EF3F1A;
 
-  /* Sidebar — always dark (same in light + dark, deepens in dark) */
+  --chat-bg:       var(--bg-base);
+  --bubble-in:     var(--bubble-other);
+  --bubble-out:    var(--bubble-own);
+  --bubble-out-bd: transparent;
+
+  /* Sidebar — light mode values */
+  --side-bg:     #F4F4F5;
+  --side-deep:   #EBEBEC;
+  --side-text:   #000000;
+  --side-mute:   #707579;
+  --side-row:    #EBEBEC;
+  --side-active: #E1EFFF;
+  --side-line:   rgba(0,0,0,0.06);
+  --side-hover:  #EBEBEC;
+
+  /* Shadows */
+  --shadow-sm:     0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:     0 4px 12px rgba(15,23,42,0.06);
+  --shadow-lg:     0 12px 32px rgba(15,23,42,0.10);
+  --shadow-header: 0 1px 2px rgba(15,23,42,0.07);
+  --shadow-panel:  0 -1px 2px rgba(15,23,42,0.07);
+}
+
+/* ── Design tokens — dark mode ──────────────────────────────── */
+.dark {
+  --bg-base:     #17212B;
+  --bg-primary:  #1F2C38;
+  --bg-elevated: #243340;
+  --bg-hover:    #2B3A47;
+
+  --text-primary:   #FFFFFF;
+  --text-secondary: #8B98A5;
+  --text-tertiary:  #6C7883;
+
+  --bubble-own:   #2B5278;
+  --bubble-other: #182533;
+
+  --border: rgba(255,255,255,0.06);
+  --brand:  #3390EC;
+
+  --ink:   var(--text-primary);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--text-tertiary);
+  --ink-4: var(--text-tertiary);
+
+  --line:      var(--border);
+  --bg:        var(--bg-base);
+  --card:      var(--bg-elevated);
+  --blue:      var(--brand);
+  --blue-soft: rgba(51,144,236,0.15);
+  --chat-bg:   var(--bg-base);
+
+  --bubble-in:     var(--bubble-other);
+  --bubble-out:    var(--bubble-own);
+  --bubble-out-bd: transparent;
+
+  /* Sidebar — dark mode values */
   --side-bg:     #1A2238;
   --side-deep:   #131A2C;
   --side-text:   #F1F5F9;
@@ -29,57 +98,19 @@
   --side-row:    #232E4A;
   --side-active: #2D3A5F;
   --side-line:   #2A3656;
+  --side-hover:  #232E4A;
 
-  /* Chat surface */
-  --chat-bg:       #F0F2F7;
-  --bubble-in:     #FFFFFF;
-  --bubble-out:    #DBEAFE;
-  --bubble-out-bd: #BFDBFE;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md: 0 4px 12px rgba(15,23,42,0.06);
-  --shadow-lg: 0 12px 32px rgba(15,23,42,0.10);
-  --shadow-header: 0 1px 2px rgba(15,23,42,0.07);
-  --shadow-panel:  0 -1px 2px rgba(15,23,42,0.07);
-}
-
-/* ── Design tokens — dark mode ──────────────────────────────── */
-.dark {
-  --ink:    #F1F5F9;
-  --ink-2:  #CBD5E1;
-  --ink-3:  #94A3B8;
-  --ink-4:  #64748B;
-
-  --line:   #1F2937;
-  --bg:     #0B1220;
-  --card:   #111827;
-
-  --blue:      #60A5FA;
-  --blue-soft: #1E2A44;
-
-  /* Sidebar deepens in dark mode */
-  --side-bg:     #060B17;
-  --side-deep:   #03060F;
-  --side-row:    #0F172A;
-  --side-active: #1E293B;
-  --side-line:   #111827;
-
-  --chat-bg:       #0E1626;
-  --bubble-in:     #1F2937;
-  --bubble-out:    #1E3A5F;
-  --bubble-out-bd: #2C4F86;
-
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.35);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.45);
+  --shadow-sm:     0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.35);
+  --shadow-lg:     0 12px 32px rgba(0,0,0,0.45);
   --shadow-header: 0 1px 2px rgba(0,0,0,0.2);
   --shadow-panel:  0 -1px 2px rgba(0,0,0,0.15);
 }
 
-/* ── Smooth theme transitions ───────────────────────────────── */
+/* ── Selective theme transitions (no global * transition) ───── */
 body, .chat-panel, .chat-header, .composer-panel,
-.message-bubble, .sidebar-panel {
+.message-bubble, .sidebar-panel,
+.ui-cell, .ui-button, .ui-chip, .ui-counter {
   transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
@@ -93,7 +124,7 @@ body, .chat-panel, .chat-header, .composer-panel,
   }
 
   body {
-    font-family: 'Noto Sans KR', 'Inter', system-ui, sans-serif;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
     background: var(--bg);
     color: var(--ink);
     margin: 0;
@@ -142,15 +173,15 @@ body, .chat-panel, .chat-header, .composer-panel,
   width: 32px; height: 32px;
   border-radius: 50%;
   border: 3px solid transparent;
-  border-top-color: var(--blue);
-  border-right-color: color-mix(in srgb, var(--blue) 30%, transparent);
+  border-top-color: var(--brand);
+  border-right-color: color-mix(in srgb, var(--brand) 30%, transparent);
   animation: spin 0.7s linear infinite;
 }
 
 /* ── Message highlight (quoted click scroll) ────────────────── */
 @keyframes highlight-pulse {
   0%   { background-color: transparent; }
-  25%  { background-color: rgba(37, 99, 235, 0.15); }
+  25%  { background-color: rgba(51,144,236,0.15); }
   100% { background-color: transparent; }
 }
 .highlight-pulse {
@@ -168,20 +199,20 @@ body, .chat-panel, .chat-header, .composer-panel,
 .login-bg-light {
   background-color: #eef3fa;
   background-image:
-    radial-gradient(circle at 15% 85%, rgba(26, 58, 107, 0.06) 0%, transparent 50%),
-    radial-gradient(circle at 85% 15%, rgba(37, 99, 235, 0.06) 0%, transparent 50%);
+    radial-gradient(circle at 15% 85%, rgba(26,58,107,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 85% 15%, rgba(51,144,236,0.06) 0%, transparent 50%);
 }
 .login-bg-dark {
-  background-color: #0b1220;
+  background-color: #17212B;
   background-image:
-    radial-gradient(ellipse at 20% 80%, rgba(26, 42, 107, 0.45) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 10%, rgba(19, 26, 44, 0.70) 0%, transparent 55%);
+    radial-gradient(ellipse at 20% 80%, rgba(26,42,107,0.45) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 10%, rgba(19,26,44,0.70) 0%, transparent 55%);
 }
 
 /* ── Card top gradient bar ──────────────────────────────────── */
 .card-accent-bar {
   height: 3px;
-  background: linear-gradient(90deg, #1a3a6b 0%, #2563EB 50%, #EF3F1A 100%);
+  background: linear-gradient(90deg, #1a3a6b 0%, #3390EC 50%, #EF3F1A 100%);
   border-radius: 12px 12px 0 0;
 }
 
@@ -192,8 +223,8 @@ body, .chat-panel, .chat-header, .composer-panel,
          border border-gray-200 dark:border-[#1F2937]
          text-gray-900 dark:text-[#F1F5F9]
          placeholder-gray-400 dark:placeholder-[#64748B]
-         focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30
-         focus:border-[#2563EB]
+         focus:outline-none focus:ring-2 focus:ring-[#3390EC]/30
+         focus:border-[#3390EC]
          transition-all duration-200;
 }
 

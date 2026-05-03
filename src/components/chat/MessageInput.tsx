@@ -103,7 +103,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
           style={{
             maxHeight: '120px',
             color: 'var(--ink)',
-            caretColor: 'var(--blue)',
+            caretColor: 'var(--brand)',
           }}
           onChange={e => { onChange(e.target.value); autoResize() }}
           onKeyDown={handleKeyDown}
@@ -122,7 +122,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
                      text-white disabled:opacity-30 disabled:cursor-not-allowed
                      transition-all duration-200"
-          style={{ background: canSend ? 'var(--blue)' : 'var(--ink-4)' }}
+          style={{ background: canSend ? 'var(--brand)' : 'var(--ink-4)' }}
           aria-label={t('attachBtn')}
         >
           {sending

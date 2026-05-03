@@ -86,7 +86,7 @@ export function MessageActionBar({
     return (
       <div
         className="flex items-center gap-3 px-4 py-2.5 flex-shrink-0"
-        style={{ background: 'var(--blue-soft)', borderTop: '1px solid rgba(37,99,235,0.15)' }}
+        style={{ background: 'var(--blue-soft)', borderTop: '1px solid rgba(51,144,236,0.15)' }}
       >
         {/* 빨간 점 + 타이머 */}
         <span
@@ -116,7 +116,7 @@ export function MessageActionBar({
         <button
           onClick={stop}
           className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5 flex-shrink-0"
-          style={{ background: 'var(--blue)' }}
+          style={{ background: 'var(--brand)' }}
         >
           <Send size={13} />
           전송
@@ -133,7 +133,7 @@ export function MessageActionBar({
         style={{ background: 'var(--card)', borderTop: '1px solid var(--line)' }}
       >
         <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin block"
-              style={{ color: 'var(--blue)' }} />
+              style={{ color: 'var(--brand)' }} />
         <span className="text-sm" style={{ color: 'var(--ink-3)' }}>음성 번역 중…</span>
       </div>
     )
@@ -231,7 +231,7 @@ function ActionBtn({
       aria-label={label}
       title={label}
       className="p-2 rounded-lg transition-colors duration-100 disabled:opacity-35 disabled:cursor-not-allowed"
-      style={active ? { color: 'var(--blue)', background: 'rgba(37,99,235,0.08)' } : { color: 'var(--ink-3)' }}
+      style={active ? { color: 'var(--brand)', background: 'rgba(51,144,236,0.08)' } : { color: 'var(--ink-3)' }}
     >
       {loading
         ? <span className="w-[19px] h-[19px] border-2 border-current/30 border-t-current rounded-full animate-spin block" />

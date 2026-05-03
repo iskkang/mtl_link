@@ -26,8 +26,8 @@ export function NotificationPrompt({ onAllow, onLater }: Props) {
       </button>
 
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-          <Bell size={18} className="text-accent" />
+        <div className="w-9 h-9 rounded-full bg-brand-500/10 flex items-center justify-center flex-shrink-0">
+          <Bell size={18} className="text-brand-500" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-[#e9edef] mb-0.5">
@@ -52,7 +52,7 @@ export function NotificationPrompt({ onAllow, onLater }: Props) {
         <button
           onClick={onAllow}
           className="flex-1 py-2 rounded-xl text-xs font-semibold
-                     bg-accent hover:bg-accent-hover text-white transition-colors"
+                     bg-brand-500 hover:bg-brand-600 text-white transition-colors"
         >
           {t('notifAllow')}
         </button>

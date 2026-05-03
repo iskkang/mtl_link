@@ -53,7 +53,7 @@ export function InstallBanner() {
       <button
         onClick={handleInstall}
         className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white flex-shrink-0"
-        style={{ background: 'var(--blue)' }}
+        style={{ background: 'var(--brand)' }}
       >
         설치
       </button>

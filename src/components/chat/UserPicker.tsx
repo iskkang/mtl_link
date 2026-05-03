@@ -107,14 +107,14 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
                 onClick={() => toggle(profile.id)}
                 disabled={isLoading}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors duration-100 disabled:opacity-60"
-                style={{ background: isSelected && mode === 'multi' ? 'rgba(37,99,235,0.08)' : 'transparent' }}
+                style={{ background: isSelected && mode === 'multi' ? 'rgba(51,144,236,0.08)' : 'transparent' }}
                 onMouseEnter={e => {
                   if (!(isSelected && mode === 'multi'))
                     (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)'
                 }}
                 onMouseLeave={e => {
                   (e.currentTarget as HTMLButtonElement).style.background =
-                    isSelected && mode === 'multi' ? 'rgba(37,99,235,0.08)' : 'transparent'
+                    isSelected && mode === 'multi' ? 'rgba(51,144,236,0.08)' : 'transparent'
                 }}
               >
                 <div className="relative flex-shrink-0">
@@ -141,7 +141,7 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
                   <div
                     className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors"
                     style={isSelected
-                      ? { background: 'var(--blue)', borderColor: 'var(--blue)' }
+                      ? { background: 'var(--brand)', borderColor: 'var(--brand)' }
                       : { background: 'transparent', borderColor: 'var(--line)' }
                     }
                   >

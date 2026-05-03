@@ -55,14 +55,14 @@ export function DragDropZone({ children, disabled, onError: _onError, onFilesSel
       {/* 드래그 오버레이 */}
       {isDragging && !disabled && (
         <div className="absolute inset-0 z-30 flex items-center justify-center
-                        bg-mtl-cyan/10 dark:bg-accent/10
+                        bg-mtl-cyan/10 dark:bg-brand-500/10
                         backdrop-blur-sm pointer-events-none
-                        border-2 border-dashed border-mtl-cyan dark:border-accent
+                        border-2 border-dashed border-mtl-cyan dark:border-brand-500
                         rounded-lg m-1">
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-16 h-16 rounded-full bg-mtl-cyan/20 dark:bg-accent/20
+            <div className="w-16 h-16 rounded-full bg-mtl-cyan/20 dark:bg-brand-500/20
                             flex items-center justify-center">
-              <Upload size={28} className="text-mtl-cyan dark:text-accent" />
+              <Upload size={28} className="text-mtl-cyan dark:text-brand-500" />
             </div>
             <p className="text-base font-semibold text-mtl-navy dark:text-[#e9edef]">
               파일을 여기에 놓으세요

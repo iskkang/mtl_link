@@ -120,7 +120,7 @@ export function ActionItemCard({ item, onReload, view }: Props) {
             className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
             style={{
               background: dueInfo.overdue ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)',
-              color: dueInfo.overdue ? 'var(--red)' : 'var(--blue)',
+              color: dueInfo.overdue ? 'var(--red)' : 'var(--brand)',
             }}
           >
             <Clock size={10} />

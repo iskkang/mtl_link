@@ -1,14 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    './index.html',
-    './src/**/*.{js,ts,jsx,tsx}',
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Sidebar — always dark navy (never changes with theme)
         sidebar: {
           DEFAULT: '#1A2238',
           deep:    '#131A2C',
@@ -17,27 +13,61 @@ export default {
           row:     '#232E4A',
           active:  '#2D3A5F',
           line:    '#2A3656',
+          hover:   '#232E4A',
         },
-        // Chat surface (dark-mode variants)
+        brand: {
+          50:  '#E7F3FF',
+          100: '#CFE7FF',
+          200: '#9FCFFF',
+          300: '#6FB7FF',
+          400: '#3F9FFF',
+          500: '#3390EC',
+          600: '#2B7FD1',
+          700: '#226BB0',
+          800: '#1A578F',
+          900: '#11436D',
+        },
         surface: {
-          DEFAULT: '#1A2238',
-          chat:    '#0E1626',
-          panel:   '#111827',
-          hover:   '#1E293B',
-          input:   '#1E293B',
+          base:     '#17212B',
+          primary:  '#1F2C38',
+          elevated: '#243340',
+          hover:    '#2B3A47',
         },
-        // Primary accent — Telegram blue
-        accent: {
-          DEFAULT: '#2563EB',
-          hover:   '#1D4ED8',
-          soft:    '#EFF6FF',
+        surfaceLight: {
+          base:     '#FFFFFF',
+          primary:  '#F4F4F5',
+          elevated: '#FFFFFF',
+          hover:    '#F0F0F1',
         },
-        // Message bubbles (dark mode values)
         bubble: {
-          own:   '#1E3A5F',
-          other: '#1F2937',
+          ownDark:    '#2B5278',
+          ownLight:   '#DCEBFF',
+          otherDark:  '#182533',
+          otherLight: '#FFFFFF',
         },
-        // MTL brand colors
+        content: {
+          primary:   '#FFFFFF',
+          secondary: '#8B98A5',
+          tertiary:  '#6C7883',
+          link:      '#3390EC',
+        },
+        contentLight: {
+          primary:   '#000000',
+          secondary: '#707579',
+          tertiary:  '#A2ACB4',
+          link:      '#3390EC',
+        },
+        status: {
+          success: '#4FAE4E',
+          warning: '#E8A33D',
+          danger:  '#E53935',
+          info:    '#3390EC',
+        },
+        stroke: {
+          light:    'rgba(0,0,0,0.08)',
+          dark:     'rgba(255,255,255,0.06)',
+          emphasis: 'rgba(0,0,0,0.16)',
+        },
         mtl: {
           navy:  '#1a3a6b',
           cyan:  '#29aee8',
@@ -49,10 +79,52 @@ export default {
           mist:  '#d4e4f7',
         },
       },
+      fontSize: {
+        'title-3':   ['28px', { lineHeight: '33px', fontWeight: '500' }],
+        'title-2':   ['20px', { lineHeight: '23px', fontWeight: '500' }],
+        'title':     ['17px', { lineHeight: '20px', fontWeight: '500' }],
+        'headline-3':['16px', { lineHeight: '19px', fontWeight: '400' }],
+        'headline-2':['16px', { lineHeight: '19px', fontWeight: '500' }],
+        'headline':  ['15px', { lineHeight: '18px', fontWeight: '500' }],
+        'regular':   ['16px', { lineHeight: '19px', fontWeight: '400' }],
+        'subtitle-3':['14px', { lineHeight: '16px', fontWeight: '500' }],
+        'subtitle-2':['14px', { lineHeight: '16px', fontWeight: '400' }],
+        'subtitle':  ['13px', { lineHeight: '15px', fontWeight: '400' }],
+        'caption-3': ['13px', { lineHeight: '15px', fontWeight: '500' }],
+        'caption-2': ['12px', { lineHeight: '13px', fontWeight: '400' }],
+        'caption':   ['11px', { lineHeight: '13px', fontWeight: '400' }],
+      },
+      borderRadius: {
+        'sm':   '6px',
+        'md':   '8px',
+        'lg':   '12px',
+        'xl':   '16px',
+        '2xl':  '20px',
+        '3xl':  '24px',
+        'full': '9999px',
+      },
+      boxShadow: {
+        'default':       '0 4px 12px rgba(0,0,0,0.08)',
+        'bottom-sheet':  '0 -2px 12px rgba(0,0,0,0.12)',
+        'message-panel': '0 -1px 4px rgba(0,0,0,0.04)',
+        'header':        '0 1px 4px rgba(0,0,0,0.06)',
+        'bold':          '0 8px 24px rgba(0,0,0,0.12)',
+        'message':       '0 1px 2px rgba(0,0,0,0.06)',
+        'action-button': '0 4px 12px rgba(51,144,236,0.3)',
+        'dialog':        '0 16px 40px rgba(0,0,0,0.16)',
+        'main-menu':     '0 4px 12px rgba(0,0,0,0.10)',
+        'page-sheet':    '0 -8px 24px rgba(0,0,0,0.08)',
+        'fab':           '0 6px 16px rgba(51,144,236,0.4)',
+      },
       fontFamily: {
-        sans:    ['Noto Sans KR', 'Inter', 'system-ui', 'sans-serif'],
-        display: ['Noto Sans KR', 'sans-serif'],
+        sans:    ['"Pretendard Variable"', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', '"Apple SD Gothic Neo"', 'sans-serif'],
+        display: ['"Pretendard Variable"', 'Pretendard', 'sans-serif'],
         mono:    ['JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      transitionDuration: {
+        '150': '150ms',
+        '200': '200ms',
+        '300': '300ms',
       },
     },
   },

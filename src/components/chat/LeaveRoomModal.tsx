@@ -59,7 +59,7 @@ export function LeaveRoomModal({ isDirect, onConfirm, onClose }: Props) {
             onClick={handleConfirm}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-50 transition-colors"
-            style={{ background: 'var(--blue)' }}
+            style={{ background: 'var(--brand)' }}
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
             {t('leaveRoomConfirm')}

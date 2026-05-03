@@ -17,7 +17,7 @@ export function NotificationToggle({ enabled, onToggle }: Props) {
       aria-label={enabled ? t('notifOn') : t('notifOff')}
       className={`p-2 rounded-full transition-colors
                   ${enabled
-                    ? 'text-accent dark:text-accent hover:bg-gray-200 dark:hover:bg-surface-hover'
+                    ? 'text-brand-500 dark:text-brand-500 hover:bg-gray-200 dark:hover:bg-surface-hover'
                     : 'text-gray-400 dark:text-[#556e78] hover:bg-gray-200 dark:hover:bg-surface-hover'
                   }`}
     >

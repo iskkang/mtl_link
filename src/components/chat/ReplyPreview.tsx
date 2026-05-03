@@ -16,9 +16,9 @@ export function ReplyPreview({ replyTo, onCancel }: Props) {
       style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
     >
       <div className="flex-1 flex items-center gap-2 min-w-0">
-        <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ background: 'var(--blue)' }} />
+        <div className="w-0.5 h-8 rounded-full flex-shrink-0" style={{ background: 'var(--brand)' }} />
         <div className="min-w-0">
-          <p className="text-xs font-semibold truncate" style={{ color: 'var(--blue)' }}>
+          <p className="text-xs font-semibold truncate" style={{ color: 'var(--brand)' }}>
             {t('replyingTo', { name: replyTo.sender?.name ?? '…' })}
           </p>
           <p className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>

@@ -106,7 +106,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
         onClick={e => e.stopPropagation()}
       >
         {/* 상단 그라디언트 바 */}
-        <div className="h-1 flex-shrink-0" style={{ background: 'linear-gradient(90deg, #2563EB, #6366F1)' }} />
+        <div className="h-1 flex-shrink-0" style={{ background: 'linear-gradient(90deg, #3390EC, #6366F1)' }} />
 
         {/* 헤더 */}
         <div
@@ -141,7 +141,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
                 onClick={() => setTab(key)}
                 className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold border-b-2 transition-colors"
                 style={{
-                  borderColor: isActive ? 'var(--blue)' : 'transparent',
+                  borderColor: isActive ? 'var(--brand)' : 'transparent',
                   color: isActive ? 'var(--ink)' : 'var(--ink-4)',
                 }}
                 onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink)' }}
@@ -210,7 +210,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
               <div className="px-4 pt-1 pb-1 flex-shrink-0">
                 <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
                   멤버 선택{' '}
-                  <span style={{ color: selected.length >= 2 ? 'var(--blue)' : 'var(--ink-4)' }}>
+                  <span style={{ color: selected.length >= 2 ? 'var(--brand)' : 'var(--ink-4)' }}>
                     ({selected.length}명 선택)
                   </span>
                   <span style={{ color: 'var(--ink-4)' }}> — 2명 이상</span>
@@ -231,7 +231,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
                   onClick={handleCreateGroup}
                   disabled={!groupReady || creating}
                   className="w-full py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
-                  style={{ background: 'var(--blue)' }}
+                  style={{ background: 'var(--brand)' }}
                 >
                   {creating ? (
                     <span className="flex items-center justify-center gap-2">
@@ -277,9 +277,9 @@ function SelectedChips({
           key={p.id}
           className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full text-xs border"
           style={{
-            background: 'rgba(37,99,235,0.1)',
+            background: 'rgba(51,144,236,0.1)',
             color: 'var(--ink)',
-            borderColor: 'rgba(37,99,235,0.25)',
+            borderColor: 'rgba(51,144,236,0.25)',
           }}
         >
           <Avatar name={p.name} avatarUrl={p.avatar_url} size="xs" />

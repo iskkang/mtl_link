@@ -29,7 +29,7 @@ export default function ActionItemsPage() {
         className="flex items-center gap-2.5 px-4 py-3.5 flex-shrink-0 border-b"
         style={{ borderColor: 'var(--side-line)' }}
       >
-        <CheckSquare size={18} style={{ color: 'var(--blue)' }} />
+        <CheckSquare size={18} style={{ color: 'var(--brand)' }} />
         <span className="font-bold text-[15px]" style={{ color: 'var(--side-text)' }}>
           {t('taskPageTitle')}
         </span>
@@ -47,7 +47,7 @@ export default function ActionItemsPage() {
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5
                          text-xs font-semibold border-b-2 transition-colors"
               style={{
-                borderColor: isActive ? 'var(--blue)' : 'transparent',
+                borderColor: isActive ? 'var(--brand)' : 'transparent',
                 color: isActive ? 'var(--side-text)' : 'var(--side-mute)',
               }}
             >
@@ -57,7 +57,7 @@ export default function ActionItemsPage() {
                 <span
                   className="min-w-[16px] h-[16px] px-1 rounded-full text-white text-[9px]
                              font-bold flex items-center justify-center"
-                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--blue)' }}
+                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--brand)' }}
                 >
                   {count > 99 ? '99+' : count}
                 </span>

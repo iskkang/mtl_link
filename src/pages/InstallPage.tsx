@@ -42,7 +42,7 @@ export default function InstallPage() {
               onClick={() => changeLang(lang.code)}
               className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
               style={active
-                ? { background: 'var(--blue)', color: '#fff' }
+                ? { background: 'var(--brand)', color: '#fff' }
                 : { background: 'var(--card)', color: 'var(--ink-3)', border: '1px solid var(--line)' }
               }
             >
@@ -96,7 +96,7 @@ export default function InstallPage() {
                 onClick={() => setTab(p)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-colors"
                 style={tab === p
-                  ? { background: 'var(--blue)', color: '#fff' }
+                  ? { background: 'var(--brand)', color: '#fff' }
                   : { color: 'var(--ink-3)' }
                 }
               >
@@ -118,7 +118,7 @@ export default function InstallPage() {
                 <div className="flex flex-col items-center gap-1 flex-shrink-0">
                   <span
                     className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ background: 'var(--blue)' }}
+                    style={{ background: 'var(--brand)' }}
                   >
                     {i + 1}
                   </span>
@@ -167,7 +167,7 @@ export default function InstallPage() {
             <Link
               to="/login"
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--blue)' }}
+              style={{ background: 'var(--brand)' }}
             >
               {t('installGoApp')}
             </Link>

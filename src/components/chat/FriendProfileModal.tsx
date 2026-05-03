@@ -105,8 +105,8 @@ export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Pro
             onClick={() => { onMessage(); onClose() }}
             className="mt-4 w-full flex items-center justify-center gap-2
                        py-2.5 rounded-xl text-sm font-semibold text-white
-                       bg-mtl-navy dark:bg-accent
-                       hover:bg-mtl-navy/90 dark:hover:bg-accent-hover
+                       bg-mtl-navy dark:bg-brand-500
+                       hover:bg-mtl-navy/90 dark:hover:bg-brand-600
                        transition-colors"
           >
             <MessageCircle size={15} />

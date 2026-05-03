@@ -29,9 +29,9 @@ export function QuotedMessage({ reply, onClick }: Props) {
       onKeyDown={e => e.key === 'Enter' && onClick()}
       className="pl-2 py-1 mb-2 rounded-sm cursor-pointer
                  hover:bg-black/5 dark:hover:bg-white/5 transition-colors min-w-0 border-l-4"
-      style={{ borderColor: 'var(--blue)' }}
+      style={{ borderColor: 'var(--brand)' }}
     >
-      <div className="text-[11px] font-semibold truncate" style={{ color: 'var(--blue)' }}>
+      <div className="text-[11px] font-semibold truncate" style={{ color: 'var(--brand)' }}>
         {reply.sender?.name ?? '알 수 없음'}
       </div>
       <div

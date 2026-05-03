@@ -83,8 +83,8 @@ export function TranslationLanguageModal({
                 disabled={saving}
                 className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left"
                 style={{
-                  background: isActive ? 'rgba(37,99,235,0.07)' : 'transparent',
-                  border: isActive ? '1px solid rgba(37,99,235,0.18)' : '1px solid transparent',
+                  background: isActive ? 'rgba(51,144,236,0.07)' : 'transparent',
+                  border: isActive ? '1px solid rgba(51,144,236,0.18)' : '1px solid transparent',
                   borderRadius: isActive ? '10px' : '0',
                   margin: isActive ? '2px 8px' : '0',
                   width: isActive ? 'calc(100% - 16px)' : '100%',
@@ -99,7 +99,7 @@ export function TranslationLanguageModal({
                 {/* 국가 코드 */}
                 <span
                   className="w-8 text-[11px] font-black font-mono-ui text-center flex-shrink-0"
-                  style={{ color: isActive ? 'var(--blue)' : 'var(--ink-3)' }}
+                  style={{ color: isActive ? 'var(--brand)' : 'var(--ink-3)' }}
                 >
                   {lang.flagCode}
                 </span>
@@ -116,7 +116,7 @@ export function TranslationLanguageModal({
 
                 {/* 체크마크 */}
                 {isActive && (
-                  <Check size={16} className="flex-shrink-0" style={{ color: 'var(--blue)' }} />
+                  <Check size={16} className="flex-shrink-0" style={{ color: 'var(--brand)' }} />
                 )}
               </button>
             )

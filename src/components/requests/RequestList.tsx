@@ -54,7 +54,7 @@ export function RequestList({ onSelectRequest }: Props) {
               onClick={() => setActiveTab(id)}
               className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold border-b-2 transition-colors"
               style={{
-                borderColor: isActive ? 'var(--blue)' : 'transparent',
+                borderColor: isActive ? 'var(--brand)' : 'transparent',
                 color: isActive ? 'var(--side-text)' : 'var(--side-mute)',
               }}
             >
@@ -62,7 +62,7 @@ export function RequestList({ onSelectRequest }: Props) {
               {count > 0 && (
                 <span
                   className="min-w-[14px] h-[14px] px-0.5 rounded-full text-white text-[9px] font-bold flex items-center justify-center"
-                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--blue)' }}
+                  style={{ background: id === 'received' ? '#EF3F1A' : 'var(--brand)' }}
                 >
                   {count > 99 ? '99+' : count}
                 </span>

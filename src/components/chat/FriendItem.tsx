@@ -28,7 +28,7 @@ export function FriendItem({ friend, isOnline, onViewProfile }: Props) {
         <span
           className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
           style={{
-            background: isOnline ? '#10B981' : 'var(--side-muted)',
+            background: isOnline ? '#10B981' : 'var(--side-mute)',
             borderColor: 'var(--side-bg)',
           }}
         />

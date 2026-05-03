@@ -10,7 +10,7 @@ interface Props {
 export function AppLayout({ sidebar, children, showChat = false }: Props) {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
-      {/* 좌측 사이드바 — always dark navy */}
+      {/* 좌측 사이드바 */}
       <aside
         className={`
           w-full md:w-80 flex-shrink-0 flex flex-col

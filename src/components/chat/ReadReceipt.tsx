@@ -9,7 +9,7 @@ interface Props {
 export function ReadReceipt({ status, isGroup }: Props) {
   if (!isGroup) {
     return status.type === 'read'
-      ? <CheckCheck size={14} className="flex-shrink-0" style={{ color: 'var(--blue)' }} />
+      ? <CheckCheck size={14} className="flex-shrink-0" style={{ color: 'var(--brand)' }} />
       : <Check      size={14} className="flex-shrink-0" style={{ color: 'var(--ink-4)' }} />
   }
 

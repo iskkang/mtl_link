@@ -67,7 +67,7 @@ export function CreateActionItemModal({
         {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
           <div className="flex items-center gap-2">
-            <CheckSquare size={18} style={{ color: 'var(--blue)' }} />
+            <CheckSquare size={18} style={{ color: 'var(--brand)' }} />
             <span className="font-bold text-[15px]" style={{ color: 'var(--ink)' }}>
               {t('taskCreateTitle')}
             </span>
@@ -101,7 +101,7 @@ export function CreateActionItemModal({
                 border:       '1px solid var(--line)',
                 color:        'var(--ink)',
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand)')}
               onBlur={e  => (e.currentTarget.style.borderColor = 'var(--line)')}
             />
           </div>
@@ -119,7 +119,7 @@ export function CreateActionItemModal({
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-colors"
                   style={{
                     background: assigneeId === m.id ? 'rgba(var(--blue-rgb, 59 130 246) / 0.1)' : 'var(--bg)',
-                    border: `1px solid ${assigneeId === m.id ? 'var(--blue)' : 'var(--line)'}`,
+                    border: `1px solid ${assigneeId === m.id ? 'var(--brand)' : 'var(--line)'}`,
                   }}
                 >
                   <input
@@ -158,7 +158,7 @@ export function CreateActionItemModal({
                 border:       '1px solid var(--line)',
                 color:        'var(--ink)',
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand)')}
               onBlur={e  => (e.currentTarget.style.borderColor = 'var(--line)')}
             />
           </div>
@@ -182,7 +182,7 @@ export function CreateActionItemModal({
             type="submit"
             disabled={saving || !title.trim()}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity"
-            style={{ background: 'var(--blue)', opacity: saving || !title.trim() ? 0.6 : 1 }}
+            style={{ background: 'var(--brand)', opacity: saving || !title.trim() ? 0.6 : 1 }}
           >
             {saving ? t('taskSaving') : t('taskCreate')}
           </button>

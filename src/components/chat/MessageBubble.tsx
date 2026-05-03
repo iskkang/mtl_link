@@ -210,7 +210,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
         {/* 발신자 이름 (그룹방, 첫 메시지) */}
         {showSenderInfo && !isOwn && !isContinuation && message.sender && (
-          <span className="text-[11px] font-semibold mb-1 ml-1" style={{ color: 'var(--blue)' }}>
+          <span className="text-[11px] font-semibold mb-1 ml-1" style={{ color: 'var(--brand)' }}>
             {message.sender.name}
           </span>
         )}
@@ -219,7 +219,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         <div
           className={`
             relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
-            ${isOwn ? 'rounded-br-sm' : 'rounded-bl-sm'}
             ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
             ${isSending ? 'opacity-60' : ''}
           `}
@@ -313,7 +312,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                               href={part.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="underline break-all" style={{ color: 'var(--blue)' }}
+                              className="underline break-all" style={{ color: 'var(--brand)' }}
                             >
                               {part.href}
                             </a>

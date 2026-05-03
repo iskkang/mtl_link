@@ -287,9 +287,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-medium
                          transition-colors border"
               style={{
-                borderColor: 'rgba(37,99,235,0.3)',
-                color: 'var(--blue)',
-                background: 'rgba(37,99,235,0.05)',
+                borderColor: 'rgba(51,144,236,0.3)',
+                color: 'var(--brand)',
+                background: 'rgba(51,144,236,0.05)',
                 cursor: isGroup ? 'default' : 'pointer',
               }}
               title={isGroup ? '' : '번역 언어 설정'}
@@ -346,7 +346,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               <button
                 onClick={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
                 className="p-2 rounded-lg transition-colors"
-                style={{ color: searchOpen ? 'var(--blue)' : 'var(--ink-3)' }}
+                style={{ color: searchOpen ? 'var(--brand)' : 'var(--ink-3)' }}
                 onMouseEnter={e => { if (!searchOpen) (e.currentTarget.style.background = 'var(--bg)') }}
                 onMouseLeave={e => { if (!searchOpen) (e.currentTarget.style.background = 'transparent') }}
                 title="메시지 검색"
@@ -410,10 +410,10 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 style={{
                   background: 'var(--blue-soft)',
                   color: 'var(--ink-2)',
-                  border: '1px solid rgba(37,99,235,0.12)',
+                  border: '1px solid rgba(51,144,236,0.12)',
                 }}
               >
-                ✦ <strong style={{ color: 'var(--blue)' }}>MTL Link</strong>이 자동으로 메시지를 번역하고 있어요.
+                ✦ <strong style={{ color: 'var(--brand)' }}>MTL Link</strong>이 자동으로 메시지를 번역하고 있어요.
                 메시지를 클릭하면 원문을 볼 수 있습니다.
               </div>
             )}

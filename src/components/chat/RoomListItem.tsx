@@ -64,7 +64,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
           </span>
           <span
             className="text-[11px] flex-shrink-0 font-mono-ui"
-            style={{ color: unread > 0 ? 'var(--blue)' : 'var(--side-mute)', fontWeight: unread > 0 ? 600 : 400 }}
+            style={{ color: unread > 0 ? 'var(--brand)' : 'var(--side-mute)', fontWeight: unread > 0 ? 600 : 400 }}
           >
             {formatRoomTime(room.last_message_at)}
           </span>
@@ -81,7 +81,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
             <span
               className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full
                          text-white text-[10px] font-bold flex items-center justify-center"
-              style={{ background: 'var(--blue)' }}
+              style={{ background: 'var(--brand)' }}
             >
               {unread > 99 ? '99+' : unread}
             </span>

@@ -33,7 +33,7 @@ export function RequestListItem({ request, onClick }: Props) {
       {/* 아바타 */}
       <div
         className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 mt-0.5"
-        style={{ background: isOverdue ? 'var(--red)' : 'var(--blue)' }}
+        style={{ background: isOverdue ? 'var(--red)' : 'var(--brand)' }}
       >
         {request.sender.name.charAt(0).toUpperCase()}
       </div>

@@ -33,7 +33,7 @@ export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0, 
             className="flex-1 flex items-center justify-center gap-1 py-2.5
                        text-xs font-semibold border-b-2 transition-colors"
             style={{
-              borderColor: isActive ? 'var(--blue)' : 'transparent',
+              borderColor: isActive ? 'var(--brand)' : 'transparent',
               color: isActive ? 'var(--side-text)' : 'var(--side-mute)',
             }}
             onMouseEnter={e => {
@@ -50,7 +50,7 @@ export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0, 
                 className="min-w-[16px] h-[16px] px-1 rounded-full
                            text-white text-[9px] font-bold
                            flex items-center justify-center leading-none"
-                style={{ background: id === 'chat' ? '#EF3F1A' : 'var(--blue)' }}
+                style={{ background: id === 'chat' ? '#EF3F1A' : 'var(--brand)' }}
               >
                 {badge > 99 ? '99+' : badge}
               </span>

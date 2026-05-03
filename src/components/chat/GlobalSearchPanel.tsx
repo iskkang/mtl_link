@@ -111,7 +111,7 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
                   onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium truncate" style={{ color: 'var(--blue)' }}>
+                    <span className="text-[11px] font-medium truncate" style={{ color: 'var(--brand)' }}>
                       {item.sender_name ?? '알 수 없음'}
                     </span>
                     <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--ink-4)' }}>
