@@ -80,8 +80,8 @@ async function fetchIndices() {
 interface NewsItem { pNum: string; title: string; url: string; date: string | null }
 
 async function fetchNews(limit = 10): Promise<{ items: NewsItem[]; fetchedAt: string }> {
-  const BASE = 'https://www.ksg.co.kr/news/'
-  const res = await fetch(`${BASE}main_news.jsp`, {
+  const BASE = 'https://www.ksg.co.kr'
+  const res = await fetch(`${BASE}/news/main_news.jsp`, {
     headers: { 'User-Agent': 'MTLLink/1.0', Accept: 'text/html' },
     signal: AbortSignal.timeout(8000),
   })
@@ -91,36 +91,32 @@ async function fetchNews(limit = 10): Promise<{ items: NewsItem[]; fetchedAt: st
   const seen  = new Set<string>()
   const items: NewsItem[] = []
 
-  // Each <li> block contains 2-3 <a> with the same pNum (img, blank, title)
+  // Each <li> has 3 <a> tags with same pNum: img-link, title, summary
   const liRe = /<li>([\s\S]*?)<\/li>/g
   let m: RegExpExecArray | null
 
   while ((m = liRe.exec(html)) !== null && items.length < limit) {
     const block = m[1]
 
-    // Require a pNum link
-    const pNumMatch = block.match(/href="main_newsView\.jsp\?pNum=(\d+)"/)
+    // href is "/news/main_newsView.jsp?pNum=NUMBER"
+    const pNumMatch = block.match(/href="\/news\/main_newsView\.jsp\?pNum=(\d+)"/)
     if (!pNumMatch) continue
     const pNum = pNumMatch[1]
     if (seen.has(pNum)) continue
     seen.add(pNum)
 
-    // Strip thumbnail <a><img ...></a> blocks so we don't pick up empty/img-only tags
-    const stripped = block.replace(/<a[^>]*>\s*<img[^>]*>\s*<\/a>/g, '')
+    // Remove thumbnail <a><img …></a> to expose title/summary a-tags
+    const stripped = block.replace(/<a[^>]*>\s*<img[^>]*\/?\s*>\s*<\/a>/g, '')
 
-    // Find the a tag with real text (not empty, not just whitespace)
+    // First remaining a-tag with meaningful text is the title
     const titleMatch = stripped.match(
-      /<a[^>]+href="main_newsView\.jsp\?pNum=\d+"[^>]*>\s*([^\s<][^<]{3,200}?)\s*<\/a>/,
+      /<a[^>]+href="\/news\/main_newsView\.jsp\?pNum=\d+"[^>]*>\s*([^\s<][^<]{3,200}?)\s*<\/a>/,
     )
     if (!titleMatch) continue
     const title = titleMatch[1].trim()
     if (title.length < 5) continue
 
-    // Date: <span>YYYY-MM-DD HH:MM</span>
-    const dateMatch = block.match(/<span>(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})<\/span>/)
-    const date = dateMatch?.[1] ?? null
-
-    items.push({ pNum, title, url: `${BASE}main_newsView.jsp?pNum=${pNum}`, date })
+    items.push({ pNum, title, url: `${BASE}/news/main_newsView.jsp?pNum=${pNum}`, date: null })
   }
 
   return { items, fetchedAt: new Date().toISOString() }
