@@ -48,14 +48,14 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
         <div className="flex items-baseline justify-between gap-1">
           <span
             className="text-headline-2 truncate"
-            style={{ color: isSelected ? 'var(--brand)' : 'var(--side-text)' }}
+            style={{ color: isSelected ? 'var(--side-active-text)' : 'var(--side-text)' }}
           >
             {displayName}
           </span>
           <span
             className="text-caption-2 flex-shrink-0 font-mono-ui"
             style={{
-              color:      unread > 0 ? 'var(--brand)' : 'var(--side-mute)',
+              color:      isSelected ? 'var(--side-active-text-sub)' : unread > 0 ? 'var(--brand)' : 'var(--side-mute)',
               fontWeight: unread > 0 ? 600 : 400,
             }}
           >
@@ -67,7 +67,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
           <p
             className="text-subtitle-2 truncate"
             style={{
-              color:      'var(--side-mute)',
+              color:      isSelected ? 'var(--side-active-text-sub)' : 'var(--side-mute)',
               fontWeight: unread > 0 ? 500 : 400,
             }}
           >
@@ -77,7 +77,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
             <span
               className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full
                          text-white text-[10px] font-bold flex items-center justify-center"
-              style={{ background: 'var(--brand)' }}
+              style={{ background: isSelected ? 'var(--side-active-badge-bg)' : 'var(--brand)' }}
             >
               {unread > 99 ? '99+' : unread}
             </span>

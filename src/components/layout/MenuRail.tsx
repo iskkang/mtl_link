@@ -159,8 +159,8 @@ function RailBtn({
       aria-label={label}
       className="relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors duration-100 mx-auto"
       style={{
-        background: active ? 'var(--side-active)' : 'transparent',
-        color:      active ? 'var(--brand)'       : 'var(--side-mute)',
+        background: active ? 'var(--side-active)'      : 'transparent',
+        color:      active ? 'var(--side-active-icon)' : 'var(--side-mute)',
         opacity:    muted && !active ? 0.45 : 1,
       }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--side-hover)' }}

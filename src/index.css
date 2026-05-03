@@ -49,6 +49,12 @@
   --side-line:   rgba(0,0,0,0.06);
   --side-hover:  #EBEBEC;
 
+  /* Active/selected text and icon overrides */
+  --side-active-icon:      var(--brand);
+  --side-active-text:      var(--brand);
+  --side-active-text-sub:  var(--side-mute);
+  --side-active-badge-bg:  var(--brand);
+
   /* Message hover action buttons */
   --action-btn-bg:    #EBEBEC;
   --action-btn-icon:  #707579;
@@ -104,6 +110,12 @@
   --side-active: #3390EC;
   --side-line:   rgba(255,255,255,0.06);
   --side-hover:  #14304F;
+
+  /* Active/selected text and icon overrides — dark mode */
+  --side-active-icon:      #FFFFFF;
+  --side-active-text:      #FFFFFF;
+  --side-active-text-sub:  rgba(207,231,255,0.8);
+  --side-active-badge-bg:  rgba(255,255,255,0.22);
 
   /* Message hover action buttons */
   --action-btn-bg:    var(--ink-2);
