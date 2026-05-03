@@ -26,12 +26,12 @@ export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Pro
     >
       <div
         className="w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden
-                   bg-white dark:bg-surface-panel
                    border border-gray-100 dark:border-[#374045]"
+        style={{ background: 'var(--card)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* 헤더 배경 */}
-        <div className="relative h-16 bg-gradient-to-r from-mtl-navy to-mtl-cyan dark:from-[#1a2a3a] dark:to-[#0d3347]">
+        {/* 헤더 배경 — 라이트: navy→cyan 그라디언트 / 다크: mtl-navy 단색 */}
+        <div className="relative h-16 bg-gradient-to-r from-mtl-navy to-mtl-cyan dark:from-mtl-navy dark:to-mtl-navy">
           <button
             onClick={onClose}
             className="absolute top-3 right-3 p-1.5 rounded-full
@@ -45,7 +45,7 @@ export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Pro
 
         {/* 아바타 (헤더와 겹침) */}
         <div className="flex justify-center -mt-8 mb-3 relative z-10">
-          <div className="ring-4 ring-white dark:ring-surface-panel rounded-full">
+          <div className="ring-4 ring-white dark:ring-surface-elevated rounded-full">
             <Avatar name={friend.name} avatarUrl={friend.avatar_url} size="lg" />
           </div>
         </div>
@@ -123,7 +123,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   return (
     <div className="flex items-center gap-2">
       <span className="text-[10px] font-semibold uppercase tracking-wider
-                       text-gray-400 dark:text-[#556e78] w-16 flex-shrink-0">
+                       text-gray-400 dark:text-content-secondary w-16 flex-shrink-0">
         {label}
       </span>
       <div className="flex items-center">{children}</div>
