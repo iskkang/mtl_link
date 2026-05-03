@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckSquare } from 'lucide-react'
 import { ActionItemCard } from './ActionItemCard'
 import type { ActionItem } from '../../services/actionItemService'
+import { EmptyState } from '../ui/EmptyState'
 
 interface Props {
   items:    ActionItem[]
@@ -57,17 +58,12 @@ export function ActionItemList({ items, onReload, view }: Props) {
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 py-16 text-center px-6">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-          style={{ background: 'var(--side-row)' }}
-        >
-          <CheckSquare size={28} style={{ color: 'var(--side-mute)' }} />
-        </div>
-        <p className="text-sm font-medium" style={{ color: 'var(--side-mute)' }}>
-          {t('taskEmpty')}
-        </p>
-      </div>
+      <EmptyState
+        icon={CheckSquare}
+        title={t('emptyTasksTitle')}
+        description={t('emptyTasksDesc')}
+        className="flex-1"
+      />
     )
   }
 

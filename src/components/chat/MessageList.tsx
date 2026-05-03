@@ -1,7 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MessageCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { MessageBubble } from './MessageBubble'
 import { formatDateSeparator, isSameDayStr } from '../../lib/date'
+import { EmptyState } from '../ui/EmptyState'
 import type { MessageWithSender, RoomListItem } from '../../types/chat'
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null }: Props) {
+  const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLenRef = useRef(0)
@@ -59,6 +62,18 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-gray-300 dark:text-[#8696a0]" />
+      </div>
+    )
+  }
+
+  if (!loading && messages.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--chat-bg)' }}>
+        <EmptyState
+          icon={MessageCircle}
+          title={t('emptyMsgsTitle')}
+          description={t('emptyMsgsDesc')}
+        />
       </div>
     )
   }

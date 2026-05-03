@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Inbox } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { getReceivedRequests, getSentRequests, type RequestItem } from '../../services/requestService'
 import { RequestListItem } from './RequestListItem'
+import { EmptyState } from '../ui/EmptyState'
 
 type Tab = 'received' | 'sent'
 
@@ -97,13 +98,11 @@ export function RequestList({ onSelectRequest }: Props) {
             <div className="spinner" />
           </div>
         ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-24 px-4 text-center">
-            <p className="text-xs" style={{ color: 'var(--side-mute)' }}>
-              {query
-                ? t('reqNoResult')
-                : activeTab === 'received' ? t('reqNoReceived') : t('reqNoSent')}
-            </p>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title={query ? t('reqNoResult') : activeTab === 'received' ? t('reqNoReceived') : t('reqNoSent')}
+            description={query ? undefined : t('emptyRequestsDesc')}
+          />
         ) : (
           items.map(req => (
             <RequestListItem

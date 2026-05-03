@@ -5,6 +5,7 @@ import { FriendItem } from './FriendItem'
 import { FriendProfileModal } from './FriendProfileModal'
 import { fetchFriends, type FriendProfile } from '../../services/friendsService'
 import { usePresence } from '../../hooks/usePresence'
+import { EmptyState } from '../ui/EmptyState'
 
 const DEPT_ORDER = ['HQ', 'UZ', 'RU', 'JP', 'CN', 'KG', 'VN', 'OTHER']
 
@@ -82,12 +83,11 @@ export function FriendsList({ onSelectFriend }: Props) {
                   style={{ borderColor: 'rgba(51,144,236,0.2)', borderTopColor: 'var(--brand)' }} />
           </div>
         ) : deptOrder.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <Users size={28} className="mb-3" style={{ color: 'var(--side-mute)' }} />
-            <p className="text-sm" style={{ color: 'var(--side-mute)' }}>
-              {query ? t('friendsNoResult') : t('friendsEmpty')}
-            </p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title={query ? t('friendsNoResult') : t('emptyMembersTitle')}
+            description={query ? undefined : t('emptyMembersDesc')}
+          />
         ) : (
           deptOrder.map(dept => (
             <div key={dept}>

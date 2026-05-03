@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { Avatar } from '../ui/Avatar'
+import { LogoBox } from '../ui/LogoBox'
 import { ProfileMenu } from './ProfileMenu'
 
 export type Section =
@@ -54,12 +55,7 @@ export function MenuRail({
 
       {/* Logo — sticky top */}
       <div className="flex items-center justify-center flex-shrink-0 pt-3 pb-2">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, #EF3F1A, #B83113)' }}
-        >
-          <span className="text-white text-[12px] font-black tracking-tight leading-none">M</span>
-        </div>
+        <LogoBox size="md" />
       </div>
 
       {/* Scrollable nav items */}

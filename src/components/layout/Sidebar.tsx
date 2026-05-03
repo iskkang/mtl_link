@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SquarePen, Search, MessageSquare } from 'lucide-react'
+import { SquarePen, Search, MessageSquare, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
@@ -12,6 +12,8 @@ import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { RequestList } from '../requests/RequestList'
 import { useRequestStore } from '../../stores/requestStore'
 import { MobileTabBar } from './MobileTabBar'
+import { LogoBox } from '../ui/LogoBox'
+import { EmptyState } from '../ui/EmptyState'
 
 interface Props {
   selectedRoomId:  string | null
@@ -48,12 +50,7 @@ export function Sidebar({
         style={{ borderColor: 'var(--side-line)' }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #EF3F1A, #B83113)' }}
-          >
-            <span className="text-white text-[11px] font-black tracking-tight leading-none">M</span>
-          </div>
+          <LogoBox size="sm" />
           <div>
             <span
               className="font-bold text-[14px] leading-none block"
@@ -102,7 +99,15 @@ export function Sidebar({
 
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {rooms.length === 0 && !loading
-              ? <EmptyRoomList onNewChat={onNewChat} t={t} />
+              ? (
+                <EmptyState
+                  icon={MessageSquare}
+                  title={t('emptyChatsTitle')}
+                  description={t('emptyChatsDesc')}
+                  action={{ label: t('emptyChatsAction'), icon: Plus, onClick: onNewChat }}
+                  className="h-full"
+                />
+              )
               : (
                 <RoomList
                   rooms={rooms}
@@ -222,32 +227,3 @@ function TasksPanel({
   )
 }
 
-function EmptyRoomList({ onNewChat, t }: { onNewChat: () => void; t: (k: string) => string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
-      <div
-        className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-        style={{ background: 'var(--side-row)' }}
-      >
-        <MessageSquare size={28} style={{ color: 'var(--side-mute)' }} />
-      </div>
-      <p className="text-sm font-medium mb-1" style={{ color: 'var(--side-mute)' }}>
-        {t('noRooms')}
-      </p>
-      <p className="text-xs mb-5 leading-relaxed whitespace-pre-line" style={{ color: 'var(--side-mute)', opacity: 0.7 }}>
-        {t('noRoomsDesc')}
-      </p>
-      <button
-        onClick={onNewChat}
-        className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold
-                   text-white transition-colors"
-        style={{ background: 'var(--brand)' }}
-        onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
-        onMouseLeave={e => (e.currentTarget.style.filter = '')}
-      >
-        <SquarePen size={13} />
-        {t('newChatBtn')}
-      </button>
-    </div>
-  )
-}
