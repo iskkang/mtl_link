@@ -56,10 +56,7 @@ async function fetchIndices() {
 
   const raw = await res.json() as { resultObject?: Record<string, unknown> }
   const obj = (raw.resultObject ?? raw) as {
-    kcciData?: RawSection
-    scfiData?: RawSection
-    ccfiData?: RawSection
-    graphData?: RawPoint[]
+    kcciData?: RawSection; scfiData?: RawSection; ccfiData?: RawSection; graphData?: RawPoint[]
   }
 
   const kcciItem = findComposite(obj.kcciData?.data)
@@ -91,24 +88,18 @@ async function fetchNews(limit = 10): Promise<{ items: NewsItem[]; fetchedAt: st
   const seen  = new Set<string>()
   const items: NewsItem[] = []
 
-  // Each <li> has 3 <a> tags with same pNum: img-link, title, summary
   const liRe = /<li>([\s\S]*?)<\/li>/g
   let m: RegExpExecArray | null
 
   while ((m = liRe.exec(html)) !== null && items.length < limit) {
     const block = m[1]
-
-    // href is "/news/main_newsView.jsp?pNum=NUMBER"
     const pNumMatch = block.match(/href="\/news\/main_newsView\.jsp\?pNum=(\d+)"/)
     if (!pNumMatch) continue
     const pNum = pNumMatch[1]
     if (seen.has(pNum)) continue
     seen.add(pNum)
 
-    // Remove thumbnail <a><img …></a> to expose title/summary a-tags
     const stripped = block.replace(/<a[^>]*>\s*<img[^>]*\/?\s*>\s*<\/a>/g, '')
-
-    // First remaining a-tag with meaningful text is the title
     const titleMatch = stripped.match(
       /<a[^>]+href="\/news\/main_newsView\.jsp\?pNum=\d+"[^>]*>\s*([^\s<][^<]{3,200}?)\s*<\/a>/,
     )
@@ -120,6 +111,114 @@ async function fetchNews(limit = 10): Promise<{ items: NewsItem[]; fetchedAt: st
   }
 
   return { items, fetchedAt: new Date().toISOString() }
+}
+
+// ── Ports (EconDB) ───────────────────────────────────────────────
+
+interface PortEntry { port: string; current: number; previous: number; yoyPct: number }
+
+async function fetchPorts(): Promise<{ ports: PortEntry[]; title: string; fetchedAt: string }> {
+  const res = await fetch('https://www.econdb.com/widgets/top-port-comparison/data/', {
+    headers: { 'User-Agent': 'MTLLink/1.0', Accept: 'application/json' },
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) throw new Error(`upstream ${res.status}`)
+
+  const raw = await res.json() as { plots?: Array<{ title?: string; data?: unknown[] }> }
+  const plot = raw.plots?.[0]
+
+  const ports: PortEntry[] = ((plot?.data ?? []) as Array<unknown>)
+    .map(row => {
+      // row may be [portName, current, previous] or {name, data:[c,p]}
+      if (Array.isArray(row)) {
+        const [port, current, previous] = row as [string, number, number]
+        const yoyPct = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
+        return { port: String(port), current: Number(current), previous: Number(previous), yoyPct }
+      }
+      return null
+    })
+    .filter((e): e is PortEntry => e !== null && !isNaN(e.current))
+    .sort((a, b) => b.current - a.current)
+
+  return { ports, title: String(plot?.title ?? ''), fetchedAt: new Date().toISOString() }
+}
+
+// ── Trade (EconDB) ───────────────────────────────────────────────
+
+interface TradePoint { date: string; total: number }
+
+async function fetchTrade(): Promise<{ points: TradePoint[]; wowPct: number | null; fetchedAt: string }> {
+  const res = await fetch(
+    'https://www.econdb.com/widgets/global-trade/data/?type=export&net=0&transform=0',
+    {
+      headers: { 'User-Agent': 'MTLLink/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    },
+  )
+  if (!res.ok) throw new Error(`upstream ${res.status}`)
+
+  const raw = await res.json() as { plots?: Array<{ series?: string[]; data?: unknown[] }> }
+  const plot = raw.plots?.[0]
+  const series = (plot?.series ?? []) as string[]
+  const totalIdx = series.findIndex(s => /^total$/i.test(s))
+
+  const points: TradePoint[] = ((plot?.data ?? []) as Array<unknown[]>)
+    .map(row => {
+      const date  = String(row[0])
+      const total = totalIdx >= 0
+        ? Number(row[totalIdx + 1])                         // "Total" series
+        : (row.slice(1) as number[]).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) // sum all
+      return { date, total }
+    })
+    .filter(p => p.date && !isNaN(p.total) && p.total > 0)
+    .slice(-52) // last 52 weeks
+
+  const latest = points[points.length - 1]
+  const prev   = points[points.length - 2]
+  const wowPct = (latest && prev && prev.total)
+    ? +((latest.total - prev.total) / prev.total * 100).toFixed(2)
+    : null
+
+  return { points, wowPct, fetchedAt: new Date().toISOString() }
+}
+
+// ── Disasters (GDACS) ────────────────────────────────────────────
+
+interface DisasterEvent {
+  id: string; type: string; name: string; country: string
+  alertLevel: string; fromDate: string; severity: string | null
+}
+
+async function fetchDisasters(): Promise<{ events: DisasterEvent[]; fetchedAt: string }> {
+  const res = await fetch(
+    'https://www.gdacs.org/gdacsapi/api/events/geteventlist/ARCHIVE?eventlist=EQ;TC;FL;VO;WF',
+    {
+      headers: { 'User-Agent': 'MTLLink/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    },
+  )
+  if (!res.ok) throw new Error(`upstream ${res.status}`)
+
+  const raw = await res.json() as { features?: Array<{ properties: Record<string, unknown> }> }
+
+  const events: DisasterEvent[] = (raw.features ?? [])
+    .filter(f => ['TC', 'EQ'].includes(String(f.properties.eventtype ?? '')))
+    .slice(0, 8)
+    .map(f => {
+      const p   = f.properties
+      const sev = p.severitydata as { severity?: number; severityunit?: string } | null
+      return {
+        id:         String(p.eventid ?? p.episodeid ?? ''),
+        type:       String(p.eventtype ?? ''),
+        name:       String(p.name ?? p.eventname ?? ''),
+        country:    String(p.country ?? ''),
+        alertLevel: String(p.alertlevel ?? ''),
+        fromDate:   String(p.fromdate ?? '').slice(0, 10),
+        severity:   sev?.severity != null ? `${sev.severity}${sev.severityunit ?? ''}` : null,
+      }
+    })
+
+  return { events, fetchedAt: new Date().toISOString() }
 }
 
 // ── Router ────────────────────────────────────────────────────────
@@ -134,8 +233,11 @@ Deno.serve(async (req: Request) => {
   } catch { /* GET or no body */ }
 
   try {
-    if (type === 'indices') return json(await fetchIndices())
-    if (type === 'news')    return json(await fetchNews(10))
+    if (type === 'indices')   return json(await fetchIndices())
+    if (type === 'news')      return json(await fetchNews(10))
+    if (type === 'ports')     return json(await fetchPorts())
+    if (type === 'trade')     return json(await fetchTrade())
+    if (type === 'disasters') return json(await fetchDisasters())
     return json({ error: 'unknown type' }, 400)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

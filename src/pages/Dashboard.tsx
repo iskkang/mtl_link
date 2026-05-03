@@ -3,6 +3,9 @@ import { WeatherCard }       from '../components/dashboard/WeatherCard'
 import { RequestsCard }      from '../components/dashboard/RequestsCard'
 import { ShippingIndexCard } from '../components/dashboard/ShippingIndexCard'
 import { NewsCard }          from '../components/dashboard/NewsCard'
+import { PortRankingCard }   from '../components/dashboard/PortRankingCard'
+import { GlobalTradeCard }   from '../components/dashboard/GlobalTradeCard'
+import { DisasterCard }      from '../components/dashboard/DisasterCard'
 import type { Section }      from '../components/layout/MenuRail'
 
 interface Props {
@@ -28,22 +31,25 @@ export function Dashboard({ onSectionChange }: Props) {
       {/* Cards */}
       <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
 
-        {/* Row 1: Greeting (2/3) + Weather (1/3) */}
+        {/* Row 1: Greeting | Requests | Weather */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2"><GreetingCard /></div>
-          <div className="col-span-1"><WeatherCard /></div>
+          <GreetingCard />
+          <RequestsCard onSectionChange={onSectionChange} />
+          <WeatherCard />
         </div>
 
-        {/* Row 2: Requests (2/3) + ShippingIndex (1/3) */}
+        {/* Row 2: ShippingIndex | PortRanking | GlobalTrade */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
-            <RequestsCard onSectionChange={onSectionChange} />
-          </div>
-          <div className="col-span-1"><ShippingIndexCard /></div>
+          <ShippingIndexCard />
+          <PortRankingCard />
+          <GlobalTradeCard />
         </div>
 
-        {/* Row 3: News (full width) */}
-        <NewsCard />
+        {/* Row 3: News (2/3) | Disaster (1/3) */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2"><NewsCard /></div>
+          <DisasterCard />
+        </div>
 
       </div>
     </div>
