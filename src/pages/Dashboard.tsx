@@ -15,10 +15,14 @@ export function Dashboard({ onSectionChange }: Props) {
       className="hidden md:flex flex-col h-full"
       style={{ background: 'var(--chat-bg)' }}
     >
-      {/* Header — same height as sidebar chat header (py-3.5) */}
+      {/* Header — h-14 (56px) matches ChatHeader height */}
       <header
-        className="flex items-center px-6 py-3.5 flex-shrink-0 border-b"
-        style={{ borderColor: 'var(--line)' }}
+        className="h-14 flex items-center px-4 flex-shrink-0 chat-header"
+        style={{
+          background:   'var(--card)',
+          borderBottom: '1px solid var(--line)',
+          boxShadow:    'var(--shadow-header)',
+        }}
       />
 
       {/* Cards */}
