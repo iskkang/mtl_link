@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Anchor, RefreshCw } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import { DashboardCard } from './DashboardCard'
 
 interface PortEntry { port: string; current: number; previous: number; yoyPct: number }
 interface PortsData  { ports: PortEntry[]; title: string; fetchedAt: string }
 
-const CACHE_KEY = 'mtl_dashboard_ports_v1'
+const CACHE_KEY = 'mtl_dashboard_ports_v2'
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 h
 
 function loadCache(): PortsData | null {
@@ -35,9 +34,9 @@ function Skeleton() {
 }
 
 function PortBar({ entry, maxVal }: { entry: PortEntry; maxVal: number }) {
-  const pct     = maxVal > 0 ? (entry.current / maxVal) * 100 : 0
-  const up      = entry.yoyPct >= 0
-  const yoyTxt  = `${up ? '+' : ''}${entry.yoyPct.toFixed(1)}%`
+  const pct    = maxVal > 0 ? (entry.current / maxVal) * 100 : 0
+  const up     = entry.yoyPct >= 0
+  const yoyTxt = `${up ? '+' : ''}${entry.yoyPct.toFixed(1)}%`
 
   return (
     <div className="flex flex-col gap-0.5 py-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
@@ -70,6 +69,42 @@ function PortBar({ entry, maxVal }: { entry: PortEntry; maxVal: number }) {
   )
 }
 
+// Fetch directly from EconDB (widget API is CORS-open, server-side IP may be blocked)
+async function fetchPortsData(): Promise<PortsData> {
+  const res = await fetch(
+    'https://www.econdb.com/widgets/top-port-comparison/data/',
+    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) },
+  )
+  if (!res.ok) throw new Error(`upstream ${res.status}`)
+
+  const raw = await res.json() as { plots?: Array<{ title?: string; data?: unknown[] }> }
+  const plot = raw.plots?.[0]
+
+  const ports: PortEntry[] = ((plot?.data ?? []) as Array<unknown>)
+    .map(row => {
+      // array format: [portName, current, previous]
+      if (Array.isArray(row)) {
+        const [port, current, previous] = row as [string, number, number]
+        const yoyPct = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
+        return { port: String(port), current: Number(current), previous: Number(previous), yoyPct }
+      }
+      // object format: { port/name/Port, current/Current, previous/Previous }
+      if (row && typeof row === 'object') {
+        const r = row as Record<string, unknown>
+        const port     = String(r.port ?? r.name ?? r.Port ?? r.Name ?? '')
+        const current  = Number(r.current ?? r.Current ?? r.value ?? r.Value ?? 0)
+        const previous = Number(r.previous ?? r.Previous ?? r.prev ?? r.Prev ?? 0)
+        const yoyPct   = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
+        return { port, current, previous, yoyPct }
+      }
+      return null
+    })
+    .filter((e): e is PortEntry => e !== null && Boolean(e.port) && !isNaN(e.current) && e.current > 0)
+    .sort((a, b) => b.current - a.current)
+
+  return { ports, title: String(plot?.title ?? ''), fetchedAt: new Date().toISOString() }
+}
+
 export function PortRankingCard() {
   const { t } = useTranslation()
   const cached = loadCache()
@@ -81,11 +116,7 @@ export function PortRankingCard() {
     setLoading(true)
     setError(null)
     try {
-      const { data: res, error: fnErr } = await supabase.functions.invoke<PortsData>('dashboard-data', {
-        body: { type: 'ports' },
-      })
-      if (fnErr) throw new Error(fnErr.message)
-      if (!res)  throw new Error('empty response')
+      const res = await fetchPortsData()
       saveCache(res)
       setData(res)
     } catch (e) {

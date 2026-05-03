@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BarChart2, RefreshCw } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import { DashboardCard } from './DashboardCard'
 
 interface TradePoint { date: string; total: number }
 interface TradeData  { points: TradePoint[]; wowPct: number | null; fetchedAt: string }
 
-const CACHE_KEY = 'mtl_dashboard_trade_v1'
+const CACHE_KEY = 'mtl_dashboard_trade_v2'
 const CACHE_TTL = 6 * 60 * 60 * 1000 // 6 h
 
 function loadCache(): TradeData | null {
@@ -57,17 +56,44 @@ function TradeSparkline({ points }: { points: TradePoint[] }) {
   const ly = (pad + (1 - (latest.total - min) / range) * h).toFixed(1)
 
   return (
-    <svg
-      width="100%"
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      style={{ display: 'block' }}
-    >
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
       <path d={d} fill="none" stroke="var(--brand)" strokeWidth={1.5}
         strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
       <circle cx={lx} cy={ly} r={2.5} fill="var(--brand)" />
     </svg>
   )
+}
+
+// Fetch directly from EconDB (widget API is CORS-open, server-side IP may be blocked)
+async function fetchTradeData(): Promise<TradeData> {
+  const res = await fetch(
+    'https://www.econdb.com/widgets/global-trade/data/?type=export&net=0&transform=0',
+    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) },
+  )
+  if (!res.ok) throw new Error(`upstream ${res.status}`)
+
+  // data format: plots[0].data = Array<{ Date: string; [region: string]: number }>
+  const raw = await res.json() as { plots?: Array<{ data?: Array<Record<string, unknown>> }> }
+  const plotData = (raw.plots?.[0]?.data ?? []) as Array<Record<string, unknown>>
+
+  const points: TradePoint[] = plotData
+    .map(row => {
+      const date  = String(row.Date ?? row.date ?? '')
+      const total = Object.entries(row)
+        .filter(([k]) => k !== 'Date' && k !== 'date')
+        .reduce((s, [, v]) => s + (typeof v === 'number' ? v : 0), 0)
+      return { date, total }
+    })
+    .filter(p => p.date && p.total > 0)
+    .slice(-52)
+
+  const latest = points[points.length - 1]
+  const prev   = points[points.length - 2]
+  const wowPct = latest && prev && prev.total
+    ? +((latest.total - prev.total) / prev.total * 100).toFixed(2)
+    : null
+
+  return { points, wowPct, fetchedAt: new Date().toISOString() }
 }
 
 export function GlobalTradeCard() {
@@ -81,11 +107,7 @@ export function GlobalTradeCard() {
     setLoading(true)
     setError(null)
     try {
-      const { data: res, error: fnErr } = await supabase.functions.invoke<TradeData>('dashboard-data', {
-        body: { type: 'trade' },
-      })
-      if (fnErr) throw new Error(fnErr.message)
-      if (!res)  throw new Error('empty response')
+      const res = await fetchTradeData()
       saveCache(res)
       setData(res)
     } catch (e) {
@@ -128,7 +150,6 @@ export function GlobalTradeCard() {
         </div>
       ) : (
         <>
-          {/* Current value + WoW badge */}
           {latest && (
             <div className="flex items-baseline gap-2 mb-3">
               <span className="text-[18px] font-bold tabular-nums" style={{ color: 'var(--ink)' }}>
@@ -149,18 +170,14 @@ export function GlobalTradeCard() {
             </div>
           )}
 
-          {/* Sparkline */}
           {data && data.points.length > 3 && (
             <div className="mb-1">
               <TradeSparkline points={data.points} />
             </div>
           )}
 
-          {/* Latest date */}
           {latest && (
-            <p className="text-[10px] mt-1" style={{ color: 'var(--ink-4)' }}>
-              {latest.date}
-            </p>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--ink-4)' }}>{latest.date}</p>
           )}
         </>
       )}
