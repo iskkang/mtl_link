@@ -6,8 +6,6 @@ import { useRooms } from '../../hooks/useRooms'
 import { RoomList } from '../chat/RoomList'
 import { FriendsList } from '../chat/FriendsList'
 import { ActionItemList } from '../actionitems/ActionItemList'
-import { useActionItems } from '../../hooks/useActionItems'
-import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { RequestList } from '../requests/RequestList'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
@@ -19,18 +17,21 @@ interface Props {
   onNewChat:       () => void
   onSelectFriend:  (userId: string) => void
   onSelectRequest: (roomId: string, messageId: string) => void
+  // Action items data — owned by DesktopColumns in AppLayout (single subscription)
+  received: ActionItem[]
+  created:  ActionItem[]
+  done:     ActionItem[]
+  onReload: () => void
 }
 
 export function ChatSidebar({
   activeSection, selectedRoomId, onSelectRoom,
   onNewChat, onSelectFriend, onSelectRequest,
+  received, created, done, onReload,
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { rooms, loading } = useRooms()
-  const { received, created, done, reload } = useActionItems()
-
-  useDueDateNotifications(received)
 
   const SECTION_TITLE: Partial<Record<Section, string>> = {
     chat:          t('tabChat'),
@@ -119,7 +120,7 @@ export function ChatSidebar({
       {/* ── Tasks section ── */}
       {activeSection === 'tasks' && (
         <div className="flex flex-col flex-1 min-h-0">
-          <TasksPanel received={received} created={created} done={done} onReload={reload} />
+          <TasksPanel received={received} created={created} done={done} onReload={onReload} />
         </div>
       )}
 

@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { MenuRail } from './MenuRail'
 import { ChatSidebar } from './ChatSidebar'
+import { useActionItems } from '../../hooks/useActionItems'
+import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
+import { useRequestStore } from '../../stores/requestStore'
 import type { Section } from './MenuRail'
 import type { SidebarTab } from '../chat/SidebarTabs'
 
@@ -16,10 +19,25 @@ interface Props {
   onSelectFriend:  (userId: string) => void
   onSelectRequest: (roomId: string, messageId: string) => void
   totalUnread:     number
-  taskCount:       number
   requestCount:    number
   notifEnabled:    boolean
   onToggleNotif:   () => void
+}
+
+/** Reads window.matchMedia once + listens for changes — runs client-side only */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
 }
 
 const MOBILE_SECTION_MAP = new Set<Section>(['chat', 'members', 'tasks', 'requests'])
@@ -29,10 +47,11 @@ export function AppLayout({
   activeSection, onSectionChange,
   selectedRoomId, onSelectRoom, onNewChat,
   onSelectFriend, onSelectRequest,
-  totalUnread, taskCount, requestCount,
+  totalUnread, requestCount,
   notifEnabled, onToggleNotif,
 }: Props) {
-  // If activeSection is a desktop-only section, fall back to 'chat' for mobile SidebarTabs
+  const isDesktop = useIsDesktop()
+
   const mobileTab: SidebarTab = MOBILE_SECTION_MAP.has(activeSection)
     ? (activeSection as SidebarTab)
     : 'chat'
@@ -40,28 +59,92 @@ export function AppLayout({
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
 
-      {/* ── Mobile sidebar (< md): full-width, shown/hidden by showChat ── */}
-      <aside
-        className={`w-full flex-shrink-0 flex flex-col md:hidden border-r ${showChat ? 'hidden' : 'flex'}`}
-        style={{ background: 'var(--side-bg)', borderColor: 'var(--side-line)' }}
-      >
-        <Sidebar
+      {isDesktop ? (
+        /* ── Desktop: MenuRail (60px) + ChatSidebar (280px) ── */
+        <DesktopColumns
+          activeSection={activeSection}
+          onSectionChange={onSectionChange}
           selectedRoomId={selectedRoomId}
           onSelectRoom={onSelectRoom}
           onNewChat={onNewChat}
-          activeTab={mobileTab}
-          onTabChange={tab => onSectionChange(tab as Section)}
           onSelectFriend={onSelectFriend}
+          onSelectRequest={onSelectRequest}
           totalUnread={totalUnread}
+          requestCount={requestCount}
           notifEnabled={notifEnabled}
           onToggleNotif={onToggleNotif}
-          onSelectRequest={onSelectRequest}
         />
-      </aside>
+      ) : (
+        /* ── Mobile: full-width Sidebar ── */
+        <aside
+          className={`w-full flex-shrink-0 flex-col border-r ${showChat ? 'hidden' : 'flex'}`}
+          style={{ background: 'var(--side-bg)', borderColor: 'var(--side-line)' }}
+        >
+          <Sidebar
+            selectedRoomId={selectedRoomId}
+            onSelectRoom={onSelectRoom}
+            onNewChat={onNewChat}
+            activeTab={mobileTab}
+            onTabChange={tab => onSectionChange(tab as Section)}
+            onSelectFriend={onSelectFriend}
+            totalUnread={totalUnread}
+            notifEnabled={notifEnabled}
+            onToggleNotif={onToggleNotif}
+            onSelectRequest={onSelectRequest}
+          />
+        </aside>
+      )}
 
-      {/* ── Desktop MenuRail (>= md): 60px icon rail ── */}
+      {/* ── Main content ── */}
+      <main
+        className={`flex-1 flex flex-col min-w-0 ${showChat || isDesktop ? 'flex' : 'hidden'}`}
+        style={{ background: 'var(--chat-bg)' }}
+      >
+        {children}
+      </main>
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   DesktopColumns — only mounted on desktop.
+   Owns the single useActionItems subscription for the desktop
+   layout, then hands data down to ChatSidebar.
+   ────────────────────────────────────────────────────────────── */
+interface DesktopColumnsProps {
+  activeSection:   Section
+  onSectionChange: (s: Section) => void
+  selectedRoomId:  string | null
+  onSelectRoom:    (id: string) => void
+  onNewChat:       () => void
+  onSelectFriend:  (userId: string) => void
+  onSelectRequest: (roomId: string, messageId: string) => void
+  totalUnread:     number
+  requestCount:    number
+  notifEnabled:    boolean
+  onToggleNotif:   () => void
+}
+
+function DesktopColumns({
+  activeSection, onSectionChange,
+  selectedRoomId, onSelectRoom, onNewChat,
+  onSelectFriend, onSelectRequest,
+  totalUnread, requestCount,
+  notifEnabled, onToggleNotif,
+}: DesktopColumnsProps) {
+  const { received, created, done, reload } = useActionItems()
+  const taskCount = received.length + created.length
+  useDueDateNotifications(received)
+
+  // requestCount is read from store here too so MenuRail stays self-consistent
+  const storeRequestCount = useRequestStore(s => s.receivedCount)
+  const effectiveRequestCount = storeRequestCount || requestCount
+
+  return (
+    <>
+      {/* MenuRail — 60px */}
       <div
-        className="hidden md:flex flex-shrink-0 flex-col border-r"
+        className="flex-shrink-0 flex flex-col border-r"
         style={{ borderColor: 'var(--side-line)' }}
       >
         <MenuRail
@@ -69,15 +152,15 @@ export function AppLayout({
           onSectionChange={onSectionChange}
           totalUnread={totalUnread}
           taskCount={taskCount}
-          requestCount={requestCount}
+          requestCount={effectiveRequestCount}
           notifEnabled={notifEnabled}
           onToggleNotif={onToggleNotif}
         />
       </div>
 
-      {/* ── Desktop ChatSidebar (>= md): 280px section panel ── */}
+      {/* ChatSidebar — 280px */}
       <div
-        className="hidden md:flex flex-col border-r"
+        className="flex flex-col border-r"
         style={{ borderColor: 'var(--side-line)' }}
       >
         <ChatSidebar
@@ -87,16 +170,12 @@ export function AppLayout({
           onNewChat={onNewChat}
           onSelectFriend={onSelectFriend}
           onSelectRequest={onSelectRequest}
+          received={received}
+          created={created}
+          done={done}
+          onReload={reload}
         />
       </div>
-
-      {/* ── Main content ── */}
-      <main
-        className={`flex-1 flex flex-col min-w-0 ${showChat ? 'flex' : 'hidden md:flex'}`}
-        style={{ background: 'var(--chat-bg)' }}
-      >
-        {children}
-      </main>
-    </div>
+    </>
   )
 }

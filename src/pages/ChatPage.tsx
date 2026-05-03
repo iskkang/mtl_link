@@ -7,7 +7,6 @@ import { createDirectRoom }   from '../services/roomService'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
 import { useRequestStore }    from '../stores/requestStore'
-import { useActionItems }     from '../hooks/useActionItems'
 import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh } from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
@@ -25,10 +24,8 @@ export default function ChatPage() {
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Counts for MenuRail badges
-  const { received, created } = useActionItems()
-  const pendingCount  = received.length + created.length
-  const requestCount  = useRequestStore(s => s.receivedCount)
+  // Request count for MenuRail badge (Zustand — no duplicate subscription risk)
+  const requestCount = useRequestStore(s => s.receivedCount)
 
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -108,7 +105,6 @@ export default function ChatPage() {
         onSelectFriend={handleSelectFriend}
         onSelectRequest={handleSelectRequest}
         totalUnread={totalUnread}
-        taskCount={pendingCount}
         requestCount={requestCount}
         notifEnabled={notifEnabled}
         onToggleNotif={toggleNotif}
