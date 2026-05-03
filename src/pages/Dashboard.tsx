@@ -12,26 +12,35 @@ interface Props {
 export function Dashboard({ onSectionChange }: Props) {
   return (
     <div
-      className="hidden md:flex flex-col h-full overflow-y-auto p-6 gap-4"
+      className="hidden md:flex flex-col h-full"
       style={{ background: 'var(--chat-bg)' }}
     >
-      {/* Row 1: Greeting (2/3) + Weather (1/3) */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2">
-          <GreetingCard />
-        </div>
-        <div className="col-span-1">
-          <WeatherCard />
-        </div>
-      </div>
+      {/* Header — same height as sidebar chat header (py-3.5) */}
+      <header
+        className="flex items-center px-6 py-3.5 flex-shrink-0 border-b"
+        style={{ borderColor: 'var(--line)' }}
+      />
 
-      {/* Row 2: Requests (full width) */}
-      <RequestsCard onSectionChange={onSectionChange} />
+      {/* Cards */}
+      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
 
-      {/* Row 3: ShippingIndex + News */}
-      <div className="grid grid-cols-2 gap-4">
-        <ShippingIndexCard />
+        {/* Row 1: Greeting (2/3) + Weather (1/3) */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2"><GreetingCard /></div>
+          <div className="col-span-1"><WeatherCard /></div>
+        </div>
+
+        {/* Row 2: Requests (2/3) + ShippingIndex (1/3) */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2">
+            <RequestsCard onSectionChange={onSectionChange} />
+          </div>
+          <div className="col-span-1"><ShippingIndexCard /></div>
+        </div>
+
+        {/* Row 3: News (full width) */}
         <NewsCard />
+
       </div>
     </div>
   )
