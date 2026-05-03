@@ -64,7 +64,7 @@
 
 /* ── Design tokens — dark mode ──────────────────────────────── */
 .dark {
-  --bg-base:     #17212B;
+  --bg-base:     #1A2332;
   --bg-primary:  #1F2C38;
   --bg-elevated: #243340;
   --bg-hover:    #2B3A47;
@@ -96,14 +96,14 @@
   --bubble-out-bd: transparent;
 
   /* Sidebar — dark mode values */
-  --side-bg:     #1A2238;
-  --side-deep:   #131A2C;
+  --side-bg:     #0A2540;
+  --side-deep:   #061A2F;
   --side-text:   #F1F5F9;
-  --side-mute:   #94A3B8;
-  --side-row:    #232E4A;
-  --side-active: #2D3A5F;
-  --side-line:   #2A3656;
-  --side-hover:  #232E4A;
+  --side-mute:   #8B98A5;
+  --side-row:    #14304F;
+  --side-active: #3390EC;
+  --side-line:   rgba(255,255,255,0.06);
+  --side-hover:  #14304F;
 
   /* Message hover action buttons */
   --action-btn-bg:    var(--ink-2);
@@ -222,7 +222,7 @@ body, .chat-panel, .chat-header, .composer-panel,
 /* ── Card top gradient bar ──────────────────────────────────── */
 .card-accent-bar {
   height: 3px;
-  background: linear-gradient(90deg, #1a3a6b 0%, #3390EC 50%, #EF3F1A 100%);
+  background: linear-gradient(90deg, #0A2540 0%, #3390EC 50%, #EF3F1A 100%);
   border-radius: 12px 12px 0 0;
 }
 

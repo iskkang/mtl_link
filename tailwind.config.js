@@ -28,7 +28,7 @@ export default {
           900: '#11436D',
         },
         surface: {
-          base:     '#17212B',
+          base:     '#1A2332',
           primary:  '#1F2C38',
           elevated: '#243340',
           hover:    '#2B3A47',
@@ -69,7 +69,8 @@ export default {
           emphasis: 'rgba(0,0,0,0.16)',
         },
         mtl: {
-          navy:  '#1a3a6b',
+          navy:  '#0A2540',
+          navy2: '#14304F',
           cyan:  '#29aee8',
           red:   '#EF3F1A',
           ocean: '#0d1b2a',
