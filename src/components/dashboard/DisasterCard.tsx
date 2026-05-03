@@ -119,7 +119,7 @@ export function DisasterCard() {
     if (!cached) load()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const events = data?.events ?? []
+  const events = (data?.events ?? []).slice(0, 4)
 
   return (
     <DashboardCard title={t('dashDisaster')} icon={AlertTriangle}>

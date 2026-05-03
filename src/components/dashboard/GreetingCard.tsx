@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
-import { DashboardCard } from './DashboardCard'
+import { getGreetingStyle } from '../../lib/weather'
 
 function getGreetKey(named: boolean): string {
   const h = new Date().getHours()
@@ -20,19 +20,33 @@ export function GreetingCard() {
     ? t(getGreetKey(true), { name: profile.name })
     : t(getGreetKey(false))
 
+  const { gradient } = getGreetingStyle()
+
   return (
-    <DashboardCard>
-      <div className="pt-2">
-        <p className="text-xs mb-1" style={{ color: 'var(--ink-4)' }}>{dateStr}</p>
-        <h2 className="text-xl font-bold leading-snug" style={{ color: 'var(--ink)' }}>
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col justify-between"
+      style={{
+        background: gradient,
+        border:     '1px solid rgba(255,255,255,0.12)',
+        boxShadow:  'var(--shadow-panel)',
+        minHeight:  148,
+        padding:    '18px 20px',
+      }}
+    >
+      <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.60)' }}>
+        {dateStr}
+      </p>
+
+      <div>
+        <h2 className="text-[22px] font-bold leading-snug" style={{ color: 'rgba(255,255,255,0.95)' }}>
           {greetText}
         </h2>
         {(profile?.position || profile?.department) && (
-          <p className="text-xs mt-1.5" style={{ color: 'var(--ink-4)' }}>
+          <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.60)' }}>
             {[profile.position, profile.department].filter(Boolean).join(' · ')}
           </p>
         )}
       </div>
-    </DashboardCard>
+    </div>
   )
 }

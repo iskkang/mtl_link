@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Cloud } from 'lucide-react'
-import { DashboardCard } from './DashboardCard'
-import { getWeather, getWeatherIcon, getWeatherKey } from '../../lib/weather'
+import { getWeather, getWeatherIcon, getWeatherKey, getWeatherStyle } from '../../lib/weather'
 import type { WeatherResult } from '../../lib/weather'
 
 export function WeatherCard() {
-  const { t } = useTranslation()
-  const [weather,  setWeather]  = useState<WeatherResult | null>(null)
-  const [loading,  setLoading]  = useState(true)
+  const { t, i18n } = useTranslation()
+  const [weather, setWeather] = useState<WeatherResult | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -18,31 +16,60 @@ export function WeatherCard() {
     return () => { cancelled = true }
   }, [])
 
+  const style  = weather ? getWeatherStyle(weather.code) : { gradient: 'linear-gradient(135deg, #4B5563 0%, #374151 100%)', dark: true }
+  const ink    = style.dark ? 'rgba(255,255,255,0.95)' : 'rgba(15,23,42,0.90)'
+  const inkSub = style.dark ? 'rgba(255,255,255,0.60)' : 'rgba(15,23,42,0.55)'
+
+  const dateStr = new Intl.DateTimeFormat(i18n.language, {
+    weekday: 'short', month: 'short', day: 'numeric',
+  }).format(new Date())
+
   return (
-    <DashboardCard title={t('dashWeather')} icon={Cloud}>
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col justify-between"
+      style={{
+        background: style.gradient,
+        border:     style.dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+        boxShadow:  'var(--shadow-panel)',
+        minHeight:  148,
+        padding:    '18px 20px',
+      }}
+    >
       {loading ? (
-        <div className="flex items-center gap-3 pt-1">
-          <div className="w-10 h-10 rounded-xl animate-pulse flex-shrink-0" style={{ background: 'var(--side-row)' }} />
-          <div className="flex flex-col gap-1.5">
-            <div className="w-16 h-5 rounded animate-pulse" style={{ background: 'var(--side-row)' }} />
-            <div className="w-24 h-3 rounded animate-pulse" style={{ background: 'var(--side-row)' }} />
-          </div>
+        <div className="flex flex-col gap-2 animate-pulse">
+          <div className="h-3 w-16 rounded" style={{ background: 'rgba(255,255,255,0.25)' }} />
+          <div className="h-10 w-20 rounded mt-2" style={{ background: 'rgba(255,255,255,0.25)' }} />
+          <div className="h-3 w-28 rounded mt-1" style={{ background: 'rgba(255,255,255,0.25)' }} />
         </div>
       ) : weather ? (
-        <div className="flex items-center gap-3 pt-1">
-          <span className="text-4xl leading-none flex-shrink-0">{getWeatherIcon(weather.code)}</span>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold leading-tight" style={{ color: 'var(--ink)' }}>
-              {weather.temp}°C
-            </p>
-            <p className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>
-              {t(getWeatherKey(weather.code))} · {weather.location}
-            </p>
+        <>
+          {/* Top: date + large icon */}
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[11px] font-medium" style={{ color: inkSub }}>{dateStr}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: inkSub }}>{weather.location}</p>
+            </div>
+            <span style={{ fontSize: 50, lineHeight: 1 }}>{getWeatherIcon(weather.code)}</span>
           </div>
-        </div>
+
+          {/* Bottom: temperature + condition */}
+          <div className="mt-3">
+            <p className="text-[40px] font-bold leading-none tabular-nums" style={{ color: ink }}>
+              {weather.temp}°
+            </p>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="text-[12px] font-semibold" style={{ color: ink }}>
+                {t(getWeatherKey(weather.code))}
+              </span>
+              <span className="text-[11px]" style={{ color: inkSub }}>
+                · {t('weatherFeelsLike')} {weather.feelsLike}°
+              </span>
+            </div>
+          </div>
+        </>
       ) : (
-        <p className="text-xs pt-1" style={{ color: 'var(--ink-4)' }}>{t('weatherError')}</p>
+        <p className="text-[11px]" style={{ color: inkSub }}>{t('weatherError')}</p>
       )}
-    </DashboardCard>
+    </div>
   )
 }
