@@ -290,6 +290,9 @@ const resources = {
       dashReqJustNow:       '방금',
       timeJustNow:          '방금',
       timeYesterday:        '어제',
+      dashShippingUpdated:  '{{date}} 기준',
+      dashShippingError:    '데이터 로드 실패',
+      dashShippingRetry:    '다시 시도',
     },
   },
 
@@ -539,6 +542,9 @@ const resources = {
       dashReqJustNow:       'Just now',
       timeJustNow:          'Just now',
       timeYesterday:        'Yesterday',
+      dashShippingUpdated:  'As of {{date}}',
+      dashShippingError:    'Failed to load data',
+      dashShippingRetry:    'Retry',
     },
   },
 
@@ -788,6 +794,9 @@ const resources = {
       dashReqJustNow:       'Только что',
       timeJustNow:          'Только что',
       timeYesterday:        'Вчера',
+      dashShippingUpdated:  'По состоянию на {{date}}',
+      dashShippingError:    'Ошибка загрузки',
+      dashShippingRetry:    'Повторить',
     },
   },
 
@@ -1037,6 +1046,9 @@ const resources = {
       dashReqJustNow:       'Hozirgina',
       timeJustNow:          'Hozirgina',
       timeYesterday:        'Kecha',
+      dashShippingUpdated:  '{{date}} holatiga ko\'ra',
+      dashShippingError:    'Ma\'lumot yuklanmadi',
+      dashShippingRetry:    'Qayta urinish',
     },
   },
 
@@ -1286,6 +1298,9 @@ const resources = {
       dashReqJustNow:       '刚刚',
       timeJustNow:          '刚刚',
       timeYesterday:        '昨天',
+      dashShippingUpdated:  '截至{{date}}',
+      dashShippingError:    '数据加载失败',
+      dashShippingRetry:    '重试',
     },
   },
 
@@ -1535,6 +1550,9 @@ const resources = {
       dashReqJustNow:       'たった今',
       timeJustNow:          'たった今',
       timeYesterday:        '昨日',
+      dashShippingUpdated:  '{{date}}時点',
+      dashShippingError:    'データ読込失敗',
+      dashShippingRetry:    '再試行',
     },
   },
 }
