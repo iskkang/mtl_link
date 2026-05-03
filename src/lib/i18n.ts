@@ -262,7 +262,7 @@ const resources = {
       emptyMsgsTitle:     '첫 메시지를 보내보세요',
       emptyMsgsDesc:      '아래 입력창에서 대화를 시작할 수 있어요',
       autoTranslateHint:   '✦ 입력한 메시지가 상대방 언어로 자동 번역됩니다',
-      autoTranslateBanner: '✦ MTL Link이 메시지를 자동으로 번역하고 있어요. 메시지를 클릭하면 원문을 볼 수 있습니다.',
+      autoTranslateBanner: '✦ MTL Link가 메시지를 자동으로 번역하고 있어요. 메시지를 클릭하면 원문을 볼 수 있습니다.',
     },
   },
 
