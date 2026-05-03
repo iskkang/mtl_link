@@ -1,6 +1,15 @@
 import { supabase } from '../lib/supabase'
 import type { RoomListItem, Profile } from '../types/chat'
 
+function roomMsgPreview(msg: { message_type: string; content: string | null }): string | null {
+  switch (msg.message_type) {
+    case 'image':            return '[사진]'
+    case 'file':             return '[파일]'
+    case 'voice_translated': return '[음성 메시지]'
+    default:                 return msg.content
+  }
+}
+
 export async function fetchRooms(): Promise<RoomListItem[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -56,6 +65,27 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
     }),
   )
 
+  // NOTE: N+1 query pattern. Acceptable for current scale (5-10 rooms).
+  // For future scaling beyond ~50 rooms, migrate to:
+  //   - Database view (rooms_with_last_message)
+  //   - Or RPC function with single query
+  //   - Or denormalized last_message column with DB trigger
+  const lastMessages = await Promise.all(
+    rooms.map(async room => {
+      const { data } = await supabase
+        .from('messages')
+        .select('content, created_at, message_type')
+        .eq('room_id', room.id)
+        .is('deleted_at', null)
+        .neq('message_type', 'system')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      return { roomId: room.id, msg: data }
+    }),
+  )
+  const lastMsgMap = Object.fromEntries(lastMessages.map(x => [x.roomId, x.msg]))
+
   // 조합
   const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
   const membersByRoom: Record<string, (Pick<Profile, 'id' | 'name' | 'avatar_url' | 'preferred_language'> & { last_read_at: string | null })[]> = {}
@@ -66,14 +96,21 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
   }
   const unreadMap = Object.fromEntries(unreadCounts.map(u => [u.roomId, u.count]))
 
-  return rooms.map(room => ({
-    ...room,
-    members:      membersByRoom[room.id] ?? [],
-    is_pinned:    myMemMap[room.id]?.is_pinned  ?? false,
-    is_muted:     myMemMap[room.id]?.is_muted   ?? false,
-    last_read_at: myMemMap[room.id]?.last_read_at ?? null,
-    unread_count: unreadMap[room.id] ?? 0,
-  }))
+  return rooms.map(room => {
+    const lastMsg = lastMsgMap[room.id]
+    const lastMessagePreview = lastMsg ? roomMsgPreview(lastMsg) : (room.last_message ?? null)
+    const lastMessageAt = lastMsg ? lastMsg.created_at : (room.last_message_at ?? null)
+    return {
+      ...room,
+      last_message:    lastMessagePreview,
+      last_message_at: lastMessageAt,
+      members:         membersByRoom[room.id] ?? [],
+      is_pinned:       myMemMap[room.id]?.is_pinned  ?? false,
+      is_muted:        myMemMap[room.id]?.is_muted   ?? false,
+      last_read_at:    myMemMap[room.id]?.last_read_at ?? null,
+      unread_count:    unreadMap[room.id] ?? 0,
+    }
+  })
 }
 
 export async function markAsRead(roomId: string): Promise<void> {

@@ -3,7 +3,7 @@ import { FollowupBadge } from './FollowupBadge'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
 import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, CornerDownLeft, ScanText } from 'lucide-react'
-import { getLangFlag } from '../../lib/langFlags'
+import { getLangName } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -370,8 +370,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             {isVoice && !isFailed && !isSending && message.source_language && (
               <span className="text-[11px] flex items-center gap-0.5 leading-none" style={{ color: 'var(--ink-4)' }}>
                 <Mic size={9} className="flex-shrink-0" />
-                {getLangFlag(message.source_language)}
-                {message.target_language && <>{' → '}{getLangFlag(message.target_language)}</>}
+                {getLangName(message.source_language)}
+                {message.target_language && <>{' → '}{getLangName(message.target_language)}</>}
               </span>
             )}
 
@@ -379,15 +379,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             {isOcr && !isFailed && !isSending && message.source_language && (
               <span className="text-[11px] flex items-center gap-0.5 leading-none" style={{ color: 'var(--ink-4)' }}>
                 <ScanText size={9} className="flex-shrink-0" />
-                {getLangFlag(message.source_language)}
-                {message.target_language && <>{' → '}{getLangFlag(message.target_language)}</>}
+                {getLangName(message.source_language)}
+                {message.target_language && <>{' → '}{getLangName(message.target_language)}</>}
               </span>
             )}
 
             {/* 자동 텍스트 번역 배지 */}
             {isTranslatable && !isTranslating && translatedText && !isFailed && !isSending && message.source_language && (
               <span className="text-[11px] leading-none" style={{ color: 'var(--ink-4)' }}>
-                {getLangFlag(message.source_language)}{' → '}{getLangFlag(myLanguage)}
+                {getLangName(message.source_language)}{' → '}{getLangName(myLanguage)}
               </span>
             )}
 

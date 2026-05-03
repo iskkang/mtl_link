@@ -8,7 +8,7 @@ import { useMessageSearch } from '../../hooks/useMessageSearch'
 import { useRoomStore } from '../../stores/roomStore'
 import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
 import { sendFileMessage } from '../../services/messageService'
-import { getLangFlag } from '../../lib/langFlags'
+import { getLangName } from '../../lib/langFlags'
 import { validateFiles } from '../../lib/fileValidation'
 import { getUserFriendlyMessage } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
@@ -123,15 +123,15 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
 
   const effectivePeerLang = freshPeerLang ?? peer?.preferred_language
 
-  const groupFlags = isGroup
-    ? [...new Set(room!.members.map(m => getLangFlag(m.preferred_language ?? 'ko')))].join(' ')
+  const groupLangNames = isGroup
+    ? [...new Set(room!.members.map(m => getLangName(m.preferred_language ?? 'ko')))].join(', ')
     : ''
 
   const headerSubtitle = isGroup
-    ? `${memberCount}명 · ${groupFlags}`
+    ? `${t('memberCount', { count: memberCount })} · ${groupLangNames}`
     : effectivePeerLang
-      ? `🟢 · ${getLangFlag(effectivePeerLang)}`
-      : '🟢'
+      ? getLangName(effectivePeerLang)
+      : ''
 
   // 파일 선택/드롭 → 검증 후 pendingFiles에 추가
   const handleFilesSelected = useCallback((newFiles: File[]) => {

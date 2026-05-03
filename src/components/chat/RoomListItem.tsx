@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { formatRoomTime } from '../../lib/date'
 import { getRoomDisplayName, getRoomAvatarInfo } from '../../services/roomService'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function RoomListItemView({ room, isSelected, currentUserId, onClick }: Props) {
+  const { i18n } = useTranslation()
   const displayName = getRoomDisplayName(room, currentUserId)
   const avatar      = getRoomAvatarInfo(room, currentUserId)
   const unread      = room.unread_count ?? 0
@@ -59,7 +61,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
               fontWeight: unread > 0 ? 600 : 400,
             }}
           >
-            {formatRoomTime(room.last_message_at)}
+            {formatRoomTime(room.last_message_at, i18n.language)}
           </span>
         </div>
 

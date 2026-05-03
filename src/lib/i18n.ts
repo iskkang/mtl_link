@@ -288,6 +288,8 @@ const resources = {
       dashReqHoursAgo:      '{{n}}시간 전',
       dashReqDaysAgo:       '{{n}}일 전',
       dashReqJustNow:       '방금',
+      timeJustNow:          '방금',
+      timeYesterday:        '어제',
     },
   },
 
@@ -535,6 +537,8 @@ const resources = {
       dashReqHoursAgo:      '{{n}}h ago',
       dashReqDaysAgo:       '{{n}}d ago',
       dashReqJustNow:       'Just now',
+      timeJustNow:          'Just now',
+      timeYesterday:        'Yesterday',
     },
   },
 
@@ -782,6 +786,8 @@ const resources = {
       dashReqHoursAgo:      '{{n}} ч назад',
       dashReqDaysAgo:       '{{n}} дн назад',
       dashReqJustNow:       'Только что',
+      timeJustNow:          'Только что',
+      timeYesterday:        'Вчера',
     },
   },
 
@@ -1029,6 +1035,8 @@ const resources = {
       dashReqHoursAgo:      '{{n}} soat oldin',
       dashReqDaysAgo:       '{{n}} kun oldin',
       dashReqJustNow:       'Hozirgina',
+      timeJustNow:          'Hozirgina',
+      timeYesterday:        'Kecha',
     },
   },
 
@@ -1276,6 +1284,8 @@ const resources = {
       dashReqHoursAgo:      '{{n}}小时前',
       dashReqDaysAgo:       '{{n}}天前',
       dashReqJustNow:       '刚刚',
+      timeJustNow:          '刚刚',
+      timeYesterday:        '昨天',
     },
   },
 
@@ -1523,6 +1533,8 @@ const resources = {
       dashReqHoursAgo:      '{{n}}時間前',
       dashReqDaysAgo:       '{{n}}日前',
       dashReqJustNow:       'たった今',
+      timeJustNow:          'たった今',
+      timeYesterday:        '昨日',
     },
   },
 }

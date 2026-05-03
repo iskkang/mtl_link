@@ -2,7 +2,7 @@ import { ArrowLeft, Globe, ChevronDown, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { ChatHeaderMenu } from './ChatHeaderMenu'
-import { getLangFlag } from '../../lib/langFlags'
+import { getLangName } from '../../lib/langFlags'
 
 interface Props {
   hasRoom:       boolean
@@ -121,7 +121,7 @@ export function ChatHeader({
             ) : effectivePeerLang ? (
               <>
                 <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-3)' }}>→</span>
-                <span className="text-[16px] leading-none">{getLangFlag(effectivePeerLang)}</span>
+                <span className="text-[11px] font-semibold">{getLangName(effectivePeerLang)}</span>
                 <ChevronDown size={10} />
               </>
             ) : (
