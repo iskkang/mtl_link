@@ -60,6 +60,12 @@ export default function ChatPage() {
     showToast(toastMsg)
   }
 
+  const handleLogoClick = () => {
+    setSelectedRoomId(null)
+    setShowChat(false)
+    setActiveSection('chat')
+  }
+
   const handleSelectRequest = (roomId: string, messageId: string) => {
     setSelectedRoomId(roomId)
     setShowChat(true)
@@ -109,6 +115,7 @@ export default function ChatPage() {
         requestCount={requestCount}
         notifEnabled={notifEnabled}
         onToggleNotif={toggleNotif}
+        onLogoClick={handleLogoClick}
       >
         {selectedRoomId ? (
           <ChatWindow

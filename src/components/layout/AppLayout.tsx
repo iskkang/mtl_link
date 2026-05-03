@@ -23,6 +23,7 @@ interface Props {
   requestCount:    number
   notifEnabled:    boolean
   onToggleNotif:   () => void
+  onLogoClick?:    () => void
 }
 
 /** Reads window.matchMedia once + listens for changes — runs client-side only */
@@ -50,6 +51,7 @@ export function AppLayout({
   onSelectFriend, onSelectRequest,
   totalUnread, requestCount,
   notifEnabled, onToggleNotif,
+  onLogoClick,
 }: Props) {
   const isDesktop = useIsDesktop()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -75,6 +77,7 @@ export function AppLayout({
           requestCount={requestCount}
           notifEnabled={notifEnabled}
           onToggleNotif={onToggleNotif}
+          onLogoClick={onLogoClick}
         />
       ) : (
         /* ── Mobile: full-width Sidebar + MoreSheet ── */
@@ -93,6 +96,7 @@ export function AppLayout({
               totalUnread={totalUnread}
               onSelectRequest={onSelectRequest}
               onMoreClick={() => setMoreOpen(true)}
+              onLogoClick={onLogoClick}
             />
           </aside>
           <MoreSheet
@@ -133,6 +137,7 @@ interface DesktopColumnsProps {
   requestCount:    number
   notifEnabled:    boolean
   onToggleNotif:   () => void
+  onLogoClick?:    () => void
 }
 
 function DesktopColumns({
@@ -141,6 +146,7 @@ function DesktopColumns({
   onSelectFriend, onSelectRequest,
   totalUnread, requestCount,
   notifEnabled, onToggleNotif,
+  onLogoClick,
 }: DesktopColumnsProps) {
   const { received, created, done, reload } = useActionItems()
   const taskCount = received.length + created.length
@@ -165,6 +171,7 @@ function DesktopColumns({
           requestCount={effectiveRequestCount}
           notifEnabled={notifEnabled}
           onToggleNotif={onToggleNotif}
+          onLogoClick={onLogoClick}
         />
       </div>
 

@@ -24,12 +24,14 @@ interface Props {
   requestCount:    number
   notifEnabled:    boolean
   onToggleNotif:   () => void
+  onLogoClick?:    () => void
 }
 
 export function MenuRail({
   activeSection, onSectionChange,
   totalUnread, taskCount, requestCount,
   notifEnabled, onToggleNotif,
+  onLogoClick,
 }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
@@ -55,7 +57,7 @@ export function MenuRail({
 
       {/* Logo — sticky top */}
       <div className="flex items-center justify-center flex-shrink-0 pt-3 pb-2">
-        <LogoBox size="md" />
+        <LogoBox size="md" onClick={onLogoClick} />
       </div>
 
       {/* Scrollable nav items */}

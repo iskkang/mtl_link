@@ -5,7 +5,16 @@ import { markAsRead } from '../services/roomService'
 import { sendTextMessage } from '../services/messageService'
 import { useRealtimeMessages } from './useRealtimeMessages'
 import { useAuth } from './useAuth'
-import type { ReplyRef } from '../types/chat'
+import type { ReplyRef, MessageWithSender } from '../types/chat'
+
+function msgPreview(msg: MessageWithSender): string | null {
+  switch (msg.message_type) {
+    case 'image':            return '[사진]'
+    case 'file':             return '[파일]'
+    case 'voice_translated': return '[음성 메시지]'
+    default:                 return msg.content
+  }
+}
 
 export function useMessages(roomId: string | null) {
   const store = useMessageStore()
@@ -16,7 +25,22 @@ export function useMessages(roomId: string | null) {
     if (!roomId) return
     // 첫 진입: 메시지 미로드 시 fetch
     if (!store.messagesByRoom[roomId]) {
-      store.fetchMessages(roomId).catch(console.error)
+      store.fetchMessages(roomId)
+        .then(() => {
+          // DB의 rooms.last_message가 null인 경우 로드된 메시지로 동기화
+          const msgs = useMessageStore.getState().messagesByRoom[roomId]
+          if (!msgs?.length) return
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            const m = msgs[i]
+            if (m.message_type === 'system' || m.deleted_at) continue
+            const preview = msgPreview(m)
+            if (preview) {
+              useRoomStore.getState().updateLastMessage(roomId, preview, m.created_at)
+              break
+            }
+          }
+        })
+        .catch(console.error)
     }
     markAsRead(roomId).catch(console.error)
     resetUnread(roomId)

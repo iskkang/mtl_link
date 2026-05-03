@@ -25,12 +25,13 @@ interface Props {
   totalUnread:     number
   onSelectRequest: (roomId: string, messageId: string) => void
   onMoreClick:     () => void
+  onLogoClick?:    () => void
 }
 
 export function Sidebar({
   selectedRoomId, onSelectRoom, onNewChat,
   activeTab, onTabChange, onSelectFriend, onSelectRequest,
-  totalUnread, onMoreClick,
+  totalUnread, onMoreClick, onLogoClick,
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -50,7 +51,7 @@ export function Sidebar({
         style={{ borderColor: 'var(--side-line)' }}
       >
         <div className="flex items-center gap-2.5">
-          <LogoBox size="sm" />
+          <LogoBox size="sm" onClick={onLogoClick} />
           <div>
             <span
               className="font-bold text-[14px] leading-none block"
