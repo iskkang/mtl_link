@@ -1,141 +1,129 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Anchor, RefreshCw } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { DashboardCard } from './DashboardCard'
 
-interface PortEntry { port: string; current: number; previous: number; yoyPct: number }
-interface PortsData  { ports: PortEntry[]; title: string; currentPeriod: string; prevPeriod: string; fetchedAt: string }
+// ── Port code → name (mtl-port-congestion-monitor PORT_META) ────────
+const PORT_NAMES: Record<string, string> = {
+  KRPUS: 'Busan', KRICN: 'Incheon', JPNGO: 'Nagoya', JPYOK: 'Yokohama',
+  JPTYO: 'Tokyo', JPUKB: 'Kobe',
+  CNSHA: 'Shanghai', CNQIN: 'Qingdao', CNNGB: 'Ningbo', CNTXG: 'Tianjin',
+  CNYTN: 'Yantian', CNNSA: 'Nansha', CNDLC: 'Dalian',
+  VNTOT: 'Cai Mep', VNHPH: 'Haiphong', THLCH: 'Laem Chabang',
+  SGSIN: 'Singapore', MYLPK: 'Port Klang', IDJKT: 'Jakarta',
+  IDSUB: 'Surabaya', PHMNL: 'Manila',
+  LKCMB: 'Colombo', AEJEA: 'Jebel Ali', INBOM: 'Mumbai',
+  JOAQJ: 'Aqaba', ILASH: 'Ashdod',
+  NLRTM: 'Rotterdam', DEHAM: 'Hamburg', BEANR: 'Antwerp',
+  GBFXT: 'Felixstowe', FRLEH: 'Le Havre', GRPIR: 'Piraeus',
+  ESVLC: 'Valencia', ITGOA: 'Genoa', SIKOP: 'Koper', ESALG: 'Algeciras',
+  USLAX: 'Los Angeles', USLGB: 'Long Beach', USNYC: 'New York',
+  USSAV: 'Savannah', CAVAN: 'Vancouver', USMSY: 'New Orleans',
+  RUVVO: 'Vladivostok', RUNVS: 'Novorossiysk', KZAKT: 'Aktau',
+  MACAS: 'Casablanca', KEMBA: 'Mombasa', ZADUR: 'Durban',
+  TZDAR: 'Dar es Salaam', EGPSD: 'Port Said',
+}
 
-const CACHE_KEY = 'mtl_dashboard_ports_v3'
-const CACHE_TTL = 24 * 60 * 60 * 1000
+// ── Level styling ────────────────────────────────────────────────────
+type Level = 'CONGESTED' | 'BUSY' | 'STABLE' | 'LOW'
 
-function loadCache(): PortsData | null {
+const LEVEL_STYLE: Record<Level, { bg: string; color: string; bar: string; label: string }> = {
+  CONGESTED: { bg: 'rgba(239,68,68,0.12)',    color: '#ef4444', bar: '#ef4444', label: '혼잡' },
+  BUSY:      { bg: 'rgba(245,158,11,0.12)',   color: '#f59e0b', bar: '#f59e0b', label: '혼잡' },
+  STABLE:    { bg: 'rgba(59,130,246,0.12)',   color: '#3b82f6', bar: '#3b82f6', label: '보통' },
+  LOW:       { bg: 'rgba(34,197,94,0.10)',    color: '#22c55e', bar: '#22c55e', label: '원활' },
+}
+
+function lvlStyle(level: string) {
+  return LEVEL_STYLE[level as Level] ?? LEVEL_STYLE.LOW
+}
+
+// ── Types ─────────────────────────────────────────────────────────────
+interface PortRow {
+  port_code:        string
+  tpfs:             number
+  level:            string
+  vessels_anchored: number
+  vessels_berthed:  number
+  updated_at:       string
+}
+interface CongestionData { rows: PortRow[]; fetchedAt: string }
+
+// ── Cache ─────────────────────────────────────────────────────────────
+const CACHE_KEY = 'mtl_dashboard_congestion_v1'
+const CACHE_TTL = 30 * 60 * 1000 // 30 min
+
+function loadCache(): CongestionData | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
-    const { data, ts }: { data: PortsData; ts: number } = JSON.parse(raw)
+    const { data, ts }: { data: CongestionData; ts: number } = JSON.parse(raw)
     return Date.now() - ts < CACHE_TTL ? data : null
   } catch { return null }
 }
-
-function saveCache(d: PortsData) {
+function saveCache(d: CongestionData) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: d, ts: Date.now() })) }
   catch { /* quota */ }
 }
 
+// ── Sub-components ────────────────────────────────────────────────────
 function Skeleton() {
   return (
-    <div className="flex flex-col gap-2 py-1">
+    <div className="flex flex-col gap-2.5 py-1">
       {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="h-6 rounded animate-pulse" style={{ background: 'var(--bg-primary)' }} />
+        <div key={i} className="flex flex-col gap-1">
+          <div className="h-4 rounded animate-pulse" style={{ background: 'var(--bg-primary)', width: `${70 + i * 5}%` }} />
+          <div className="h-1.5 rounded-full animate-pulse" style={{ background: 'var(--bg-primary)' }} />
+        </div>
       ))}
     </div>
   )
 }
 
-function PortBar({ entry }: { entry: PortEntry }) {
-  const up     = entry.yoyPct >= 0
-  const yoyTxt = `${up ? '+' : ''}${entry.yoyPct.toFixed(1)}%`
+function PortRow({ row }: { row: PortRow }) {
+  const name  = PORT_NAMES[row.port_code] ?? row.port_code
+  const lvl   = lvlStyle(row.level)
+  const pct   = Math.min(Math.round(row.tpfs), 100)
+  const total = (row.vessels_anchored ?? 0) + (row.vessels_berthed ?? 0)
 
   return (
-    <div className="flex flex-col gap-0.5 py-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium truncate flex-1" style={{ color: 'var(--ink)' }}>
-          {entry.port}
+    <div className="py-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-[11px] font-semibold truncate flex-1" style={{ color: 'var(--ink)' }}>
+          {name}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] tabular-nums" style={{ color: 'var(--ink-3)' }}>
-            {entry.current.toLocaleString()} K
+          <span className="text-[10px] tabular-nums font-medium" style={{ color: 'var(--ink-3)' }}>
+            {total}척
           </span>
           <span
-            className="text-[9px] font-semibold px-1 py-0.5 rounded"
-            style={{
-              background: up ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-              color:      up ? 'var(--green)'          : 'var(--red)',
-            }}
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: lvl.bg, color: lvl.color }}
           >
-            {yoyTxt}
+            {row.level}
+          </span>
+          <span className="text-[10px] font-bold tabular-nums w-6 text-right" style={{ color: lvl.color }}>
+            {Math.round(row.tpfs)}
           </span>
         </div>
       </div>
-      {/* YoY deviation bar — centered at 50%, positive right, negative left */}
-      <div className="relative h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-        {up ? (
-          <div
-            className="absolute h-full rounded-full"
-            style={{
-              left:     '50%',
-              width:    `${Math.min(Math.abs(entry.yoyPct) * 1.5, 50)}%`,
-              background: 'var(--green)',
-              opacity: 0.7,
-            }}
-          />
-        ) : (
-          <div
-            className="absolute h-full rounded-full"
-            style={{
-              right:    '50%',
-              width:    `${Math.min(Math.abs(entry.yoyPct) * 1.5, 50)}%`,
-              background: 'var(--red)',
-              opacity: 0.7,
-            }}
-          />
-        )}
-        {/* Center marker */}
-        <div className="absolute top-0 bottom-0 w-px" style={{ left: '50%', background: 'var(--line)' }} />
+      {/* TPFS bar */}
+      <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, background: lvl.bar, opacity: 0.75 }}
+        />
       </div>
     </div>
   )
 }
 
-// API response: plots[0].data = Array<{ name: string; "March 26": number; "March 25": number }>
-// series[0].code = current period key, series[1].code = previous period key
-async function fetchPortsData(): Promise<PortsData> {
-  const res = await fetch(
-    'https://www.econdb.com/widgets/top-port-comparison/data/',
-    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) },
-  )
-  if (!res.ok) throw new Error(`upstream ${res.status}`)
-
-  const raw = await res.json() as {
-    plots?: Array<{
-      title?: string
-      series?: Array<{ code: string; name: string }>
-      data?: Array<Record<string, unknown>>
-    }>
-  }
-  const plot         = raw.plots?.[0]
-  const series       = plot?.series ?? []
-  const currentKey   = series[0]?.code ?? ''
-  const prevKey      = series[1]?.code ?? ''
-  const currentName  = series[0]?.name ?? currentKey
-  const prevName     = series[1]?.name ?? prevKey
-
-  const ports: PortEntry[] = ((plot?.data ?? []) as Array<Record<string, unknown>>)
-    .map(row => {
-      const port     = String(row.name ?? '')
-      const current  = Number(row[currentKey]  ?? 0)
-      const previous = Number(row[prevKey]     ?? 0)
-      if (!port || current <= 0) return null
-      const yoyPct = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
-      return { port, current, previous, yoyPct }
-    })
-    .filter((e): e is PortEntry => e !== null)
-    .sort((a, b) => b.current - a.current)
-
-  return {
-    ports,
-    title:         String(plot?.title ?? ''),
-    currentPeriod: currentName,
-    prevPeriod:    prevName,
-    fetchedAt:     new Date().toISOString(),
-  }
-}
-
+// ── Main ──────────────────────────────────────────────────────────────
 export function PortRankingCard() {
   const { t } = useTranslation()
   const cached = loadCache()
-  const [data,    setData]    = useState<PortsData | null>(cached)
+  const [data,    setData]    = useState<CongestionData | null>(cached)
   const [loading, setLoading] = useState<boolean>(!cached)
   const [error,   setError]   = useState<string | null>(null)
 
@@ -143,9 +131,20 @@ export function PortRankingCard() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetchPortsData()
-      saveCache(res)
-      setData(res)
+      // port_current is from mtl-port-congestion-monitor (same Supabase project)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rows, error: dbErr } = await (supabase as any)
+        .from('port_current')
+        .select('port_code, tpfs, level, vessels_anchored, vessels_berthed, updated_at')
+        .order('tpfs', { ascending: false })
+        .limit(10)
+
+      if (dbErr) throw new Error(dbErr.message)
+      if (!rows || rows.length === 0) throw new Error('no data')
+
+      const result: CongestionData = { rows: rows as PortRow[], fetchedAt: new Date().toISOString() }
+      saveCache(result)
+      setData(result)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'error')
     } finally {
@@ -157,21 +156,24 @@ export function PortRankingCard() {
     if (!cached) load()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ports  = data?.ports ?? []
+  // Last updated timestamp
+  const updatedAt = data?.rows[0]?.updated_at
+  const fmtUpdated = updatedAt
+    ? new Intl.DateTimeFormat('ko', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        .format(new Date(updatedAt))
+    : null
 
   return (
     <DashboardCard title={t('dashPorts')} icon={Anchor}>
-      {/* Header: period label + refresh */}
-      <div className="flex items-center justify-between mb-1">
-        {data && (
-          <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
-            {data.currentPeriod} vs {data.prevPeriod} · KTEU
-          </span>
-        )}
+      {/* Header: source + refresh */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
+          {fmtUpdated ? `갱신 ${fmtUpdated}` : 'AIS 실시간'}
+        </span>
         <button
           onClick={load}
           disabled={loading}
-          className="p-0.5 rounded transition-opacity hover:opacity-60 disabled:opacity-30 ml-auto"
+          className="p-0.5 rounded transition-opacity hover:opacity-60 disabled:opacity-30"
           style={{ color: 'var(--ink-4)' }}
           title={t('dashPortsRetry')}
         >
@@ -189,11 +191,23 @@ export function PortRankingCard() {
           </button>
         </div>
       ) : (
-        <div>
-          {ports.map(entry => (
-            <PortBar key={entry.port} entry={entry} />
-          ))}
-        </div>
+        <>
+          {/* Legend */}
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            {(['CONGESTED', 'BUSY', 'STABLE', 'LOW'] as Level[]).map(lv => (
+              <div key={lv} className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: LEVEL_STYLE[lv].bar }} />
+                <span className="text-[9px]" style={{ color: 'var(--ink-4)' }}>{lv}</span>
+              </div>
+            ))}
+          </div>
+          {/* Rows */}
+          <div>
+            {(data?.rows ?? []).map(row => (
+              <PortRow key={row.port_code} row={row} />
+            ))}
+          </div>
+        </>
       )}
     </DashboardCard>
   )
