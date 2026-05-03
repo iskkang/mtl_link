@@ -85,11 +85,12 @@ export function ChatHeaderMenu({
           {/* Divider */}
           <div className="my-1 border-t" style={{ borderColor: 'var(--line)' }} />
 
-          {/* Section 2: Room actions */}
+          {/* Section 2: Room actions (danger zone) */}
           <MenuRow
             icon={<LogOut size={15} />}
             label={t('roomLeave')}
             onClick={() => { setOpen(false); onLeave() }}
+            danger
           />
           {!isDirect && isOwner && (
             <MenuRow
@@ -122,7 +123,7 @@ function MenuRow({
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
       style={{ color: danger ? 'var(--red)' : 'var(--ink)' }}
-      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+      onMouseEnter={e => (e.currentTarget.style.background = danger ? 'rgba(239,63,26,0.06)' : 'var(--bg)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
       <span style={{ color: danger ? 'var(--red)' : 'var(--ink-3)', display: 'flex' }}>{icon}</span>

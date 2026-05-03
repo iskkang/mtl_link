@@ -1,40 +1,37 @@
 import { useState } from 'react'
-import { SquarePen, LogOut, Search, MessageSquare } from 'lucide-react'
+import { SquarePen, Search, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
-import { Avatar } from '../ui/Avatar'
 import { RoomList } from '../chat/RoomList'
 import { FriendsList } from '../chat/FriendsList'
-import { SidebarTabs, type SidebarTab } from '../chat/SidebarTabs'
-import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { NotificationToggle } from '../ui/NotificationToggle'
+import { type SidebarTab } from '../chat/SidebarTabs'
 import { ActionItemList } from '../actionitems/ActionItemList'
 import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { RequestList } from '../requests/RequestList'
 import { useRequestStore } from '../../stores/requestStore'
+import { MobileTabBar } from './MobileTabBar'
 
 interface Props {
-  selectedRoomId:   string | null
-  onSelectRoom:     (id: string) => void
-  onNewChat:        () => void
-  activeTab:        SidebarTab
-  onTabChange:      (tab: SidebarTab) => void
-  onSelectFriend:   (userId: string) => void
-  totalUnread:      number
-  notifEnabled:     boolean
-  onToggleNotif:    () => void
-  onSelectRequest:  (roomId: string, messageId: string) => void
+  selectedRoomId:  string | null
+  onSelectRoom:    (id: string) => void
+  onNewChat:       () => void
+  activeTab:       SidebarTab
+  onTabChange:     (tab: SidebarTab) => void
+  onSelectFriend:  (userId: string) => void
+  totalUnread:     number
+  onSelectRequest: (roomId: string, messageId: string) => void
+  onMoreClick:     () => void
 }
 
 export function Sidebar({
   selectedRoomId, onSelectRoom, onNewChat,
   activeTab, onTabChange, onSelectFriend, onSelectRequest,
-  totalUnread, notifEnabled, onToggleNotif,
+  totalUnread, onMoreClick,
 }: Props) {
   const { t } = useTranslation()
-  const { profile, user, signOut } = useAuth()
+  const { user } = useAuth()
   const { rooms, loading } = useRooms()
   const { received, created, done, reload } = useActionItems()
   const pendingCount = received.length + created.length
@@ -51,7 +48,6 @@ export function Sidebar({
         style={{ borderColor: 'var(--side-line)' }}
       >
         <div className="flex items-center gap-2.5">
-          {/* Brand mark */}
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ background: 'linear-gradient(135deg, #EF3F1A, #B83113)' }}
@@ -84,15 +80,6 @@ export function Sidebar({
           <SquarePen size={18} />
         </button>
       </header>
-
-      {/* ── 탭 ───────────────────────────────────────── */}
-      <SidebarTabs
-        active={activeTab}
-        onChange={onTabChange}
-        totalUnread={totalUnread}
-        taskCount={pendingCount}
-        requestCount={requestCount}
-      />
 
       {/* ── 채팅 탭 ──────────────────────────────────── */}
       {activeTab === 'chat' && (
@@ -140,7 +127,6 @@ export function Sidebar({
       {/* ── 할 일 탭 ─────────────────────────────────── */}
       {activeTab === 'tasks' && (
         <div className="flex flex-col flex-1 min-h-0">
-          {/* sub-tabs: received / created / done */}
           <TasksPanel
             received={received}
             created={created}
@@ -153,43 +139,25 @@ export function Sidebar({
       {/* ── 요청 탭 ──────────────────────────────────── */}
       {activeTab === 'requests' && (
         <div className="flex flex-col flex-1 min-h-0">
-          <RequestList
-            onSelectRequest={onSelectRequest}
-          />
+          <RequestList onSelectRequest={onSelectRequest} />
         </div>
       )}
 
-      {/* ── 프로필 푸터 ──────────────────────────────── */}
-      {profile && (
-        <footer
-          className="flex items-center gap-3 px-4 py-3 flex-shrink-0 border-t"
-          style={{ background: 'var(--side-deep)', borderColor: 'var(--side-line)' }}
-        >
-          <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: 'var(--side-text)' }}>
-              {profile.name}
-            </p>
-            {(profile.department || profile.position) && (
-              <p className="text-xs truncate" style={{ color: 'var(--side-mute)' }}>
-                {[profile.department, profile.position].filter(Boolean).join(' · ')}
-              </p>
-            )}
-          </div>
-          <NotificationToggle enabled={notifEnabled} onToggle={onToggleNotif} />
-          <LanguageSwitcher />
-          <button
-            onClick={signOut}
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: 'var(--side-mute)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            aria-label="로그아웃"
-          >
-            <LogOut size={16} />
-          </button>
-        </footer>
-      )}
+      {/* Spacer for MobileTabBar (fixed 56px + safe-area-inset-bottom) */}
+      <div
+        className="flex-shrink-0"
+        style={{ height: 'calc(56px + env(safe-area-inset-bottom))' }}
+      />
+
+      {/* ── 하단 탭바 (position: fixed, DOM 위치 무관) ── */}
+      <MobileTabBar
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        totalUnread={totalUnread}
+        taskCount={pendingCount}
+        requestCount={requestCount}
+        onMoreClick={onMoreClick}
+      />
     </div>
   )
 }
@@ -220,7 +188,6 @@ function TasksPanel({
 
   return (
     <>
-      {/* sub tab bar */}
       <div className="flex flex-shrink-0 border-b text-xs" style={{ borderColor: 'var(--side-line)' }}>
         {tabs.map(({ id, label, count }) => {
           const isActive = tab === id

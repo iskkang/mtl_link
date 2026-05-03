@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { MenuRail } from './MenuRail'
 import { ChatSidebar } from './ChatSidebar'
+import { MoreSheet } from './MoreSheet'
 import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { useRequestStore } from '../../stores/requestStore'
@@ -51,6 +52,7 @@ export function AppLayout({
   notifEnabled, onToggleNotif,
 }: Props) {
   const isDesktop = useIsDesktop()
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const mobileTab: SidebarTab = MOBILE_SECTION_MAP.has(activeSection)
     ? (activeSection as SidebarTab)
@@ -75,24 +77,32 @@ export function AppLayout({
           onToggleNotif={onToggleNotif}
         />
       ) : (
-        /* ── Mobile: full-width Sidebar ── */
-        <aside
-          className={`w-full flex-shrink-0 flex-col border-r ${showChat ? 'hidden' : 'flex'}`}
-          style={{ background: 'var(--side-bg)', borderColor: 'var(--side-line)' }}
-        >
-          <Sidebar
-            selectedRoomId={selectedRoomId}
-            onSelectRoom={onSelectRoom}
-            onNewChat={onNewChat}
-            activeTab={mobileTab}
-            onTabChange={tab => onSectionChange(tab as Section)}
-            onSelectFriend={onSelectFriend}
-            totalUnread={totalUnread}
+        /* ── Mobile: full-width Sidebar + MoreSheet ── */
+        <>
+          <aside
+            className={`w-full flex-shrink-0 flex-col border-r ${showChat ? 'hidden' : 'flex'}`}
+            style={{ background: 'var(--side-bg)', borderColor: 'var(--side-line)' }}
+          >
+            <Sidebar
+              selectedRoomId={selectedRoomId}
+              onSelectRoom={onSelectRoom}
+              onNewChat={onNewChat}
+              activeTab={mobileTab}
+              onTabChange={tab => onSectionChange(tab as Section)}
+              onSelectFriend={onSelectFriend}
+              totalUnread={totalUnread}
+              onSelectRequest={onSelectRequest}
+              onMoreClick={() => setMoreOpen(true)}
+            />
+          </aside>
+          <MoreSheet
+            open={moreOpen}
+            onClose={() => setMoreOpen(false)}
+            onSectionChange={onSectionChange}
             notifEnabled={notifEnabled}
             onToggleNotif={onToggleNotif}
-            onSelectRequest={onSelectRequest}
           />
-        </aside>
+        </>
       )}
 
       {/* ── Main content ── */}
