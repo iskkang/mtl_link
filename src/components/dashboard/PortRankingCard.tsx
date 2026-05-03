@@ -4,10 +4,10 @@ import { Anchor, RefreshCw } from 'lucide-react'
 import { DashboardCard } from './DashboardCard'
 
 interface PortEntry { port: string; current: number; previous: number; yoyPct: number }
-interface PortsData  { ports: PortEntry[]; title: string; fetchedAt: string }
+interface PortsData  { ports: PortEntry[]; title: string; currentPeriod: string; prevPeriod: string; fetchedAt: string }
 
-const CACHE_KEY = 'mtl_dashboard_ports_v2'
-const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 h
+const CACHE_KEY = 'mtl_dashboard_ports_v3'
+const CACHE_TTL = 24 * 60 * 60 * 1000
 
 function loadCache(): PortsData | null {
   try {
@@ -27,14 +27,13 @@ function Skeleton() {
   return (
     <div className="flex flex-col gap-2 py-1">
       {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="h-5 rounded animate-pulse" style={{ background: 'var(--bg-primary)' }} />
+        <div key={i} className="h-6 rounded animate-pulse" style={{ background: 'var(--bg-primary)' }} />
       ))}
     </div>
   )
 }
 
-function PortBar({ entry, maxVal }: { entry: PortEntry; maxVal: number }) {
-  const pct    = maxVal > 0 ? (entry.current / maxVal) * 100 : 0
+function PortBar({ entry }: { entry: PortEntry }) {
   const up     = entry.yoyPct >= 0
   const yoyTxt = `${up ? '+' : ''}${entry.yoyPct.toFixed(1)}%`
 
@@ -46,7 +45,7 @@ function PortBar({ entry, maxVal }: { entry: PortEntry; maxVal: number }) {
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] tabular-nums" style={{ color: 'var(--ink-3)' }}>
-            {entry.current.toLocaleString()}
+            {entry.current.toLocaleString()} K
           </span>
           <span
             className="text-[9px] font-semibold px-1 py-0.5 rounded"
@@ -59,17 +58,38 @@ function PortBar({ entry, maxVal }: { entry: PortEntry; maxVal: number }) {
           </span>
         </div>
       </div>
-      <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: 'var(--brand)' }}
-        />
+      {/* YoY deviation bar — centered at 50%, positive right, negative left */}
+      <div className="relative h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+        {up ? (
+          <div
+            className="absolute h-full rounded-full"
+            style={{
+              left:     '50%',
+              width:    `${Math.min(Math.abs(entry.yoyPct) * 1.5, 50)}%`,
+              background: 'var(--green)',
+              opacity: 0.7,
+            }}
+          />
+        ) : (
+          <div
+            className="absolute h-full rounded-full"
+            style={{
+              right:    '50%',
+              width:    `${Math.min(Math.abs(entry.yoyPct) * 1.5, 50)}%`,
+              background: 'var(--red)',
+              opacity: 0.7,
+            }}
+          />
+        )}
+        {/* Center marker */}
+        <div className="absolute top-0 bottom-0 w-px" style={{ left: '50%', background: 'var(--line)' }} />
       </div>
     </div>
   )
 }
 
-// Fetch directly from EconDB (widget API is CORS-open, server-side IP may be blocked)
+// API response: plots[0].data = Array<{ name: string; "March 26": number; "March 25": number }>
+// series[0].code = current period key, series[1].code = previous period key
 async function fetchPortsData(): Promise<PortsData> {
   const res = await fetch(
     'https://www.econdb.com/widgets/top-port-comparison/data/',
@@ -77,32 +97,39 @@ async function fetchPortsData(): Promise<PortsData> {
   )
   if (!res.ok) throw new Error(`upstream ${res.status}`)
 
-  const raw = await res.json() as { plots?: Array<{ title?: string; data?: unknown[] }> }
-  const plot = raw.plots?.[0]
+  const raw = await res.json() as {
+    plots?: Array<{
+      title?: string
+      series?: Array<{ code: string; name: string }>
+      data?: Array<Record<string, unknown>>
+    }>
+  }
+  const plot         = raw.plots?.[0]
+  const series       = plot?.series ?? []
+  const currentKey   = series[0]?.code ?? ''
+  const prevKey      = series[1]?.code ?? ''
+  const currentName  = series[0]?.name ?? currentKey
+  const prevName     = series[1]?.name ?? prevKey
 
-  const ports: PortEntry[] = ((plot?.data ?? []) as Array<unknown>)
+  const ports: PortEntry[] = ((plot?.data ?? []) as Array<Record<string, unknown>>)
     .map(row => {
-      // array format: [portName, current, previous]
-      if (Array.isArray(row)) {
-        const [port, current, previous] = row as [string, number, number]
-        const yoyPct = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
-        return { port: String(port), current: Number(current), previous: Number(previous), yoyPct }
-      }
-      // object format: { port/name/Port, current/Current, previous/Previous }
-      if (row && typeof row === 'object') {
-        const r = row as Record<string, unknown>
-        const port     = String(r.port ?? r.name ?? r.Port ?? r.Name ?? '')
-        const current  = Number(r.current ?? r.Current ?? r.value ?? r.Value ?? 0)
-        const previous = Number(r.previous ?? r.Previous ?? r.prev ?? r.Prev ?? 0)
-        const yoyPct   = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
-        return { port, current, previous, yoyPct }
-      }
-      return null
+      const port     = String(row.name ?? '')
+      const current  = Number(row[currentKey]  ?? 0)
+      const previous = Number(row[prevKey]     ?? 0)
+      if (!port || current <= 0) return null
+      const yoyPct = previous ? +((current - previous) / previous * 100).toFixed(1) : 0
+      return { port, current, previous, yoyPct }
     })
-    .filter((e): e is PortEntry => e !== null && Boolean(e.port) && !isNaN(e.current) && e.current > 0)
+    .filter((e): e is PortEntry => e !== null)
     .sort((a, b) => b.current - a.current)
 
-  return { ports, title: String(plot?.title ?? ''), fetchedAt: new Date().toISOString() }
+  return {
+    ports,
+    title:         String(plot?.title ?? ''),
+    currentPeriod: currentName,
+    prevPeriod:    prevName,
+    fetchedAt:     new Date().toISOString(),
+  }
 }
 
 export function PortRankingCard() {
@@ -130,16 +157,21 @@ export function PortRankingCard() {
     if (!cached) load()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ports  = data?.ports.slice(0, 10) ?? []
-  const maxVal = ports[0]?.current ?? 1
+  const ports  = data?.ports ?? []
 
   return (
     <DashboardCard title={t('dashPorts')} icon={Anchor}>
-      <div className="flex items-center justify-end mb-1">
+      {/* Header: period label + refresh */}
+      <div className="flex items-center justify-between mb-1">
+        {data && (
+          <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
+            {data.currentPeriod} vs {data.prevPeriod} · KTEU
+          </span>
+        )}
         <button
           onClick={load}
           disabled={loading}
-          className="p-0.5 rounded transition-opacity hover:opacity-60 disabled:opacity-30"
+          className="p-0.5 rounded transition-opacity hover:opacity-60 disabled:opacity-30 ml-auto"
           style={{ color: 'var(--ink-4)' }}
           title={t('dashPortsRetry')}
         >
@@ -159,7 +191,7 @@ export function PortRankingCard() {
       ) : (
         <div>
           {ports.map(entry => (
-            <PortBar key={entry.port} entry={entry} maxVal={maxVal} />
+            <PortBar key={entry.port} entry={entry} />
           ))}
         </div>
       )}
