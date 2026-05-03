@@ -1,7 +1,7 @@
 import { MessageSquare, Users, CheckSquare, Inbox } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-export type SidebarTab = 'chat' | 'friends' | 'tasks' | 'requests'
+export type SidebarTab = 'chat' | 'members' | 'tasks' | 'requests'
 
 interface Props {
   active:         SidebarTab
@@ -16,7 +16,7 @@ export function SidebarTabs({ active, onChange, totalUnread = 0, taskCount = 0, 
 
   const tabs: { id: SidebarTab; Icon: React.ElementType; label: string; badge: number }[] = [
     { id: 'chat',     Icon: MessageSquare, label: t('tabChat'),     badge: totalUnread  },
-    { id: 'friends',  Icon: Users,         label: t('tabFriends'),  badge: 0            },
+    { id: 'members',  Icon: Users,         label: t('tabFriends'),  badge: 0            },
     { id: 'tasks',    Icon: CheckSquare,   label: t('tabTasks'),    badge: taskCount    },
     { id: 'requests', Icon: Inbox,         label: t('tabRequests'), badge: requestCount },
   ]

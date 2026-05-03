@@ -1,28 +1,34 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { AppLayout }          from '../components/layout/AppLayout'
-import { Sidebar }            from '../components/layout/Sidebar'
 import { ChatWindow }         from '../components/layout/ChatWindow'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom }   from '../services/roomService'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
+import { useRequestStore }    from '../stores/requestStore'
+import { useActionItems }     from '../hooks/useActionItems'
 import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh } from '../hooks/usePollingRefresh'
-import type { SidebarTab }    from '../components/chat/SidebarTabs'
+import type { Section }       from '../components/layout/MenuRail'
 
 export default function ChatPage() {
   const { user } = useAuth()
   const rooms    = useRoomStore(s => s.rooms)
   usePollingRefresh()
 
-  const [selectedRoomId,    setSelectedRoomId]    = useState<string | null>(null)
-  const [showChat,          setShowChat]          = useState(false)
-  const [newRoomOpen,       setNewRoomOpen]       = useState(false)
-  const [activeTab,         setActiveTab]         = useState<SidebarTab>('chat')
-  const [toast,             setToast]             = useState<string | null>(null)
+  const [selectedRoomId,     setSelectedRoomId]     = useState<string | null>(null)
+  const [showChat,           setShowChat]           = useState(false)
+  const [newRoomOpen,        setNewRoomOpen]        = useState(false)
+  const [activeSection,      setActiveSection]      = useState<Section>('chat')
+  const [toast,              setToast]              = useState<string | null>(null)
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Counts for MenuRail badges
+  const { received, created } = useActionItems()
+  const pendingCount  = received.length + created.length
+  const requestCount  = useRequestStore(s => s.receivedCount)
 
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -33,7 +39,7 @@ export default function ChatPage() {
   const handleSelectRoom = (id: string) => {
     setSelectedRoomId(id)
     setShowChat(true)
-    setActiveTab('chat')
+    setActiveSection('chat')
   }
 
   const handleRoomCreated = (roomId: string) => {
@@ -60,10 +66,9 @@ export default function ChatPage() {
     setSelectedRoomId(roomId)
     setShowChat(true)
     setHighlightMessageId(messageId)
-    // 요청 탭 유지 (채팅 탭으로 전환하지 않음)
   }
 
-  // 현재 선택된 방이 외부에서 삭제됐을 때 (다른 멤버가 방을 삭제) 자동 해제
+  // 현재 선택된 방이 외부에서 삭제됐을 때 자동 해제
   useEffect(() => {
     if (selectedRoomId && !rooms.find(r => r.id === selectedRoomId)) {
       setSelectedRoomId(null)
@@ -93,20 +98,21 @@ export default function ChatPage() {
 
   return (
     <>
-      <AppLayout showChat={showChat} sidebar={
-        <Sidebar
-          selectedRoomId={selectedRoomId}
-          onSelectRoom={handleSelectRoom}
-          onNewChat={() => setNewRoomOpen(true)}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onSelectFriend={handleSelectFriend}
-          totalUnread={totalUnread}
-          notifEnabled={notifEnabled}
-          onToggleNotif={toggleNotif}
-          onSelectRequest={handleSelectRequest}
-        />
-      }>
+      <AppLayout
+        showChat={showChat}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        selectedRoomId={selectedRoomId}
+        onSelectRoom={handleSelectRoom}
+        onNewChat={() => setNewRoomOpen(true)}
+        onSelectFriend={handleSelectFriend}
+        onSelectRequest={handleSelectRequest}
+        totalUnread={totalUnread}
+        taskCount={pendingCount}
+        requestCount={requestCount}
+        notifEnabled={notifEnabled}
+        onToggleNotif={toggleNotif}
+      >
         <ChatWindow
           roomId={selectedRoomId}
           onBack={() => setShowChat(false)}
@@ -128,7 +134,6 @@ export default function ChatPage() {
         />
       )}
 
-      {/* 토스트 알림 */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]
                         px-5 py-3 rounded-xl shadow-lg

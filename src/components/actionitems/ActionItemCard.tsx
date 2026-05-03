@@ -63,8 +63,10 @@ export function ActionItemCard({ item, onReload, view }: Props) {
 
   return (
     <div
-      className="relative rounded-xl p-3.5 border transition-colors"
-      style={{ background: 'var(--bg)', borderColor: 'var(--line)' }}
+      className="relative px-4 py-3 border-b transition-colors"
+      style={{ background: 'transparent', borderColor: 'var(--side-line)' }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-hover)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
       {/* title row */}
       <div className="flex items-start gap-2.5">
@@ -86,7 +88,7 @@ export function ActionItemCard({ item, onReload, view }: Props) {
         )}
 
         <p
-          className="flex-1 text-sm leading-snug"
+          className="flex-1 text-headline-2 leading-snug"
           style={{
             color: 'var(--ink)',
             textDecoration: view === 'done' ? 'line-through' : 'none',
@@ -113,7 +115,7 @@ export function ActionItemCard({ item, onReload, view }: Props) {
       </div>
 
       {/* meta row */}
-      <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+      <div className="flex items-center gap-3 mt-2 flex-wrap">
         {/* due date badge */}
         {dueInfo && (
           <span
