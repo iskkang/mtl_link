@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Sun, Moon, MessageCircle, ArrowLeft, X, Search, Globe, ChevronDown, ClipboardCheck } from 'lucide-react'
+import { MessageCircle, X, ClipboardCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,14 +12,13 @@ import { getLangFlag } from '../../lib/langFlags'
 import { validateFiles } from '../../lib/fileValidation'
 import { getUserFriendlyMessage } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
-import { Avatar } from '../ui/Avatar'
 import { MessageList } from '../chat/MessageList'
 import { MessageInput } from '../chat/MessageInput'
 import { MessageActionBar } from '../chat/MessageActionBar'
 import { DragDropZone } from '../chat/DragDropZone'
 import { PendingFilesPreview } from '../chat/PendingFilesPreview'
 import { TranslationLanguageModal } from '../chat/TranslationLanguageModal'
-import { RoomMenu } from '../chat/RoomMenu'
+import { ChatHeader } from '../chat/ChatHeader'
 import { LeaveRoomModal } from '../chat/LeaveRoomModal'
 import { DeleteRoomModal } from '../chat/DeleteRoomModal'
 import { ReplyPreview } from '../chat/ReplyPreview'
@@ -33,11 +32,13 @@ interface Props {
   onLeaveOrDelete?:    (toast: string) => void
   onRoomSelect?:       (roomId: string) => void
   highlightMessageId?: string | null
+  notifEnabled:        boolean
+  onToggleNotif:       () => void
 }
 
-export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId }: Props) {
+export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId, notifEnabled, onToggleNotif }: Props) {
   const { t } = useTranslation()
-  const { mode, toggle } = useTheme()
+  const { mode } = useTheme()
   const { user } = useAuth()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
   const { removeRoom } = useRoomStore()
@@ -220,149 +221,24 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     <div className="flex flex-col h-full">
 
       {/* ── 채팅창 헤더 ──────────────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-2.5 flex-shrink-0 chat-header"
-              style={{
-                background: 'var(--card)',
-                borderBottom: '1px solid var(--line)',
-                boxShadow: 'var(--shadow-header)',
-              }}>
-
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="md:hidden p-1.5 rounded-full flex-shrink-0 transition-colors
-                         hover:bg-gray-100 dark:hover:bg-[#1E293B]
-                         text-gray-500 dark:text-[#94A3B8]"
-              aria-label={t('backBtn')}
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-
-          {room && displayName && avatarInfo ? (
-            <div className="flex items-center gap-3 min-w-0">
-              {isGroup ? (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-[11px] font-bold"
-                     style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
-                  {(displayName ?? '그룹').slice(0, 2)}
-                </div>
-              ) : (
-                <div className="relative flex-shrink-0">
-                  <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} size="sm" />
-                  <span
-                    className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
-                    style={{ background: 'var(--green)', borderColor: 'var(--card)' }}
-                  />
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold truncate leading-tight" style={{ color: 'var(--ink)' }}>
-                  {displayName}
-                </p>
-                <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--ink-3)' }}>
-                  {headerSubtitle}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <img src="/mtl-logo.png" alt="MTL" className="h-8 w-auto object-contain" />
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-                  MTL Shipping Agency
-                </p>
-                <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('companySubtitle')}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-          {/* 번역 언어 버튼: 메시지가 전달될 언어 표시 */}
-          {room && (
-            <button
-              onClick={() => !isGroup && setTranslationOpen(true)}
-              disabled={isGroup}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-medium
-                         transition-colors border"
-              style={{
-                borderColor: 'rgba(51,144,236,0.3)',
-                color: 'var(--brand)',
-                background: 'rgba(51,144,236,0.05)',
-                cursor: isGroup ? 'default' : 'pointer',
-              }}
-              title={isGroup ? '' : '번역 언어 설정'}
-            >
-              {isGroup ? (
-                <Globe size={14} />
-              ) : effectivePeerLang ? (
-                <>
-                  <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-3)' }}>→</span>
-                  <span className="text-[16px] leading-none">{getLangFlag(effectivePeerLang)}</span>
-                  <ChevronDown size={10} />
-                </>
-              ) : (
-                <>
-                  <Globe size={13} />
-                  <ChevronDown size={10} />
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Light / Dark 토글 */}
-          <div className="hidden md:flex items-center rounded-full border overflow-hidden ml-1"
-               style={{ borderColor: 'var(--line)' }}>
-            <button
-              onClick={() => mode === 'dark' && toggle()}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors"
-              style={{
-                color: mode === 'light' ? 'var(--card)' : 'var(--ink-3)',
-                background: mode === 'light' ? 'var(--ink-2)' : 'transparent',
-              }}
-              title="라이트 모드"
-            >
-              <Sun size={12} />
-              Light
-            </button>
-            <button
-              onClick={() => mode === 'light' && toggle()}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors"
-              style={{
-                color: mode === 'dark' ? 'var(--card)' : 'var(--ink-3)',
-                background: mode === 'dark' ? 'var(--ink-2)' : 'transparent',
-              }}
-              title="다크 모드"
-            >
-              <Moon size={12} />
-              Dark
-            </button>
-          </div>
-
-          {/* 검색 + 방 메뉴 */}
-          {room && (
-            <>
-              <button
-                onClick={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: searchOpen ? 'var(--brand)' : 'var(--ink-3)' }}
-                onMouseEnter={e => { if (!searchOpen) (e.currentTarget.style.background = 'var(--bg)') }}
-                onMouseLeave={e => { if (!searchOpen) (e.currentTarget.style.background = 'transparent') }}
-                title="메시지 검색"
-              >
-                <Search size={17} />
-              </button>
-              <RoomMenu
-                isOwner={isOwner}
-                isDirect={isDirect}
-                onLeave={() => setLeaveOpen(true)}
-                onDelete={() => setDeleteOpen(true)}
-              />
-            </>
-          )}
-        </div>
-      </header>
+      <ChatHeader
+        hasRoom={!!room}
+        displayName={displayName}
+        avatarInfo={avatarInfo}
+        isGroup={isGroup}
+        isDirect={isDirect}
+        isOwner={isOwner}
+        headerSubtitle={headerSubtitle}
+        onBack={onBack}
+        effectivePeerLang={effectivePeerLang ?? null}
+        onOpenTranslation={() => setTranslationOpen(true)}
+        searchOpen={searchOpen}
+        onToggleSearch={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
+        notifEnabled={notifEnabled}
+        onToggleNotif={onToggleNotif}
+        onLeave={() => setLeaveOpen(true)}
+        onDelete={() => setDeleteOpen(true)}
+      />
 
       {/* ── 검색 바 ──────────────────────────────────── */}
       {searchOpen && room && (

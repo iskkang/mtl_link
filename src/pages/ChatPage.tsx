@@ -114,6 +114,8 @@ export default function ChatPage() {
           onBack={() => setShowChat(false)}
           onLeaveOrDelete={handleLeaveOrDelete}
           highlightMessageId={highlightMessageId}
+          notifEnabled={notifEnabled}
+          onToggleNotif={toggleNotif}
         />
       </AppLayout>
 
