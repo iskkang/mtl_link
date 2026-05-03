@@ -16,10 +16,6 @@ interface Props {
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-const LANG_KO: Record<string, string> = {
-  ko: '한국어', en: '영어', ru: '러시아어', zh: '중국어', ja: '일본어', uz: '우즈벡어',
-}
-
 export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage }: Props) {
   const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
@@ -66,7 +62,6 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
 
   const remaining = MAX_LEN - value.length
   const activeTranslation = targetLanguage && targetLanguage !== 'none'
-  const myLangName = activeTranslation ? (LANG_KO[targetLanguage!] ?? targetLanguage!.toUpperCase()) : null
 
   return (
     <div
@@ -141,9 +136,9 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
           <kbd className="font-mono-ui">Enter</kbd>
           <span className="ml-1">줄바꿈</span>
         </p>
-        {myLangName && (
+        {activeTranslation && (
           <p className="text-[10px] text-right" style={{ color: 'var(--ink-4)' }}>
-            ✦ {myLangName}로 입력하면 상대방의 언어로 자동 번역됩니다
+            {t('autoTranslateHint')}
           </p>
         )}
       </div>

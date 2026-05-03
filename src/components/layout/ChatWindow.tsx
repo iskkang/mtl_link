@@ -289,8 +289,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                   border: '1px solid rgba(51,144,236,0.15)',
                 }}
               >
-                ✦ <strong style={{ color: 'var(--brand)' }}>MTL Link</strong>이 자동으로 메시지를 번역하고 있어요.
-                메시지를 클릭하면 원문을 볼 수 있습니다.
+                {t('autoTranslateBanner')}
               </div>
             )}
             <MessageList
