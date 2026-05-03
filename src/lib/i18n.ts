@@ -232,6 +232,10 @@ const resources = {
       inputRequestActive:   '요청 메시지로 전송됩니다',
       msgMenuMarkRequest:   '요청으로 표시',
       msgMenuUnmarkRequest: '요청 해제',
+      // ── Placeholder sections ─────────────────────────────────────────────────
+      placeholderTitle:       '준비 중인 기능입니다',
+      placeholderSubtitle:    '곧 만나보실 수 있어요',
+      placeholderBackToChat:  '채팅으로 돌아가기',
     },
   },
 
@@ -427,6 +431,9 @@ const resources = {
       inputRequestActive:   'Will be sent as a request',
       msgMenuMarkRequest:   'Mark as Request',
       msgMenuUnmarkRequest: 'Unmark Request',
+      placeholderTitle:       'Coming soon',
+      placeholderSubtitle:    "We're working on it",
+      placeholderBackToChat:  'Back to chat',
     },
   },
 
@@ -622,6 +629,9 @@ const resources = {
       inputRequestActive:   'Будет отправлено как запрос',
       msgMenuMarkRequest:   'Отметить как запрос',
       msgMenuUnmarkRequest: 'Снять отметку запроса',
+      placeholderTitle:       'Скоро появится',
+      placeholderSubtitle:    'Мы работаем над этим',
+      placeholderBackToChat:  'Вернуться к чатам',
     },
   },
 
@@ -817,6 +827,9 @@ const resources = {
       inputRequestActive:   "So'rov sifatida yuboriladi",
       msgMenuMarkRequest:   "So'rov sifatida belgilash",
       msgMenuUnmarkRequest: "So'rov belgisini olib tashlash",
+      placeholderTitle:       'Tez orada',
+      placeholderSubtitle:    'Biz buning ustida ishlamoqdamiz',
+      placeholderBackToChat:  'Suhbatlarga qaytish',
     },
   },
 
@@ -1012,6 +1025,9 @@ const resources = {
       inputRequestActive:   '将作为请求发送',
       msgMenuMarkRequest:   '标记为请求',
       msgMenuUnmarkRequest: '取消请求标记',
+      placeholderTitle:       '即将推出',
+      placeholderSubtitle:    '敬请期待',
+      placeholderBackToChat:  '返回聊天',
     },
   },
 
@@ -1207,6 +1223,9 @@ const resources = {
       inputRequestActive:   'リクエストとして送信されます',
       msgMenuMarkRequest:   'リクエストとしてマーク',
       msgMenuUnmarkRequest: 'リクエスト解除',
+      placeholderTitle:       '近日公開',
+      placeholderSubtitle:    '準備中です',
+      placeholderBackToChat:  'チャットに戻る',
     },
   },
 }

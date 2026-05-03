@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SquarePen, Search, MessageSquare } from 'lucide-react'
+import { SquarePen, Search, MessageSquare, ArrowLeft, Megaphone, Calendar, FolderOpen, Hash, Bot, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
@@ -7,11 +7,13 @@ import { RoomList } from '../chat/RoomList'
 import { FriendsList } from '../chat/FriendsList'
 import { ActionItemList } from '../actionitems/ActionItemList'
 import { RequestList } from '../requests/RequestList'
+import { Button } from '../ui/Button'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
 interface Props {
   activeSection:   Section
+  onSectionChange: (s: Section) => void
   selectedRoomId:  string | null
   onSelectRoom:    (id: string) => void
   onNewChat:       () => void
@@ -25,7 +27,8 @@ interface Props {
 }
 
 export function ChatSidebar({
-  activeSection, selectedRoomId, onSelectRoom,
+  activeSection, onSectionChange,
+  selectedRoomId, onSelectRoom,
   onNewChat, onSelectFriend, onSelectRequest,
   received, created, done, onReload,
 }: Props) {
@@ -133,7 +136,7 @@ export function ChatSidebar({
 
       {/* ── Placeholder sections ── */}
       {(['announcements', 'calendar', 'files', 'channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
-        <ComingSoon label={title} />
+        <ComingSoon label={title} section={activeSection} onSectionChange={onSectionChange} />
       )}
     </div>
   )
@@ -198,21 +201,54 @@ function TasksPanel({
 }
 
 /* ── Coming soon placeholder ─────────────────────── */
-function ComingSoon({ label }: { label: string }) {
+const PLACEHOLDER_ICONS: Partial<Record<Section, React.ElementType>> = {
+  announcements: Megaphone,
+  calendar:      Calendar,
+  files:         FolderOpen,
+  channels:      Hash,
+  bots:          Bot,
+  settings:      Settings,
+}
+
+function ComingSoon({
+  label, section, onSectionChange,
+}: {
+  label:            string
+  section:          Section
+  onSectionChange:  (s: Section) => void
+}) {
+  const { t } = useTranslation()
+  const Icon = PLACEHOLDER_ICONS[section]
+
   return (
-    <div className="flex flex-col items-center justify-center flex-1 px-6 text-center gap-3">
-      <div
-        className="w-12 h-12 rounded-full flex items-center justify-center"
-        style={{ background: 'var(--side-row)' }}
-      >
-        <span className="text-xl">🚧</span>
-      </div>
-      <p className="text-sm font-medium" style={{ color: 'var(--side-mute)' }}>
+    <div className="flex flex-col items-center justify-center flex-1 px-6 text-center gap-2">
+      {Icon && (
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center mb-1"
+          style={{ background: 'var(--side-row)' }}
+        >
+          <Icon size={22} style={{ color: 'var(--side-mute)' }} />
+        </div>
+      )}
+      <h3 className="text-sm font-semibold" style={{ color: 'var(--side-text)' }}>
         {label}
+      </h3>
+      <p className="text-xs font-medium" style={{ color: 'var(--side-mute)' }}>
+        {t('placeholderTitle')}
       </p>
       <p className="text-xs" style={{ color: 'var(--side-mute)', opacity: 0.6 }}>
-        준비 중입니다
+        {t('placeholderSubtitle')}
       </p>
+      <Button
+        variant="text"
+        size="sm"
+        icon={ArrowLeft}
+        iconPosition="left"
+        onClick={() => onSectionChange('chat')}
+        className="mt-3"
+      >
+        {t('placeholderBackToChat')}
+      </Button>
     </div>
   )
 }

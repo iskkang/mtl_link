@@ -165,6 +165,7 @@ function DesktopColumns({
       >
         <ChatSidebar
           activeSection={activeSection}
+          onSectionChange={onSectionChange}
           selectedRoomId={selectedRoomId}
           onSelectRoom={onSelectRoom}
           onNewChat={onNewChat}

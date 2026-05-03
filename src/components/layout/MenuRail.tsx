@@ -50,89 +50,90 @@ export function MenuRail({
   ]
 
   return (
-    <div
-      className="flex flex-col items-center h-full py-2 flex-shrink-0"
-      style={{ width: 60, background: 'var(--side-bg)' }}
-    >
-      {/* Brand mark */}
-      <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 mb-2"
-        style={{ background: 'linear-gradient(135deg, #EF3F1A, #B83113)' }}
-      >
-        <span className="text-white text-[12px] font-black tracking-tight leading-none">M</span>
-      </div>
+    <div className="flex flex-col h-full" style={{ width: 60, background: 'var(--side-bg)' }}>
 
-      {/* Daily sections */}
-      <div className="flex flex-col items-center gap-0.5 w-full">
-        {DAILY.map(({ id, Icon, label, badge, badgeColor }) => (
-          <RailBtn
-            key={id}
-            Icon={Icon}
-            label={label}
-            active={activeSection === id}
-            badge={badge}
-            badgeColor={badgeColor}
-            onClick={() => onSectionChange(id)}
-          />
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div className="w-8 my-1.5 border-t flex-shrink-0" style={{ borderColor: 'var(--side-line)' }} />
-
-      {/* Placeholder sections */}
-      <div className="flex flex-col items-center gap-0.5 w-full">
-        {PLACEHOLDER.map(({ id, Icon, label }) => (
-          <RailBtn
-            key={id}
-            Icon={Icon}
-            label={label}
-            active={activeSection === id}
-            muted
-            onClick={() => onSectionChange(id)}
-          />
-        ))}
-      </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Settings */}
-      <RailBtn
-        Icon={Settings}
-        label={t('menuRailSettings')}
-        active={activeSection === 'settings'}
-        onClick={() => onSectionChange('settings')}
-      />
-
-      {/* Profile avatar — opens ProfileMenu popup */}
-      <div className="relative mt-1 mb-1 flex-shrink-0">
-        <button
-          type="button"
-          onClick={() => setProfileMenuOpen(v => !v)}
-          className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
-          style={profileMenuOpen
-            ? { background: 'var(--side-row)' }
-            : { background: 'transparent' }
-          }
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-          onMouseLeave={e => { if (!profileMenuOpen) e.currentTarget.style.background = 'transparent' }}
-          title={profile?.name ?? 'Profile'}
-          aria-label="프로필 메뉴"
+      {/* Logo — sticky top */}
+      <div className="flex items-center justify-center flex-shrink-0 pt-3 pb-2">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #EF3F1A, #B83113)' }}
         >
-          {profile
-            ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
-            : <div className="w-8 h-8 rounded-full" style={{ background: 'var(--side-row)' }} />
-          }
-        </button>
+          <span className="text-white text-[12px] font-black tracking-tight leading-none">M</span>
+        </div>
+      </div>
 
-        {profileMenuOpen && (
-          <ProfileMenu
-            notifEnabled={notifEnabled}
-            onToggleNotif={onToggleNotif}
-            onClose={() => setProfileMenuOpen(false)}
-          />
-        )}
+      {/* Scrollable nav items */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden menu-rail-scroll flex flex-col items-center py-1">
+        <div className="flex flex-col items-center gap-0.5 w-full">
+          {DAILY.map(({ id, Icon, label, badge, badgeColor }) => (
+            <RailBtn
+              key={id}
+              Icon={Icon}
+              label={label}
+              active={activeSection === id}
+              badge={badge}
+              badgeColor={badgeColor}
+              onClick={() => onSectionChange(id)}
+            />
+          ))}
+        </div>
+
+        <div className="w-8 my-1.5 border-t flex-shrink-0" style={{ borderColor: 'var(--side-line)' }} />
+
+        <div className="flex flex-col items-center gap-0.5 w-full">
+          {PLACEHOLDER.map(({ id, Icon, label }) => (
+            <RailBtn
+              key={id}
+              Icon={Icon}
+              label={label}
+              active={activeSection === id}
+              muted
+              onClick={() => onSectionChange(id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Sticky bottom — Settings + Profile */}
+      <div
+        className="flex-shrink-0 border-t flex flex-col items-center py-2 gap-0.5"
+        style={{ borderColor: 'var(--side-line)' }}
+      >
+        <RailBtn
+          Icon={Settings}
+          label={t('menuRailSettings')}
+          active={activeSection === 'settings'}
+          onClick={() => onSectionChange('settings')}
+        />
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen(v => !v)}
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
+            style={profileMenuOpen
+              ? { background: 'var(--side-row)' }
+              : { background: 'transparent' }
+            }
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+            onMouseLeave={e => { if (!profileMenuOpen) e.currentTarget.style.background = 'transparent' }}
+            title={profile?.name ?? 'Profile'}
+            aria-label="프로필 메뉴"
+          >
+            {profile
+              ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
+              : <div className="w-8 h-8 rounded-full" style={{ background: 'var(--side-row)' }} />
+            }
+          </button>
+
+          {profileMenuOpen && (
+            <ProfileMenu
+              notifEnabled={notifEnabled}
+              onToggleNotif={onToggleNotif}
+              onClose={() => setProfileMenuOpen(false)}
+            />
+          )}
+        </div>
       </div>
     </div>
   )

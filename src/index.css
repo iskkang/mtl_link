@@ -248,3 +248,9 @@ body, .chat-panel, .chat-header, .composer-panel,
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/* ── MenuRail narrow scrollbar ──────────────────────────────── */
+.menu-rail-scroll { scrollbar-width: thin; scrollbar-color: var(--side-line) transparent; }
+.menu-rail-scroll::-webkit-scrollbar       { width: 3px; }
+.menu-rail-scroll::-webkit-scrollbar-thumb { background: var(--side-line); border-radius: 2px; }
+.menu-rail-scroll::-webkit-scrollbar-track { background: transparent; }
