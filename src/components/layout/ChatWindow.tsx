@@ -408,9 +408,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               <div
                 className="mx-4 mt-3 mb-1 px-4 py-2.5 rounded-xl text-[12px] text-center leading-relaxed flex-shrink-0"
                 style={{
-                  background: 'var(--blue-soft)',
-                  color: 'var(--ink-2)',
-                  border: '1px solid rgba(51,144,236,0.12)',
+                  background: mode === 'dark' ? 'rgba(51,144,236,0.10)' : 'var(--blue-soft)',
+                  color:      mode === 'dark' ? '#3F9FFF' : 'var(--ink-2)',
+                  border: '1px solid rgba(51,144,236,0.15)',
                 }}
               >
                 ✦ <strong style={{ color: 'var(--brand)' }}>MTL Link</strong>이 자동으로 메시지를 번역하고 있어요.

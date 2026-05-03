@@ -185,9 +185,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             onClick={onReply}
             title={t('msgReply')}
             className="p-2 rounded-full shadow-md transition-colors"
-            style={{ background: 'var(--ink-2)', color: 'var(--card)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-2)')}
+            style={{ background: 'var(--action-btn-bg)', color: 'var(--action-btn-icon)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--action-btn-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--action-btn-bg)')}
           >
             <CornerDownLeft size={16} />
           </button>
@@ -234,7 +234,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               boxShadow: 'var(--shadow-sm)',
             }),
             ...(isRequestPending  ? { borderLeft: '3px solid #EAB308' } : {}),
-            ...(isRequestAnswered ? { borderLeft: '3px solid #22C55E' } : {}),
+            ...(isRequestAnswered ? { borderLeft: '3px solid var(--brand)' } : {}),
           }}
         >
 
@@ -246,7 +246,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             </div>
           )}
           {!isOwn && isRequestAnswered && (
-            <div className="flex items-center gap-1 mb-1.5" style={{ fontSize: '10px', color: '#22C55E' }}>
+            <div
+              className="flex items-center gap-1 mb-1.5 px-1.5 py-0.5 rounded"
+              style={{ fontSize: '10px', color: 'var(--brand)', background: 'var(--blue-soft)' }}
+            >
               <CheckCheck size={10} style={{ flexShrink: 0 }} />
               <span>{t('followupReceived')}</span>
             </div>
@@ -421,9 +424,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             onClick={onReply}
             title={t('msgReply')}
             className="p-2 rounded-full shadow-md transition-colors"
-            style={{ background: 'var(--ink-2)', color: 'var(--card)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-2)')}
+            style={{ background: 'var(--action-btn-bg)', color: 'var(--action-btn-icon)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--action-btn-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--action-btn-bg)')}
           >
             <CornerDownLeft size={16} />
           </button>

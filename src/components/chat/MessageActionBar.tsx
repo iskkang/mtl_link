@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react'
 import { Smile, Paperclip, Mic, Send, ClipboardCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useTheme } from '../../contexts/ThemeContext'
 import { EmojiPickerPopup } from '../emoji/EmojiPickerPopup'
 import { OcrButton } from './OcrButton'
 import { useState } from 'react'
@@ -34,6 +35,7 @@ export function MessageActionBar({
   isRequest, onToggleRequest,
 }: Props) {
   const { t } = useTranslation()
+  const { mode } = useTheme()
   const [emojiOpen, setEmojiOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { state: micState, request: requestMic } = useMicrophonePermission()
@@ -86,7 +88,7 @@ export function MessageActionBar({
     return (
       <div
         className="flex items-center gap-3 px-4 py-2.5 flex-shrink-0"
-        style={{ background: 'var(--blue-soft)', borderTop: '1px solid rgba(51,144,236,0.15)' }}
+        style={{ background: mode === 'dark' ? 'rgba(51,144,236,0.10)' : 'var(--blue-soft)', borderTop: '1px solid rgba(51,144,236,0.15)' }}
       >
         {/* 빨간 점 + 타이머 */}
         <span

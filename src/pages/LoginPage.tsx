@@ -204,7 +204,6 @@ export default function LoginPage() {
               disabled={isSubmitting}
               className="w-full py-2.5 rounded-lg font-semibold text-sm text-white
                          bg-mtl-navy hover:bg-mtl-navy/90
-                         dark:bg-mtl-cyan dark:hover:bg-mtl-cyan/90 dark:text-mtl-ocean
                          disabled:opacity-60 disabled:cursor-not-allowed
                          transition-all duration-200 mt-2"
             >

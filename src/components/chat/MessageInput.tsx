@@ -119,10 +119,9 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
         <button
           onClick={handleSend}
           disabled={!canSend}
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                     text-white disabled:opacity-30 disabled:cursor-not-allowed
-                     transition-all duration-200"
-          style={{ background: canSend ? 'var(--brand)' : 'var(--ink-4)' }}
+          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+                      text-white transition-all duration-200 disabled:cursor-not-allowed
+                      ${canSend ? 'bg-brand-500 shadow-fab' : 'bg-brand-500/40 dark:bg-brand-500/30'}`}
           aria-label={t('attachBtn')}
         >
           {sending

@@ -49,6 +49,11 @@
   --side-line:   rgba(0,0,0,0.06);
   --side-hover:  #EBEBEC;
 
+  /* Message hover action buttons */
+  --action-btn-bg:    #EBEBEC;
+  --action-btn-icon:  #707579;
+  --action-btn-hover: #DDDFE2;
+
   /* Shadows */
   --shadow-sm:     0 1px 2px rgba(15,23,42,0.04);
   --shadow-md:     0 4px 12px rgba(15,23,42,0.06);
@@ -99,6 +104,11 @@
   --side-active: #2D3A5F;
   --side-line:   #2A3656;
   --side-hover:  #232E4A;
+
+  /* Message hover action buttons */
+  --action-btn-bg:    var(--ink-2);
+  --action-btn-icon:  var(--card);
+  --action-btn-hover: var(--ink);
 
   --shadow-sm:     0 1px 2px rgba(0,0,0,0.3);
   --shadow-md:     0 4px 12px rgba(0,0,0,0.35);
