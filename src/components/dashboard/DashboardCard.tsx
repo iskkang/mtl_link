@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
 interface Props {
-  title?:     string
-  icon?:      LucideIcon
-  children:   ReactNode
-  className?: string
-  action?:    { label: string; onClick: () => void }
+  title?:      string
+  icon?:       LucideIcon
+  children:    ReactNode
+  className?:  string
+  action?:     { label: string; onClick: () => void }
+  badge?:      number
+  scrollable?: boolean
 }
 
-export function DashboardCard({ title, icon: Icon, children, className = '', action }: Props) {
+export function DashboardCard({ title, icon: Icon, children, className = '', action, badge, scrollable }: Props) {
   return (
     <div
       className={`rounded-2xl flex flex-col overflow-hidden ${className}`}
@@ -24,6 +26,14 @@ export function DashboardCard({ title, icon: Icon, children, className = '', act
                 {title}
               </h3>
             )}
+            {badge != null && badge > 0 && (
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+                style={{ background: 'var(--brand)', color: '#fff' }}
+              >
+                {badge}
+              </span>
+            )}
           </div>
           {action && (
             <button
@@ -36,7 +46,7 @@ export function DashboardCard({ title, icon: Icon, children, className = '', act
           )}
         </div>
       )}
-      <div className="flex-1 min-h-0 px-5 pb-5 flex flex-col overflow-hidden">
+      <div className={`flex-1 min-h-0 px-5 pb-5 flex flex-col ${scrollable ? 'overflow-y-auto scrollbar-thin' : 'overflow-hidden'}`}>
         {children}
       </div>
     </div>
