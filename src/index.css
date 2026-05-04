@@ -169,6 +169,19 @@ body, .chat-panel, .chat-header, .composer-panel,
   ::-webkit-scrollbar-thumb:hover { background: var(--side-active); }
 }
 
+/* ── Regional ticker scroll ─────────────────────────────────── */
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker-scroll linear infinite;
+  will-change: transform;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
 /* ── Card entry animation ───────────────────────────────────── */
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(28px) scale(0.97); }

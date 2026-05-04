@@ -176,7 +176,7 @@ export function ShippingIndexCard() {
     : null
 
   return (
-    <DashboardCard title={t('dashShipping')} icon={TrendingUp}>
+    <DashboardCard title={t('dashShipping')} icon={TrendingUp} className="h-full">
       {loading && !data ? (
         <Skeleton />
       ) : error && !data ? (

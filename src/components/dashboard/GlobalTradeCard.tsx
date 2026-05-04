@@ -126,7 +126,7 @@ export function GlobalTradeCard() {
   const up     = wowPct !== null && wowPct >= 0
 
   return (
-    <DashboardCard title={t('dashTrade')} icon={BarChart2}>
+    <DashboardCard title={t('dashTrade')} icon={BarChart2} className="h-full">
       <div className="flex items-center justify-end mb-1">
         <button
           onClick={load}
