@@ -166,6 +166,43 @@ def parse_ticker(html: str) -> list[dict]:
     return result
 
 
+# ── Supabase 저장 ─────────────────────────────────────────────────────
+def save_supabase(data: list[dict], supabase_url: str, supabase_key: str) -> None:
+    """
+    스크래핑한 FBX 데이터를 Supabase fbx_rates 테이블에 upsert.
+    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 환경변수 또는 인수로 전달.
+    """
+    import urllib.request
+
+    rows = [
+        {
+            "code":       item["code"],
+            "route":      item["route"],
+            "value":      item["value"],
+            "change":     item["change"],
+            "sort_order": i + 1,
+            "updated_at": datetime.now(timezone(timedelta(hours=9))).isoformat(),
+        }
+        for i, item in enumerate(data)
+    ]
+    body = json.dumps(rows).encode("utf-8")
+    url  = f"{supabase_url.rstrip('/')}/rest/v1/fbx_rates"
+
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type":   "application/json",
+            "apikey":         supabase_key,
+            "Authorization":  f"Bearer {supabase_key}",
+            "Prefer":         "resolution=merge-duplicates",  # upsert
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        logger.info(f"[supabase] upsert 완료 (HTTP {resp.status}), {len(rows)}개 항목")
+
+
 # ── JSON 저장 ──────────────────────────────────────────────────────────
 def save_json(data: list[dict], output_dir: str) -> None:
     kst = timezone(timedelta(hours=9))
@@ -195,6 +232,18 @@ def main() -> None:
     parser.add_argument(
         "--force-playwright", action="store_true",
         help="requests를 건너뛰고 바로 playwright 사용"
+    )
+    parser.add_argument(
+        "--supabase", action="store_true",
+        help="Supabase fbx_rates 테이블에 upsert (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 환경변수 필요)"
+    )
+    parser.add_argument(
+        "--supabase-url", default=None, metavar="URL",
+        help="Supabase 프로젝트 URL (환경변수 SUPABASE_URL 대신 사용)"
+    )
+    parser.add_argument(
+        "--supabase-key", default=None, metavar="KEY",
+        help="Supabase Service Role Key (환경변수 SUPABASE_SERVICE_ROLE_KEY 대신 사용)"
     )
     args = parser.parse_args()
 
@@ -226,6 +275,14 @@ def main() -> None:
 
     if args.save:
         save_json(data, args.output)
+
+    if args.supabase:
+        sb_url = args.supabase_url or os.environ.get("SUPABASE_URL", "")
+        sb_key = args.supabase_key or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not sb_url or not sb_key:
+            logger.error("--supabase 옵션은 SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 필요")
+            sys.exit(1)
+        save_supabase(data, sb_url, sb_key)
 
 
 if __name__ == "__main__":

@@ -279,22 +279,29 @@ function parseFbxHtml(html: string): FbxItem[] {
 }
 
 async function fetchFbx(): Promise<{ data: FbxItem[]; fetchedAt: string }> {
-  const url = 'https://www.freightos.com/enterprise/terminal/fbx-01-china-to-north-america-west-coast/'
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
+  // Read from fbx_rates Supabase table (populated by Python scraper weekly)
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/fbx_rates?select=code,route,value,change,updated_at&order=sort_order`,
+    {
+      headers: {
+        apikey:        supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        Accept:        'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
     },
-    signal: AbortSignal.timeout(12000),
-  })
-  if (!res.ok) throw new Error(`upstream ${res.status}`)
+  )
+  if (!res.ok) throw new Error(`fbx_rates query failed: ${res.status}`)
 
-  const html = await res.text()
-  const data = parseFbxHtml(html)
-  if (data.length === 0) throw new Error('no FBX ticker items — JS rendering may be required')
+  const rows = await res.json() as Array<{ code: string; route: string; value: string; change: string; updated_at: string }>
+  if (rows.length === 0) throw new Error('fbx_rates table is empty')
 
-  return { data, fetchedAt: new Date().toISOString() }
+  const data = ROUTE_ORDER.map(c => rows.find(r => r.code === c)).filter(Boolean) as FbxItem[]
+  const fetchedAt = rows[0]?.updated_at ?? new Date().toISOString()
+  return { data, fetchedAt }
 }
 
 // ── Router ────────────────────────────────────────────────────────
