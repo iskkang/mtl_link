@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Anchor, RefreshCw } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import { DashboardCard } from './DashboardCard'
+
+const C_URL = import.meta.env.VITE_CONGESTION_SUPABASE_URL as string
+const C_KEY = import.meta.env.VITE_CONGESTION_SUPABASE_ANON_KEY as string
 
 // ── Port code → name (mtl-port-congestion-monitor PORT_META) ────────
 const PORT_NAMES: Record<string, string> = {
@@ -131,18 +133,18 @@ export function PortRankingCard() {
     setLoading(true)
     setError(null)
     try {
-      // port_current is from mtl-port-congestion-monitor (same Supabase project)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: rows, error: dbErr } = await (supabase as any)
-        .from('port_current')
-        .select('port_code, tpfs, level, vessels_anchored, vessels_berthed, updated_at')
-        .order('tpfs', { ascending: false })
-        .limit(10)
-
-      if (dbErr) throw new Error(dbErr.message)
+      const res = await fetch(
+        `${C_URL}/rest/v1/port_current?select=port_code,tpfs,level,vessels_anchored,vessels_berthed,updated_at&order=tpfs.desc&limit=10`,
+        {
+          headers: { apikey: C_KEY, Authorization: `Bearer ${C_KEY}` },
+          signal: AbortSignal.timeout(8000),
+        },
+      )
+      if (!res.ok) throw new Error(`db ${res.status}`)
+      const rows = await res.json() as PortRow[]
       if (!rows || rows.length === 0) throw new Error('no data')
 
-      const result: CongestionData = { rows: rows as PortRow[], fetchedAt: new Date().toISOString() }
+      const result: CongestionData = { rows, fetchedAt: new Date().toISOString() }
       saveCache(result)
       setData(result)
     } catch (e) {
