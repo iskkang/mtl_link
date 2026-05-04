@@ -4,16 +4,17 @@ import { getWeather, getWeatherIcon, getWeatherStyle } from '../../lib/weather'
 import type { WeatherResult } from '../../lib/weather'
 
 // ── 시간대별 인사 ──────────────────────────────────────────────────
-function getGreetingMessage(name: string): string {
+function getGreetingMessage(name: string): { prefix: string; body: string } {
   const h = new Date().getHours()
-  if (h < 5)  return `${name}님, 늦은 시간까지 고생 많으세요`
-  if (h < 8)  return `${name}님, 오늘도 좋은 하루 시작하세요`
-  if (h < 11) return `${name}님, 오늘도 활기찬 하루 되세요!`
-  if (h < 13) return `${name}님, 오전 업무 마무리 잘하세요`
-  if (h < 15) return `${name}님, 오후도 차분히 시작해요`
-  if (h < 18) return `${name}님, 오후도 조금만 더 힘내세요`
-  if (h < 21) return `${name}님, 오늘 하루도 고생 많으셨어요!`
-  return `${name}님, 편안한 밤 보내세요`
+  const prefix = `${name}님,`
+  if (h < 5)  return { prefix, body: '늦은 시간까지 고생 많으세요' }
+  if (h < 8)  return { prefix, body: '오늘도 좋은 하루 시작하세요' }
+  if (h < 11) return { prefix, body: '오늘도 활기찬 하루 되세요!' }
+  if (h < 13) return { prefix, body: '오전 업무 마무리 잘하세요' }
+  if (h < 15) return { prefix, body: '오후도 차분히 시작해요' }
+  if (h < 18) return { prefix, body: '오후도 조금만 더 힘내세요' }
+  if (h < 21) return { prefix, body: '오늘 하루도 고생 많으셨어요!' }
+  return { prefix, body: '편안한 밤 보내세요' }
 }
 
 // ── 날씨 서브 멘트 ────────────────────────────────────────────────
@@ -86,9 +87,9 @@ export function GreetingWeatherCard() {
   }).format(new Date())
 
   const name = profile?.name ?? ''
-  const greetText = name
+  const greeting = name
     ? getGreetingMessage(name)
-    : '오늘도 좋은 하루 되세요!'
+    : { prefix: '', body: '오늘도 좋은 하루 되세요!' }
 
   const weatherCategory = weather ? getWeatherCategory(weather.code, weather.temp) : null
   const weatherMsg      = weatherCategory ? WEATHER_MESSAGES[weatherCategory] : null
@@ -127,8 +128,13 @@ export function GreetingWeatherCard() {
       {/* Bottom row: greeting | temperature */}
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
+          {greeting.prefix && (
+            <p className="text-[12px] font-medium leading-tight truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
+              {greeting.prefix}
+            </p>
+          )}
           <h2 className="text-[17px] font-bold leading-snug truncate" style={{ color: 'rgba(255,255,255,0.95)' }}>
-            {greetText}
+            {greeting.body}
           </h2>
           {weatherMsg && (
             <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.72)' }}>

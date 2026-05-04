@@ -75,7 +75,7 @@ export function PortMapCard() {
   const [rows,    setRows]    = useState<PortRow[]>(loadCache() ?? [])
   const [loading, setLoading] = useState(!loadCache())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
-  const [offset,  setOffset]  = useState({ x: 0, y: 0 })
+  const [offset,  setOffset]  = useState({ x: 0, y: -80 })
   const [dragging, setDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStart    = useRef<DragStart | null>(null)
@@ -163,13 +163,17 @@ export function PortMapCard() {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width: '100%', height: '100%' }}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%',
+          aspectRatio: '960 / 500',
+          transform: `translate(${offset.x}px, ${offset.y}px)`,
+        }}>
         <ComposableMap
           projection="geoNaturalEarth1"
           projectionConfig={{ scale: 210, center: [10, 5] }}
           width={960}
           height={500}
-          preserveAspectRatio="xMidYMid slice"
           style={{ width: '100%', height: '100%', display: 'block' }}
         >
             {/* Grid lines */}
