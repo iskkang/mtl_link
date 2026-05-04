@@ -36,8 +36,12 @@ export function RequestsCard({ onSectionChange }: Props) {
       setLoading(false)
 
       // 번역이 필요한 항목만 처리 (병렬)
-      const needsTranslation = data.filter(
-        item => item.source_language && item.source_language !== myLang && item.content,
+      // - myLang이 'ko'면 번역 불필요 (한국어 사용자 or 언어 미설정)
+      // - source_language가 null인 메시지는 'ko'로 간주 (레거시 메시지 대응)
+      const effectiveSrc = (item: RequestItem) => item.source_language ?? 'ko'
+
+      const needsTranslation = myLang === 'ko' ? [] : data.filter(
+        item => item.content && effectiveSrc(item) !== myLang,
       )
 
       const results = await Promise.allSettled(
@@ -51,7 +55,7 @@ export function RequestsCard({ onSectionChange }: Props) {
             message_id:      item.message_id,
             room_id:         item.room_id,
             source_text:     item.content,
-            source_language: item.source_language!,
+            source_language: effectiveSrc(item),
             target_language: myLang,
           })
           return { id: item.message_id, text }
