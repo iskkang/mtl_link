@@ -56,7 +56,7 @@ function getSorted(rows: PortRow[], tab: TabKey): PortRow[] {
     if (tab === 'berthed')  return b.vessels_berthed  - a.vessels_berthed
     return b.tpfs - a.tpfs
   })
-  return sorted.slice(0, 5)
+  return sorted.slice(0, 10)
 }
 
 function getMetric(row: PortRow, tab: TabKey): string {
@@ -74,14 +74,14 @@ function getMetricLabel(tab: TabKey): string {
 function Skeleton() {
   return (
     <div className="flex flex-col gap-2 pt-1">
-      {[0,1,2,3,4].map(i => (
-        <div key={i} className="h-5 rounded animate-pulse" style={{ background: 'var(--bg-primary)', width: `${88 - i * 6}%` }} />
+      {[0,1,2,3,4,5,6,7,8,9].map(i => (
+        <div key={i} className="h-5 rounded animate-pulse" style={{ background: 'var(--bg-primary)', width: `${88 - i * 3}%` }} />
       ))}
     </div>
   )
 }
 
-export function PortTop5Card() {
+export function PortTop10Card() {
   const [rows,    setRows]    = useState<PortRow[]>(loadCache() ?? [])
   const [loading, setLoading] = useState(!loadCache())
   const [tab,     setTab]     = useState<TabKey>('congested')
@@ -101,12 +101,12 @@ export function PortTop5Card() {
 
   useEffect(() => { if (!loadCache()) load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const top5 = getSorted(rows, tab)
+  const top10 = getSorted(rows, tab)
   const metricLabel = getMetricLabel(tab)
 
   return (
     <DashboardCard
-      title="항만 Top 5"
+      title="항만 Top 10"
       icon={BarChart2}
       className="h-full"
       action={{ label: '', onClick: load }}
@@ -150,7 +150,7 @@ export function PortTop5Card() {
           </div>
 
           <div className="overflow-y-auto flex-1 min-h-0">
-          {top5.map((row, i) => {
+          {top10.map((row, i) => {
             const name  = PORT_NAMES[row.port_code] ?? row.port_code
             const color = LEVEL_COLOR[row.level] ?? '#22c55e'
             const metric = getMetric(row, tab)
@@ -159,7 +159,7 @@ export function PortTop5Card() {
               <div
                 key={row.port_code}
                 className="flex items-center py-1"
-                style={{ borderBottom: i < 4 ? '1px solid var(--line)' : undefined }}
+                style={{ borderBottom: i < 9 ? '1px solid var(--line)' : undefined }}
               >
                 <span className="text-[10px] w-4 flex-shrink-0 tabular-nums font-bold" style={{ color: 'var(--ink-4)' }}>
                   {i + 1}
