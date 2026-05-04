@@ -163,6 +163,36 @@ export function PortMapCard() {
           {/* Background */}
           <rect width={W} height={H} rx={12} fill="url(#mapBg)" />
 
+          {/* Continent outlines — equirectangular projection, x=(lon+180)*2, y=(90-lat)*2 */}
+          {[
+            // North America
+            'M24,50 L60,36 L100,36 L190,34 L230,54 L250,78 L254,86 L230,90 L210,110 L200,130 L180,148 L202,162 L190,160 L160,144 L116,106 L110,82 L100,72 Z',
+            // Greenland
+            'M250,60 L324,14 L358,22 L330,38 L266,62 Z',
+            // South America
+            'M204,156 L200,176 L210,254 L216,280 L230,290 L256,248 L284,224 L290,190 L240,156 Z',
+            // Europe
+            'M340,108 L340,80 L350,64 L370,56 L390,40 L408,48 L420,80 L440,96 L432,108 Z',
+            // Africa
+            'M326,104 L326,150 L380,190 L396,250 L428,250 L432,220 L448,204 L464,156 L444,104 Z',
+            // Asia + Russia (simplified combined)
+            'M420,76 L420,36 L540,36 L640,36 L700,44 L704,76 L650,94 L620,116 L584,130 L568,150 L544,136 L520,160 L480,130 L450,96 Z',
+            // Indian subcontinent
+            'M480,130 L504,164 L520,160 L504,130 Z',
+            // Southeast Asia (simplified)
+            'M544,136 L560,150 L568,178 L554,172 L536,148 Z',
+            // Australia
+            'M590,228 L668,228 L664,258 L628,254 L590,246 Z',
+            // Japan
+            'M638,84 L648,88 L646,104 L634,100 Z',
+          ].map((d, i) => (
+            <path
+              key={i} d={d}
+              fill="#1e3050" fillOpacity={0.85}
+              stroke="#2a4060" strokeWidth={0.8}
+            />
+          ))}
+
           {/* Longitude grid lines */}
           {LON_LINES.map(lon => {
             const x = (lon + 180) / 360 * W

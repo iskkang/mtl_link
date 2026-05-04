@@ -36,7 +36,7 @@ export function DashboardCard({ title, icon: Icon, children, className = '', act
           )}
         </div>
       )}
-      <div className="flex-1 px-5 pb-5">
+      <div className="flex-1 min-h-0 px-5 pb-5 flex flex-col overflow-hidden">
         {children}
       </div>
     </div>

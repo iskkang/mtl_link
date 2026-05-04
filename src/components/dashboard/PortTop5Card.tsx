@@ -140,7 +140,7 @@ export function PortTop5Card() {
       {loading && rows.length === 0 ? (
         <Skeleton />
       ) : (
-        <div className="flex flex-col overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0">
           {/* Column header */}
           <div className="flex items-center pb-1 flex-shrink-0" style={{ borderBottom: '1px solid var(--line)' }}>
             <span className="text-[9px] w-4 flex-shrink-0 font-medium" style={{ color: 'var(--ink-4)' }}>#</span>
@@ -149,6 +149,7 @@ export function PortTop5Card() {
             <span className="text-[9px] w-12 text-right font-medium" style={{ color: 'var(--ink-4)' }}>{metricLabel}</span>
           </div>
 
+          <div className="overflow-y-auto flex-1 min-h-0">
           {top5.map((row, i) => {
             const name  = PORT_NAMES[row.port_code] ?? row.port_code
             const color = LEVEL_COLOR[row.level] ?? '#22c55e'
@@ -178,6 +179,7 @@ export function PortTop5Card() {
               </div>
             )
           })}
+          </div>
         </div>
       )}
     </DashboardCard>

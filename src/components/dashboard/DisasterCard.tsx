@@ -150,7 +150,7 @@ export function DisasterCard() {
           {t('dashDisasterEmpty')}
         </p>
       ) : (
-        <div>
+        <div className="overflow-y-auto flex-1 min-h-0">
           {events.map((ev, i) => (
             <EventRow key={ev.id} event={ev} last={i === events.length - 1} />
           ))}

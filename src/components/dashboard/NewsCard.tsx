@@ -68,16 +68,12 @@ function Skeleton() {
 }
 
 // ── Main ──────────────────────────────────────────────────────────
-const INITIAL_COUNT = 5
-
 export function NewsCard() {
   const { t } = useTranslation()
   const cached = loadCache()
   const [data,     setData]     = useState<NewsData | null>(cached)
   const [loading,  setLoading]  = useState<boolean>(!cached)
   const [error,    setError]    = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(false)
-
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -100,9 +96,7 @@ export function NewsCard() {
     if (!cached) load()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const items    = data?.items ?? []
-  const visible  = expanded ? items : items.slice(0, INITIAL_COUNT)
-  const hasMore  = items.length > INITIAL_COUNT
+  const items = data?.items ?? []
 
   return (
     <DashboardCard title={t('dashNews')} icon={Newspaper} className="h-full">
@@ -152,24 +146,12 @@ export function NewsCard() {
         </p>
       ) : (
         <>
-          {visible.map((item, idx) => (
-            <NewsRow key={item.pNum} item={item} last={idx === visible.length - 1 && !hasMore} />
+          <div className="overflow-y-auto flex-1 min-h-0">
+          {items.map((item, idx) => (
+            <NewsRow key={item.pNum} item={item} last={idx === items.length - 1} />
           ))}
 
-          {hasMore && (
-            <button
-              onClick={() => setExpanded(e => !e)}
-              className="w-full mt-2 py-1.5 text-[11px] font-medium rounded-lg transition-colors"
-              style={{
-                color:      'var(--brand)',
-                background: 'rgba(51,144,236,0.06)',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(51,144,236,0.12)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(51,144,236,0.06)' }}
-            >
-              {expanded ? t('dashNewsCollapse') : t('dashNewsReadMore')}
-            </button>
-          )}
+          </div>
         </>
       )}
     </DashboardCard>

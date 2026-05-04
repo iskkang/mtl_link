@@ -36,7 +36,7 @@ export function Dashboard({ onSectionChange }: Props) {
       <div className="flex-1 min-h-0 p-4 flex flex-col gap-3">
 
         {/* Row 1: Greeting | Requests | Weather — fixed height */}
-        <div className="grid grid-cols-3 gap-3 flex-shrink-0" style={{ height: '165px', gridTemplateRows: '1fr', overflow: 'hidden' }}>
+        <div className="grid grid-cols-3 gap-3 flex-shrink-0" style={{ height: '135px', gridTemplateRows: '1fr', overflow: 'hidden' }}>
           <GreetingCard />
           <RequestsCard onSectionChange={onSectionChange} />
           <WeatherCard />

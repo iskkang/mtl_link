@@ -31,8 +31,8 @@ export function WeatherCard() {
         background: style.gradient,
         border:     style.dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
         boxShadow:  'var(--shadow-panel)',
-        minHeight:  148,
-        padding:    '18px 20px',
+        minHeight:  120,
+        padding:    '12px 20px',
       }}
     >
       {loading ? (
@@ -49,12 +49,12 @@ export function WeatherCard() {
               <p className="text-[11px] font-medium" style={{ color: inkSub }}>{dateStr}</p>
               <p className="text-[11px] mt-0.5" style={{ color: inkSub }}>{weather.location}</p>
             </div>
-            <span style={{ fontSize: 50, lineHeight: 1 }}>{getWeatherIcon(weather.code)}</span>
+            <span style={{ fontSize: 38, lineHeight: 1 }}>{getWeatherIcon(weather.code)}</span>
           </div>
 
           {/* Bottom: temperature + condition */}
           <div className="mt-3">
-            <p className="text-[40px] font-bold leading-none tabular-nums" style={{ color: ink }}>
+            <p className="text-[32px] font-bold leading-none tabular-nums" style={{ color: ink }}>
               {weather.temp}°
             </p>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
