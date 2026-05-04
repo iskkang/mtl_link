@@ -105,7 +105,7 @@ export function NewsCard() {
   const hasMore  = items.length > INITIAL_COUNT
 
   return (
-    <DashboardCard title={t('dashNews')} icon={Newspaper}>
+    <DashboardCard title={t('dashNews')} icon={Newspaper} className="h-full">
       {/* Source + refresh row */}
       <div
         className="flex items-center justify-between mb-1 pb-2"

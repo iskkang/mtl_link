@@ -108,6 +108,7 @@ export function PortTop5Card() {
     <DashboardCard
       title="항만 Top 5"
       icon={BarChart2}
+      className="h-full"
       action={{ label: '', onClick: load }}
     >
       {/* Tabs */}

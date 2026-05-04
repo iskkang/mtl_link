@@ -122,7 +122,7 @@ export function DisasterCard() {
   const events = (data?.events ?? []).slice(0, 4)
 
   return (
-    <DashboardCard title={t('dashDisaster')} icon={AlertTriangle}>
+    <DashboardCard title={t('dashDisaster')} icon={AlertTriangle} className="h-full">
       <div className="flex items-center justify-between mb-1 pb-2" style={{ borderBottom: '1px solid var(--line)' }}>
         <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>GDACS · TC / EQ</span>
         <button
