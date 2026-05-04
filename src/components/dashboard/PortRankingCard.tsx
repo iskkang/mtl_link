@@ -138,7 +138,6 @@ function DistBar({ dist, total }: { dist: Record<string, number>; total: number 
 function TopPortRow({ row, rank }: { row: PortRow; rank: number }) {
   const name  = PORT_NAMES[row.port_code] ?? row.port_code
   const lvl   = LVL[row.level] ?? LVL.LOW
-  const total = row.vessels_anchored + row.vessels_berthed
 
   return (
     <div className="flex items-center gap-2 py-1" style={{ borderBottom: '1px solid var(--line)' }}>
