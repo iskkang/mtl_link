@@ -35,6 +35,7 @@ interface Props {
   isGroup:            boolean
   searchQuery?:       string
   isCurrentResult?:   boolean
+  targetLanguage?:    string
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -53,7 +54,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
@@ -98,7 +99,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
     } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
   }
 
-  const myLanguage = profile?.preferred_language ?? 'ko'
+  // 번역 대상 언어 결정:
+  // - 내 메시지: 내 언어(자기 메시지는 번역하지 않음)
+  // - 상대 메시지: get_target_language 결과(targetLanguage)를 우선 사용
+  //   → 'none' 이거나 미전달 시 프로필 언어 폴백
+  const myLanguage = isOwn
+    ? (profile?.preferred_language ?? 'ko')
+    : (targetLanguage && targetLanguage !== 'none'
+        ? targetLanguage
+        : (profile?.preferred_language ?? 'ko'))
 
   const { translatedText, isTranslating, isTranslatable } =
     useMessageTranslation(message, myLanguage)

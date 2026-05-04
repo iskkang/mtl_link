@@ -18,9 +18,10 @@ interface Props {
   onScrollToMessage: (messageId: string) => void
   searchQuery?:      string
   currentResultId?:  string | null
+  targetLanguage?:   string
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage }: Props) {
   const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -130,6 +131,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 isGroup={isGroupRoom}
                 searchQuery={searchQuery}
                 isCurrentResult={msg.id === currentResultId}
+                targetLanguage={targetLanguage}
               />
             )}
           </div>
