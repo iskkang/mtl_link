@@ -133,13 +133,15 @@ export function PortMapCard() {
       </div>
 
       {/* Map */}
-      <div ref={containerRef} className="flex-1 relative px-2 pb-2 min-h-0">
-        <div className="w-full h-full rounded-xl overflow-hidden" style={{ background: '#08111e' }}>
-          <ComposableMap
-            projection="geoNaturalEarth1"
-            projectionConfig={{ scale: 155, center: [10, 10] }}
-            style={{ width: '100%', height: '100%' }}
-          >
+      <div ref={containerRef} className="flex-1 relative min-h-0 overflow-hidden" style={{ borderRadius: '0 0 1rem 1rem' }}>
+        <ComposableMap
+          projection="geoNaturalEarth1"
+          projectionConfig={{ scale: 210, center: [10, 5] }}
+          width={960}
+          height={500}
+          preserveAspectRatio="xMidYMid slice"
+          style={{ width: '100%', height: '100%', display: 'block' }}
+        >
             {/* Grid lines */}
             <Graticule stroke="#ffffff" strokeOpacity={0.06} strokeWidth={0.5} />
 
@@ -195,8 +197,7 @@ export function PortMapCard() {
                 </Marker>
               )
             })}
-          </ComposableMap>
-        </div>
+        </ComposableMap>
 
         {/* Tooltip */}
         {tooltip && (
