@@ -69,7 +69,7 @@ function Sparkline({ data }: { data: GraphPoint[] }) {
   const min = Math.min(...all)
   const max = Math.max(...all)
   const range = max - min || 1
-  const W = 240, H = 44
+  const W = 240, H = 34
 
   return (
     <svg

@@ -39,7 +39,7 @@ function TradeSparkline({ points }: { points: TradePoint[] }) {
   const min   = Math.min(...vals)
   const max   = Math.max(...vals)
   const range = max - min || 1
-  const W = 240, H = 56
+  const W = 240, H = 40
   const pad = 4, w = W - pad * 2, h = H - pad * 2
   const n   = points.length - 1 || 1
 

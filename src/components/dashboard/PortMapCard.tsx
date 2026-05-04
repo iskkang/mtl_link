@@ -149,7 +149,7 @@ export function PortMapCard() {
       <div className="flex-1 relative px-3 pb-3" style={{ minHeight: 0 }}>
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="xMidYMid meet"
+          preserveAspectRatio="xMidYMid slice"
           className="w-full h-full"
           style={{ display: 'block', borderRadius: 12 }}
         >

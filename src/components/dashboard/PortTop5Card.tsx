@@ -139,9 +139,9 @@ export function PortTop5Card() {
       {loading && rows.length === 0 ? (
         <Skeleton />
       ) : (
-        <div className="flex flex-col">
+        <div className="flex flex-col overflow-hidden">
           {/* Column header */}
-          <div className="flex items-center pb-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
+          <div className="flex items-center pb-1 flex-shrink-0" style={{ borderBottom: '1px solid var(--line)' }}>
             <span className="text-[9px] w-4 flex-shrink-0 font-medium" style={{ color: 'var(--ink-4)' }}>#</span>
             <span className="text-[9px] flex-1 font-medium" style={{ color: 'var(--ink-4)' }}>항만</span>
             <span className="text-[9px] w-14 text-right font-medium" style={{ color: 'var(--ink-4)' }}>레벨</span>
@@ -156,7 +156,7 @@ export function PortTop5Card() {
             return (
               <div
                 key={row.port_code}
-                className="flex items-center py-1.5"
+                className="flex items-center py-1"
                 style={{ borderBottom: i < 4 ? '1px solid var(--line)' : undefined }}
               >
                 <span className="text-[10px] w-4 flex-shrink-0 tabular-nums font-bold" style={{ color: 'var(--ink-4)' }}>
