@@ -1,38 +1,37 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Map, RefreshCw, ExternalLink } from 'lucide-react'
+import { ComposableMap, Geographies, Geography, Marker, Graticule } from 'react-simple-maps'
 
-const C_URL = import.meta.env.VITE_CONGESTION_SUPABASE_URL as string
-const C_KEY = import.meta.env.VITE_CONGESTION_SUPABASE_ANON_KEY as string
+const C_URL   = import.meta.env.VITE_CONGESTION_SUPABASE_URL  as string
+const C_KEY   = import.meta.env.VITE_CONGESTION_SUPABASE_ANON_KEY as string
 const SITE_URL = 'https://iskkang.github.io/mtl-port-congestion-monitor/'
+const GEO_URL  = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 
-// Equirectangular projection: x = (lon+180)/360*W, y = (90-lat)/180*H
+// [longitude, latitude] — react-simple-maps coordinate order
 const PORT_COORDS: Record<string, [number, number]> = {
-  KRPUS:[35.10,129.04], KRICN:[37.46,126.63], JPNGO:[35.06,136.88],
-  JPYOK:[35.44,139.65], JPTYO:[35.63,139.77], JPUKB:[34.68,135.18],
-  CNSHA:[31.22,121.47], CNQIN:[36.07,120.38], CNNGB:[29.86,121.55],
-  CNTXG:[39.01,117.68], CNYTN:[22.52,114.05], CNNSA:[22.73,113.53],
-  CNDLC:[38.91,121.64],
-  VNTOT:[10.50,107.03], VNHPH:[20.86,106.68], THLCH:[13.08,100.88],
-  SGSIN:[1.26,103.82],  MYLPK:[2.99,101.38],  IDJKT:[-6.08,106.76],
-  IDSUB:[-7.20,112.73], PHMNL:[14.59,120.97],
-  LKCMB:[6.93,79.85],   AEJEA:[25.01,55.06],  INBOM:[18.92,72.84],
-  JOAQJ:[29.52,35.00],  ILASH:[31.82,34.65],
-  NLRTM:[51.95,4.14],   DEHAM:[53.55,10.00],  BEANR:[51.22,4.40],
-  GBFXT:[51.96,1.33],   FRLEH:[49.49,0.11],   GRPIR:[37.94,23.64],
-  ESVLC:[39.45,-0.33],  ITGOA:[44.41,8.92],   SIKOP:[45.55,13.73],
-  ESALG:[36.14,-5.46],
-  USLAX:[33.74,-118.27],USLGB:[33.77,-118.19],USNYC:[40.70,-74.01],
-  USSAV:[32.08,-81.09], CAVAN:[49.29,-123.12],USMSY:[29.95,-90.07],
-  RUVVO:[43.10,131.87], RUNVS:[44.72,37.77],  KZAKT:[50.30,51.15],
-  MACAS:[33.60,-7.59],  KEMBA:[-4.06,39.66],  ZADUR:[-29.86,31.02],
-  TZDAR:[-6.81,39.29],  EGPSD:[31.26,32.30],
+  KRPUS:[129.04,35.10], KRICN:[126.63,37.46], JPNGO:[136.88,35.06],
+  JPYOK:[139.65,35.44], JPTYO:[139.77,35.63], JPUKB:[135.18,34.68],
+  CNSHA:[121.47,31.22], CNQIN:[120.38,36.07], CNNGB:[121.55,29.86],
+  CNTXG:[117.68,39.01], CNYTN:[114.05,22.52], CNNSA:[113.53,22.73],
+  CNDLC:[121.64,38.91],
+  VNTOT:[107.03,10.50], VNHPH:[106.68,20.86], THLCH:[100.88,13.08],
+  SGSIN:[103.82,1.26],  MYLPK:[101.38,2.99],  IDJKT:[106.76,-6.08],
+  IDSUB:[112.73,-7.20], PHMNL:[120.97,14.59],
+  LKCMB:[79.85,6.93],   AEJEA:[55.06,25.01],  INBOM:[72.84,18.92],
+  JOAQJ:[35.00,29.52],  ILASH:[34.65,31.82],
+  NLRTM:[4.14,51.95],   DEHAM:[10.00,53.55],  BEANR:[4.40,51.22],
+  GBFXT:[1.33,51.96],   FRLEH:[0.11,49.49],   GRPIR:[23.64,37.94],
+  ESVLC:[-0.33,39.45],  ITGOA:[8.92,44.41],   SIKOP:[13.73,45.55],
+  ESALG:[-5.46,36.14],
+  USLAX:[-118.27,33.74],USLGB:[-118.19,33.77],USNYC:[-74.01,40.70],
+  USSAV:[-81.09,32.08], CAVAN:[-123.12,49.29],USMSY:[-90.07,29.95],
+  RUVVO:[131.87,43.10], RUNVS:[37.77,44.72],  KZAKT:[51.15,50.30],
+  MACAS:[-7.59,33.60],  KEMBA:[39.66,-4.06],  ZADUR:[31.02,-29.86],
+  TZDAR:[39.29,-6.81],  EGPSD:[32.30,31.26],
 }
 
 const LEVEL_COLOR: Record<string, string> = {
-  CONGESTED: '#ef4444',
-  BUSY:      '#f59e0b',
-  STABLE:    '#3b82f6',
-  LOW:       '#22c55e',
+  CONGESTED: '#ef4444', BUSY: '#f59e0b', STABLE: '#3b82f6', LOW: '#22c55e',
 }
 
 const PORT_NAMES: Record<string, string> = {
@@ -68,23 +67,13 @@ function loadCache(): PortRow[] | null {
   } catch { return null }
 }
 
-// SVG viewBox dimensions
-const W = 720, H = 360
-
-function toXY(lat: number, lon: number): [number, number] {
-  return [(lon + 180) / 360 * W, (90 - lat) / 180 * H]
-}
-
-// Grid line positions
-const LAT_LINES = [60, 30, 0, -30, -60]
-const LON_LINES = [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150]
-
-interface TooltipState { x: number; y: number; code: string; tpfs: number; level: string; vessels: number }
+interface TooltipState { code: string; tpfs: number; level: string; vessels: number; x: number; y: number }
 
 export function PortMapCard() {
   const [rows,    setRows]    = useState<PortRow[]>(loadCache() ?? [])
   const [loading, setLoading] = useState(!loadCache())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -94,9 +83,8 @@ export function PortMapCard() {
         { headers: { apikey: C_KEY, Authorization: `Bearer ${C_KEY}` }, signal: AbortSignal.timeout(8000) },
       )
       if (!res.ok) throw new Error(`${res.status}`)
-      const data = await res.json() as PortRow[]
-      setRows(data)
-    } catch { /* silent — keep cached data */ }
+      setRows(await res.json() as PortRow[])
+    } catch { /* keep cached */ }
     finally { setLoading(false) }
   }, [])
 
@@ -107,30 +95,29 @@ export function PortMapCard() {
   return (
     <div
       className="rounded-2xl flex flex-col h-full overflow-hidden"
-      style={{ background: 'var(--card)', border: '1px solid var(--line)', boxShadow: 'var(--shadow-panel)' }}
+      style={{ background: '#08111e', border: '1px solid #1a3050', boxShadow: 'var(--shadow-panel)' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Map size={14} style={{ color: 'var(--ink-3)' }} />
-          <h3 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--ink-3)' }}>
+          <Map size={14} style={{ color: '#4a7fa0' }} />
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#4a7fa0' }}>
             글로벌 혼잡 현황 지도
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          {/* Legend */}
           <div className="flex items-center gap-3 mr-2">
             {(['CONGESTED','BUSY','STABLE','LOW'] as const).map(lv => (
               <div key={lv} className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: LEVEL_COLOR[lv] }} />
-                <span className="text-[9px]" style={{ color: 'var(--ink-4)' }}>{lv}</span>
+                <span className="text-[9px]" style={{ color: '#4a7fa0' }}>{lv}</span>
               </div>
             ))}
           </div>
           <a
             href={SITE_URL} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-0.5 transition-opacity hover:opacity-60"
-            style={{ color: 'var(--ink-4)' }}
+            style={{ color: '#4a7fa0' }}
           >
             <ExternalLink size={10} />
             <span className="text-[10px]">전체</span>
@@ -138,133 +125,90 @@ export function PortMapCard() {
           <button
             onClick={load} disabled={loading}
             className="p-0.5 rounded transition-opacity hover:opacity-60 disabled:opacity-30"
-            style={{ color: 'var(--ink-4)' }}
+            style={{ color: '#4a7fa0' }}
           >
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Map SVG */}
-      <div className="flex-1 relative px-3 pb-3" style={{ minHeight: 0 }}>
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="xMidYMid slice"
-          className="w-full h-full"
-          style={{ display: 'block', borderRadius: 12 }}
-        >
-          <defs>
-            <radialGradient id="mapBg" cx="50%" cy="40%" r="70%">
-              <stop offset="0%"   stopColor="#1a2744" />
-              <stop offset="100%" stopColor="#0b1220" />
-            </radialGradient>
-          </defs>
+      {/* Map */}
+      <div ref={containerRef} className="flex-1 relative px-2 pb-2 min-h-0">
+        <div className="w-full h-full rounded-xl overflow-hidden" style={{ background: '#08111e' }}>
+          <ComposableMap
+            projection="geoNaturalEarth1"
+            projectionConfig={{ scale: 155, center: [10, 10] }}
+            style={{ width: '100%', height: '100%' }}
+          >
+            {/* Grid lines */}
+            <Graticule stroke="#ffffff" strokeOpacity={0.06} strokeWidth={0.5} />
 
-          {/* Background */}
-          <rect width={W} height={H} rx={12} fill="url(#mapBg)" />
+            {/* Country fills */}
+            <Geographies geography={GEO_URL}>
+              {({ geographies }) =>
+                geographies.map(geo => (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    fill="#132240"
+                    stroke="#2a4870"
+                    strokeWidth={0.5}
+                    style={{
+                      default: { outline: 'none' },
+                      hover:   { outline: 'none', fill: '#1a3060' },
+                      pressed: { outline: 'none' },
+                    }}
+                  />
+                ))
+              }
+            </Geographies>
 
-          {/* Continent outlines — equirectangular projection, x=(lon+180)*2, y=(90-lat)*2 */}
-          {[
-            // North America
-            'M24,50 L60,36 L100,36 L190,34 L230,54 L250,78 L254,86 L230,90 L210,110 L200,130 L180,148 L202,162 L190,160 L160,144 L116,106 L110,82 L100,72 Z',
-            // Greenland
-            'M250,60 L324,14 L358,22 L330,38 L266,62 Z',
-            // South America
-            'M204,156 L200,176 L210,254 L216,280 L230,290 L256,248 L284,224 L290,190 L240,156 Z',
-            // Europe
-            'M340,108 L340,80 L350,64 L370,56 L390,40 L408,48 L420,80 L440,96 L432,108 Z',
-            // Africa
-            'M326,104 L326,150 L380,190 L396,250 L428,250 L432,220 L448,204 L464,156 L444,104 Z',
-            // Asia + Russia (simplified combined)
-            'M420,76 L420,36 L540,36 L640,36 L700,44 L704,76 L650,94 L620,116 L584,130 L568,150 L544,136 L520,160 L480,130 L450,96 Z',
-            // Indian subcontinent
-            'M480,130 L504,164 L520,160 L504,130 Z',
-            // Southeast Asia (simplified)
-            'M544,136 L560,150 L568,178 L554,172 L536,148 Z',
-            // Australia
-            'M590,228 L668,228 L664,258 L628,254 L590,246 Z',
-            // Japan
-            'M638,84 L648,88 L646,104 L634,100 Z',
-          ].map((d, i) => (
-            <path
-              key={i} d={d}
-              fill="#1e3050" fillOpacity={0.85}
-              stroke="#2a4060" strokeWidth={0.8}
-            />
-          ))}
+            {/* Port markers */}
+            {Object.entries(PORT_COORDS).map(([code, coordinates]) => {
+              const port = portMap[code]
+              if (!port) return null
+              const color = LEVEL_COLOR[port.level] ?? '#22c55e'
+              const vessels = port.vessels_anchored + port.vessels_berthed
+              const r = Math.max(3.5, Math.min(9, 3.5 + vessels * 0.05))
 
-          {/* Longitude grid lines */}
-          {LON_LINES.map(lon => {
-            const x = (lon + 180) / 360 * W
-            return (
-              <line key={lon}
-                x1={x} y1={0} x2={x} y2={H}
-                stroke="#ffffff" strokeOpacity={0.05} strokeWidth={0.6}
-              />
-            )
-          })}
-
-          {/* Latitude grid lines */}
-          {LAT_LINES.map(lat => {
-            const y = (90 - lat) / 180 * H
-            return (
-              <line key={lat}
-                x1={0} y1={y} x2={W} y2={y}
-                stroke="#ffffff"
-                strokeOpacity={lat === 0 ? 0.12 : 0.05}
-                strokeWidth={lat === 0 ? 1 : 0.6}
-              />
-            )
-          })}
-
-          {/* Equator label */}
-          <text x={6} y={(90 - 0) / 180 * H - 3}
-            fontSize={8} fill="#ffffff" fillOpacity={0.2} fontFamily="monospace">
-            EQ
-          </text>
-
-          {/* Port bubbles */}
-          {Object.entries(PORT_COORDS).map(([code, [lat, lon]]) => {
-            const port = portMap[code]
-            if (!port) return null
-            const [cx, cy] = toXY(lat, lon)
-            const color = LEVEL_COLOR[port.level] ?? '#22c55e'
-            const vessels = port.vessels_anchored + port.vessels_berthed
-            const r = Math.max(3.5, Math.min(10, 3.5 + vessels * 0.06))
-
-            return (
-              <g key={code}
-                className="cursor-pointer"
-                onMouseEnter={e => {
-                  const svg = (e.currentTarget as SVGGElement).closest('svg')!
-                  const rect = svg.getBoundingClientRect()
-                  const svgX = cx / W * rect.width
-                  const svgY = cy / H * rect.height
-                  setTooltip({ x: svgX, y: svgY, code, tpfs: port.tpfs, level: port.level, vessels })
-                }}
-                onMouseLeave={() => setTooltip(null)}
-              >
-                {/* Glow ring for congested */}
-                {port.level === 'CONGESTED' && (
-                  <circle cx={cx} cy={cy} r={r + 4} fill={color} fillOpacity={0.12} />
-                )}
-                <circle cx={cx} cy={cy} r={r} fill={color} fillOpacity={0.85} />
-                <circle cx={cx} cy={cy} r={r * 0.38} fill="#ffffff" fillOpacity={0.35} />
-              </g>
-            )
-          })}
-        </svg>
+              return (
+                <Marker key={code} coordinates={coordinates}>
+                  {port.level === 'CONGESTED' && (
+                    <circle r={r + 4} fill={color} fillOpacity={0.15} />
+                  )}
+                  <circle
+                    r={r}
+                    fill={color}
+                    fillOpacity={0.9}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={(e: React.MouseEvent<SVGCircleElement>) => {
+                      const rect = containerRef.current?.getBoundingClientRect()
+                      if (!rect) return
+                      setTooltip({ code, tpfs: port.tpfs, level: port.level, vessels,
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top,
+                      })
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                  />
+                  <circle r={r * 0.38} fill="#ffffff" fillOpacity={0.4} style={{ pointerEvents: 'none' }} />
+                </Marker>
+              )
+            })}
+          </ComposableMap>
+        </div>
 
         {/* Tooltip */}
         {tooltip && (
           <div
             className="absolute pointer-events-none z-10 rounded-xl px-3 py-2 text-white shadow-lg"
             style={{
-              left: tooltip.x + 12,
-              top:  tooltip.y - 20,
+              left:       tooltip.x + 12,
+              top:        tooltip.y - 50,
               background: 'rgba(10,18,36,0.95)',
-              border: `1px solid ${LEVEL_COLOR[tooltip.level]}44`,
-              transform: tooltip.x > W * 0.7 ? 'translateX(-110%)' : undefined,
+              border:     `1px solid ${LEVEL_COLOR[tooltip.level]}44`,
+              transform:  tooltip.x > (containerRef.current?.clientWidth ?? 0) * 0.72
+                ? 'translateX(-110%)' : undefined,
             }}
           >
             <p className="text-[12px] font-bold">{PORT_NAMES[tooltip.code] ?? tooltip.code}</p>

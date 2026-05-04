@@ -23,12 +23,14 @@
     "react-hook-form": "^7.53.0",
     "react-i18next": "^15.1.0",
     "react-router-dom": "^6.26.2",
+    "react-simple-maps": "^3.0.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "@types/react-simple-maps": "^3.0.6",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",

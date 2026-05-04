@@ -19,7 +19,7 @@ export function Dashboard({ onSectionChange }: Props) {
       className="hidden md:flex flex-col h-full"
       style={{ background: 'var(--chat-bg)' }}
     >
-      {/* Header — h-14 with regional ticker */}
+      {/* Header */}
       <header
         className="h-14 flex items-center px-5 gap-4 flex-shrink-0 chat-header"
         style={{
@@ -31,40 +31,61 @@ export function Dashboard({ onSectionChange }: Props) {
         <RegionalTicker />
       </header>
 
-      {/* Cards — 3 rows, no overflow scroll */}
       <div className="flex-1 min-h-0 p-4 flex flex-col gap-3">
 
-        {/* Row 1: GreetingWeather | Requests | ShippingIndex — fixed height */}
-        <div className="grid grid-cols-3 gap-3 flex-shrink-0" style={{ height: '160px', gridTemplateRows: '1fr', overflow: 'hidden' }}>
+        {/* Row 1: GreetingWeather | Requests | ShippingIndex */}
+        <div
+          className="grid grid-cols-3 gap-3 flex-shrink-0"
+          style={{ height: '160px', gridTemplateRows: '1fr', overflow: 'hidden' }}
+        >
           <GreetingWeatherCard />
           <RequestsCard onSectionChange={onSectionChange} />
           <ShippingIndexCard />
         </div>
 
-        {/* Row 2: Map (2/3) | GlobalTrade + News stacked (1/3) — fills remaining */}
-        <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
-          {/* Map — takes 2 columns */}
-          <div className="col-span-2 min-h-0">
+        {/*
+          Main grid (Rows 2+3):
+          - 3 cols × 2 rows
+          - Row heights: flex-1 (map row) + 220px (bottom row)
+          - Col 3 spans both rows → GlobalTrade (fixed 165px) + News (flex-1 tall)
+          - Col 1-2 row 1 → Map
+          - Col 1 row 2 → PortTop10  (same 1/3 width as Row1 col1)
+          - Col 2 row 2 → Disaster   (same 1/3 width as Row1 col2)
+        */}
+        <div
+          className="grid gap-3 flex-1 min-h-0"
+          style={{
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gridTemplateRows:    '1fr 220px',
+          }}
+        >
+          {/* Map: col 1-2, row 1 */}
+          <div style={{ gridColumn: '1 / 3', gridRow: '1' }} className="min-h-0">
             <PortMapCard />
           </div>
 
-          {/* GlobalTrade (fixed) + News (flex grow) stacked */}
-          <div className="flex flex-col gap-3 min-h-0 h-full">
-            <div className="flex-shrink-0" style={{ height: '165px' }}>
+          {/* Right column: spans rows 1-2, GlobalTrade top + News bottom */}
+          <div
+            style={{ gridColumn: '3', gridRow: '1 / 3' }}
+            className="flex flex-col gap-3 min-h-0"
+          >
+            <div style={{ height: '165px' }} className="flex-shrink-0">
               <GlobalTradeCard />
             </div>
             <div className="flex-1 min-h-0">
               <NewsCard />
             </div>
           </div>
-        </div>
 
-        {/* Row 3: Top10 (2/3) | Disaster (1/3) — fixed height */}
-        <div className="grid grid-cols-3 gap-3 flex-shrink-0" style={{ height: '220px', gridTemplateRows: '1fr', overflow: 'hidden' }}>
-          <div className="col-span-2 min-h-0">
+          {/* PortTop10: col 1, row 2 — same width as GreetingWeatherCard */}
+          <div style={{ gridColumn: '1', gridRow: '2' }} className="min-h-0">
             <PortTop10Card />
           </div>
-          <DisasterCard />
+
+          {/* Disaster: col 2, row 2 — same width as RequestsCard */}
+          <div style={{ gridColumn: '2', gridRow: '2' }} className="min-h-0">
+            <DisasterCard />
+          </div>
         </div>
 
       </div>

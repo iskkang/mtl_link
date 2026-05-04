@@ -10,18 +10,26 @@ function getGreetKey(named: boolean): string {
   return `greet${base}${named ? 'Name' : ''}`
 }
 
-function greetingColors(): [string, string] {
+function greetingStart(): string {
   const h = new Date().getHours()
-  if (h >= 5  && h < 12) return ['#F97316', '#DC2626']
-  if (h >= 12 && h < 18) return ['#2563EB', '#0EA5E9']
-  if (h >= 18 && h < 22) return ['#7C3AED', '#DB2777']
-  return ['#111827', '#1E3A8A']
+  if (h >= 5  && h < 12) return '#F97316'
+  if (h >= 12 && h < 18) return '#2563EB'
+  if (h >= 18 && h < 22) return '#7C3AED'
+  return '#111827'
 }
 
-function weatherColors(code: number): [string, string] {
+function greetingMid(): string {
+  const h = new Date().getHours()
+  if (h >= 5  && h < 12) return '#DC2626'
+  if (h >= 12 && h < 18) return '#0EA5E9'
+  if (h >= 18 && h < 22) return '#DB2777'
+  return '#1E3A8A'
+}
+
+function weatherEnd(code: number): string {
   const g = getWeatherStyle(code).gradient
-  const m = g.match(/#[0-9a-fA-F]{6}/g) ?? ['#6B7280', '#4B5563']
-  return [m[0], m[m.length - 1]]
+  const m = g.match(/#[0-9a-fA-F]{6}/g) ?? ['#F59E0B']
+  return m[0]
 }
 
 export function GreetingWeatherCard() {
@@ -43,9 +51,10 @@ export function GreetingWeatherCard() {
     ? t(getGreetKey(true), { name: profile.name })
     : t(getGreetKey(false))
 
-  const [gL, gR] = greetingColors()
-  const [wL, wR] = weather ? weatherColors(weather.code) : ['#6B7280', '#4B5563']
-  const gradient = `linear-gradient(to right, ${gL} 0%, ${gR} 38%, ${wL} 62%, ${wR} 100%)`
+  const gStart = greetingStart()
+  const gMid   = greetingMid()
+  const wEnd   = weather ? weatherEnd(weather.code) : '#6B7280'
+  const gradient = `linear-gradient(135deg, ${gStart} 0%, ${gMid} 50%, ${wEnd} 100%)`
 
   const icon         = weather ? getWeatherIcon(weather.code) : null
   const conditionKey = weather ? getWeatherKey(weather.code)  : null
