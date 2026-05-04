@@ -1,15 +1,54 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
-import { getWeather, getWeatherIcon, getWeatherKey, getWeatherStyle } from '../../lib/weather'
+import { getWeather, getWeatherIcon, getWeatherStyle } from '../../lib/weather'
 import type { WeatherResult } from '../../lib/weather'
 
-function getGreetKey(named: boolean): string {
+// ── 시간대별 인사 ──────────────────────────────────────────────────
+function getGreetingMessage(name: string): string {
   const h = new Date().getHours()
-  const base = h >= 5 && h < 12 ? 'Morning' : h >= 12 && h < 18 ? 'Afternoon' : 'Evening'
-  return `greet${base}${named ? 'Name' : ''}`
+  if (h < 5)  return `${name}님, 늦은 시간까지 고생 많으세요`
+  if (h < 8)  return `${name}님, 오늘도 좋은 하루 시작하세요`
+  if (h < 11) return `${name}님, 오늘도 활기찬 하루 되세요!`
+  if (h < 13) return `${name}님, 오전 업무 마무리 잘하세요`
+  if (h < 15) return `${name}님, 오후도 차분히 시작해요`
+  if (h < 18) return `${name}님, 오후도 조금만 더 힘내세요`
+  if (h < 21) return `${name}님, 오늘 하루도 고생 많으셨어요!`
+  return `${name}님, 편안한 밤 보내세요`
 }
 
+// ── 날씨 서브 멘트 ────────────────────────────────────────────────
+const WEATHER_MESSAGES: Record<string, string> = {
+  clear:        '맑은 날이에요. 가볍게 움직이기 좋아요.',
+  cloudy:       '흐린 날이에요. 일정은 여유 있게 잡으세요.',
+  rainExpected: '비가 올 예정이에요. 우산을 챙기세요.',
+  raining:      '비가 내리고 있어요. 이동 시 조심하세요.',
+  heavyRain:    '비가 많이 와요. 외근 일정은 다시 확인하세요.',
+  snowExpected: '눈 예보가 있어요. 이동 시간을 넉넉히 잡으세요.',
+  heavySnow:    '눈이 많이 와요. 출퇴근길 안전에 유의하세요.',
+  hot:          '더운 날이에요. 물 자주 마시고 무리하지 마세요.',
+  extremeHot:   '폭염 수준이에요. 야외 활동은 최소화하세요.',
+  freezing:     '기온이 영하예요. 따뜻하게 입고 이동하세요.',
+  coldWave:     '매우 추운 날이에요. 방한 준비를 꼭 하세요.',
+}
+
+function getWeatherCategory(code: number, temp: number): string {
+  if (code >= 95) return 'heavyRain'
+  if (code >= 85) return 'heavySnow'
+  if (code >= 80) return 'heavyRain'
+  if (code >= 75) return 'heavySnow'
+  if (code >= 71) return 'snowExpected'
+  if (code >= 65) return 'heavyRain'
+  if (code >= 61) return 'raining'
+  if (code >= 51) return 'rainExpected'
+  if (temp >= 35) return 'extremeHot'
+  if (temp >= 30) return 'hot'
+  if (temp < -10) return 'coldWave'
+  if (temp < 0)   return 'freezing'
+  if (code >= 2)  return 'cloudy'
+  return 'clear'
+}
+
+// ── 그라디언트 헬퍼 ───────────────────────────────────────────────
 function greetingStart(): string {
   const h = new Date().getHours()
   if (h >= 5  && h < 12) return '#F97316'
@@ -33,7 +72,6 @@ function weatherEnd(code: number): string {
 }
 
 export function GreetingWeatherCard() {
-  const { t, i18n } = useTranslation()
   const { profile } = useAuth()
   const [weather, setWeather] = useState<WeatherResult | null>(null)
 
@@ -43,21 +81,24 @@ export function GreetingWeatherCard() {
     return () => { cancelled = true }
   }, [])
 
-  const dateStr = new Intl.DateTimeFormat(i18n.language, {
+  const dateStr = new Intl.DateTimeFormat('ko-KR', {
     weekday: 'long', month: 'long', day: 'numeric',
   }).format(new Date())
 
-  const greetText = profile?.name
-    ? t(getGreetKey(true), { name: profile.name })
-    : t(getGreetKey(false))
+  const name = profile?.name ?? ''
+  const greetText = name
+    ? getGreetingMessage(name)
+    : '오늘도 좋은 하루 되세요!'
+
+  const weatherCategory = weather ? getWeatherCategory(weather.code, weather.temp) : null
+  const weatherMsg      = weatherCategory ? WEATHER_MESSAGES[weatherCategory] : null
 
   const gStart = greetingStart()
   const gMid   = greetingMid()
   const wEnd   = weather ? weatherEnd(weather.code) : '#6B7280'
   const gradient = `linear-gradient(135deg, ${gStart} 0%, ${gMid} 50%, ${wEnd} 100%)`
 
-  const icon         = weather ? getWeatherIcon(weather.code) : null
-  const conditionKey = weather ? getWeatherKey(weather.code)  : null
+  const icon = weather ? getWeatherIcon(weather.code) : null
 
   return (
     <div
@@ -89,9 +130,9 @@ export function GreetingWeatherCard() {
           <h2 className="text-[17px] font-bold leading-snug truncate" style={{ color: 'rgba(255,255,255,0.95)' }}>
             {greetText}
           </h2>
-          {(profile?.position || profile?.department) && (
-            <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.60)' }}>
-              {[profile.position, profile.department].filter(Boolean).join(' · ')}
+          {weatherMsg && (
+            <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.72)' }}>
+              {weatherMsg}
             </p>
           )}
         </div>
@@ -101,7 +142,7 @@ export function GreetingWeatherCard() {
               {weather.temp}°
             </p>
             <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              {conditionKey ? t(conditionKey) : ''} · 체감 {weather.feelsLike}°
+              체감 {weather.feelsLike}°
             </p>
           </div>
         )}

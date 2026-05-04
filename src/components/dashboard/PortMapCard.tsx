@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Map, RefreshCw, ExternalLink } from 'lucide-react'
 import { ComposableMap, Geographies, Geography, Marker, Graticule } from 'react-simple-maps'
 
+interface DragStart { sx: number; sy: number; ox: number; oy: number }
+
 const C_URL   = import.meta.env.VITE_CONGESTION_SUPABASE_URL  as string
 const C_KEY   = import.meta.env.VITE_CONGESTION_SUPABASE_ANON_KEY as string
 const SITE_URL = 'https://iskkang.github.io/mtl-port-congestion-monitor/'
@@ -73,7 +75,26 @@ export function PortMapCard() {
   const [rows,    setRows]    = useState<PortRow[]>(loadCache() ?? [])
   const [loading, setLoading] = useState(!loadCache())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [offset,  setOffset]  = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const dragStart    = useRef<DragStart | null>(null)
+
+  function handleMouseDown(e: React.MouseEvent) {
+    setDragging(true)
+    dragStart.current = { sx: e.clientX, sy: e.clientY, ox: offset.x, oy: offset.y }
+  }
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!dragging || !dragStart.current) return
+    setOffset({
+      x: dragStart.current.ox + (e.clientX - dragStart.current.sx),
+      y: dragStart.current.oy + (e.clientY - dragStart.current.sy),
+    })
+  }
+  function handleMouseUp() {
+    setDragging(false)
+    dragStart.current = null
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -133,7 +154,16 @@ export function PortMapCard() {
       </div>
 
       {/* Map */}
-      <div ref={containerRef} className="flex-1 relative min-h-0 overflow-hidden" style={{ borderRadius: '0 0 1rem 1rem' }}>
+      <div
+        ref={containerRef}
+        className="flex-1 relative min-h-0 overflow-hidden"
+        style={{ borderRadius: '0 0 1rem 1rem', cursor: dragging ? 'grabbing' : 'grab' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <div style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width: '100%', height: '100%' }}>
         <ComposableMap
           projection="geoNaturalEarth1"
           projectionConfig={{ scale: 210, center: [10, 5] }}
@@ -184,6 +214,7 @@ export function PortMapCard() {
                     fillOpacity={0.9}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={(e: React.MouseEvent<SVGCircleElement>) => {
+                      if (dragging) return
                       const rect = containerRef.current?.getBoundingClientRect()
                       if (!rect) return
                       setTooltip({ code, tpfs: port.tpfs, level: port.level, vessels,
@@ -198,6 +229,7 @@ export function PortMapCard() {
               )
             })}
         </ComposableMap>
+        </div>
 
         {/* Tooltip */}
         {tooltip && (
