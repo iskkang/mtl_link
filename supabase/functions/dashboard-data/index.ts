@@ -242,6 +242,61 @@ async function fetchDisasters(): Promise<{ events: DisasterEvent[]; fetchedAt: s
   return { events, fetchedAt: new Date().toISOString() }
 }
 
+// ── FBX (Freightos Baltic Index) ─────────────────────────────────
+
+const ROUTE_ORDER = ['FBX01','FBX02','FBX03','FBX04','FBX11','FBX12','FBX13','FBX14','FBX21','FBX22','FBX24','FBX26']
+const ROUTE_MAP: Record<string, string> = {
+  FBX01: '중국 - 북미서안', FBX02: '북미서안 - 중국',
+  FBX03: '중국 - 북미동안', FBX04: '북미동안 - 중국',
+  FBX11: '중국 - 북유럽',   FBX12: '북유럽 - 중국',
+  FBX13: '중국 - 지중해',   FBX14: '지중해 - 중국',
+  FBX21: '북미동안 - 북유럽',FBX22: '북유럽 - 북미동안',
+  FBX24: '유럽 - 남미동안', FBX26: '유럽 - 남미서안',
+}
+
+interface FbxItem { code: string; route: string; value: string; change: string }
+
+function parseFbxHtml(html: string): FbxItem[] {
+  const labelRe  = /fr-product-intro__ticker-item-label[^>]*>\s*([^<]+)\s*</g
+  const valueRe  = /fr-product-intro__ticker-item-value[^>]*>\s*([^<]+)\s*</g
+  const changeRe = /fr-product-intro__ticker-item-change[^>]*>\s*([^<]+)\s*</g
+
+  const labels  = [...html.matchAll(labelRe)].map(m => m[1].trim().replace(/:$/, ''))
+  const values  = [...html.matchAll(valueRe)].map(m => m[1].trim())
+  const changes = [...html.matchAll(changeRe)].map(m => m[1].trim())
+
+  const seen = new Set<string>()
+  const raw: Record<string, FbxItem> = {}
+
+  for (let i = 0; i < Math.min(labels.length, values.length, changes.length); i++) {
+    const code = labels[i]
+    if (!ROUTE_MAP[code] || seen.has(code)) continue
+    seen.add(code)
+    raw[code] = { code, route: ROUTE_MAP[code], value: values[i], change: changes[i] }
+  }
+
+  return ROUTE_ORDER.map(c => raw[c]).filter(Boolean) as FbxItem[]
+}
+
+async function fetchFbx(): Promise<{ data: FbxItem[]; fetchedAt: string }> {
+  const url = 'https://www.freightos.com/enterprise/terminal/fbx-01-china-to-north-america-west-coast/'
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+    },
+    signal: AbortSignal.timeout(12000),
+  })
+  if (!res.ok) throw new Error(`upstream ${res.status}`)
+
+  const html = await res.text()
+  const data = parseFbxHtml(html)
+  if (data.length === 0) throw new Error('no FBX ticker items — JS rendering may be required')
+
+  return { data, fetchedAt: new Date().toISOString() }
+}
+
 // ── Router ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -259,6 +314,7 @@ Deno.serve(async (req: Request) => {
     if (type === 'ports')     return json(await fetchPorts())
     if (type === 'trade')     return json(await fetchTrade())
     if (type === 'disasters') return json(await fetchDisasters())
+    if (type === 'fbx')       return json(await fetchFbx())
     return json({ error: 'unknown type' }, 400)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

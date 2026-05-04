@@ -1,0 +1,5 @@
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+# playwright는 requests 방식이 막혔을 때만 사용 (설치 후 playwright install chromium)
+playwright>=1.44
