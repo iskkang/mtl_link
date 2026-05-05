@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react'
 import { Send, MessageCircleQuestion } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getUserFriendlyMessage } from '../../lib/errors'
@@ -14,16 +14,24 @@ interface Props {
   isRequest?:       boolean
   onToggleRequest?: () => void
   placeholder?:     string
+  autoFocus?:       boolean
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder }: Props) {
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder, autoFocus }: Props) {
   const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
   const [error,     setError]     = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (autoFocus) {
+      setTimeout(() => textareaRef.current?.focus(), 100)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFocus])
 
   // 텍스트가 있거나, 첨부 파일이 선택된 경우 전송 가능
   const canSend = (value.trim().length > 0 || !!hasPendingFiles) &&

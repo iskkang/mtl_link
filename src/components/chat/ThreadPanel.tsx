@@ -225,6 +225,7 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
         hasPendingFiles={pendingFiles.length > 0}
         targetLanguage={targetLanguage ?? null}
         placeholder={t('threadInputPlaceholder')}
+        autoFocus
       />
     </div>
   )

@@ -194,7 +194,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     processedHighlightRef.current = null
   }, [highlightMessageId])
 
-  // 메시지 로드 후 해당 메시지로 스크롤 + 자동 답장 설정
+  // 메시지 로드 후 해당 메시지로 스크롤 + 스레드 자동 오픈
   useEffect(() => {
     if (!highlightMessageId || loading || messages.length === 0) return
     if (processedHighlightRef.current === highlightMessageId) return
@@ -204,6 +204,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
 
     processedHighlightRef.current = highlightMessageId
     setTimeout(() => scrollToMessage(highlightMessageId), 150)
+    setThreadRootId(msg.id)
   }, [highlightMessageId, messages, loading, scrollToMessage])
 
   const handleLeave = async () => {

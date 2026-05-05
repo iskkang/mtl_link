@@ -204,6 +204,7 @@ export function ThreadSheet({ open, roomId, rootMessageId, currentUserId, member
             onSend={handleSend}
             targetLanguage={targetLanguage ?? null}
             placeholder={t('threadInputPlaceholder')}
+            autoFocus
           />
         </div>
       </div>
