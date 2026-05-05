@@ -22,14 +22,12 @@ import { TranslationLanguageModal } from '../chat/TranslationLanguageModal'
 import { ChatHeader } from '../chat/ChatHeader'
 import { LeaveRoomModal } from '../chat/LeaveRoomModal'
 import { DeleteRoomModal } from '../chat/DeleteRoomModal'
-import { ReplyPreview } from '../chat/ReplyPreview'
 import { MessageSearchBar } from '../chat/MessageSearchBar'
 import { GlobalSearchPanel } from '../chat/GlobalSearchPanel'
 import { AnnouncementBanner } from '../chat/AnnouncementBanner'
 import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
-import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
 interface Props {
   roomId:              string | null
@@ -56,7 +54,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [translationOpen, setTranslationOpen] = useState(false)
   const [leaveOpen,       setLeaveOpen]       = useState(false)
   const [deleteOpen,      setDeleteOpen]      = useState(false)
-  const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
   const [freshPeerLang,   setFreshPeerLang]   = useState<string | null>(null)
   const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
   const [fileUploading,   setFileUploading]  = useState(false)
@@ -91,7 +88,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   // 방이 바뀌면 초기화 (processedHighlightRef는 scrollToMessage 선언 후 정의)
   useEffect(() => {
     setDraft('')
-    setReplyTo(null)
     setTargetLanguage(null)
     setPendingFiles([])
     setIsRequest(false)
@@ -165,29 +161,24 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   // 전송: 파일이 있으면 sendFileMessage, 없으면 텍스트 전송
   const handleSend = useCallback(async (content: string) => {
     if (!roomId) return
-    const current = replyTo
     const reqFlag = isRequest
-    setReplyTo(null)
     setIsRequest(false)
-    const ref: ReplyRef | null = current
-      ? { id: current.id, content: current.content, message_type: current.message_type, deleted_at: current.deleted_at, sender: current.sender }
-      : null
 
     if (pendingFiles.length > 0) {
       const files = [...pendingFiles]
       setPendingFiles([])
       setFileUploading(true)
       try {
-        await sendFileMessage(roomId, files, content.trim() || undefined, current?.id ?? null, ref)
+        await sendFileMessage(roomId, files, content.trim() || undefined)
       } catch (err) {
         setFileError(getUserFriendlyMessage(err))
       } finally {
         setFileUploading(false)
       }
     } else {
-      await send(content, current?.id ?? null, ref, reqFlag)
+      await send(content, null, null, reqFlag)
     }
-  }, [replyTo, isRequest, send, pendingFiles, roomId])
+  }, [isRequest, send, pendingFiles, roomId])
 
   const scrollToMessage = useCallback((messageId: string) => {
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
@@ -212,7 +203,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     if (!msg) return
 
     processedHighlightRef.current = highlightMessageId
-    setReplyTo(msg)
     setTimeout(() => scrollToMessage(highlightMessageId), 150)
   }, [highlightMessageId, messages, loading, scrollToMessage])
 
@@ -333,7 +323,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               isGroupRoom={isGroup}
               members={room.members}
               onLoadMore={loadMore}
-              onReply={setReplyTo}
               onOpenThread={setThreadRootId}
               onScrollToMessage={scrollToMessage}
               searchQuery={searchOpen ? searchQuery : ''}
@@ -396,13 +385,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           {/* 전송 전 파일 미리보기 */}
           {pendingFiles.length > 0 && (
             <PendingFilesPreview files={pendingFiles} onRemove={handleRemoveFile} />
-          )}
-
-          {replyTo && (
-            <ReplyPreview
-              replyTo={replyTo}
-              onCancel={() => setReplyTo(null)}
-            />
           )}
 
           <MessageInput

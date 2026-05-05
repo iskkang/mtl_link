@@ -327,7 +327,7 @@ const resources = {
       threadReplies:        '답글 {{count}}개',
       threadNoReplies:      '아직 답글이 없습니다',
       threadInputPlaceholder: '스레드에 답글 작성…',
-      threadOpenThread:     '스레드에서 보기',
+      threadOpenThread:     '답글 달기',
     },
   },
 
@@ -614,7 +614,7 @@ const resources = {
       threadReplies:        '{{count}} replies',
       threadNoReplies:      'No replies yet',
       threadInputPlaceholder: 'Reply in thread…',
-      threadOpenThread:     'View in thread',
+      threadOpenThread:     'Reply in thread',
     },
   },
 
@@ -901,7 +901,7 @@ const resources = {
       threadReplies:        '{{count}} ответов',
       threadNoReplies:      'Пока нет ответов',
       threadInputPlaceholder: 'Ответить в треде…',
-      threadOpenThread:     'Открыть в треде',
+      threadOpenThread:     'Ответить в треде',
     },
   },
 
@@ -1188,7 +1188,7 @@ const resources = {
       threadReplies:        '{{count}} javob',
       threadNoReplies:      'Hali javob yo\'q',
       threadInputPlaceholder: 'Mavzuda javob yozing…',
-      threadOpenThread:     'Mavzuda ko\'rish',
+      threadOpenThread:     'Mavzuda javob berish',
     },
   },
 
@@ -1475,7 +1475,7 @@ const resources = {
       threadReplies:        '{{count}} 条回复',
       threadNoReplies:      '暂无回复',
       threadInputPlaceholder: '在话题中回复…',
-      threadOpenThread:     '在话题中查看',
+      threadOpenThread:     '在话题中回复',
     },
   },
 
@@ -1762,7 +1762,7 @@ const resources = {
       threadReplies:        '返信 {{count}} 件',
       threadNoReplies:      'まだ返信はありません',
       threadInputPlaceholder: 'スレッドに返信…',
-      threadOpenThread:     'スレッドで表示',
+      threadOpenThread:     'スレッドで返信',
     },
   },
 }

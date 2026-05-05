@@ -56,7 +56,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
@@ -380,7 +380,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                 canEdit={canEdit}
                 needsResponse={message.needs_response ?? false}
                 responseReceived={message.response_received ?? false}
-                onReply={() => onReply?.()}
                 onCopy={handleCopy}
                 onCreateTask={() => setTaskOpen(true)}
                 onOpenThread={!message.thread_root_id ? onOpenThread : undefined}
@@ -521,7 +520,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         canEdit={canEdit}
         needsResponse={message.needs_response ?? false}
         responseReceived={message.response_received ?? false}
-        onReply={() => onReply?.()}
         onCopy={handleCopy}
         onCreateTask={() => setTaskOpen(true)}
         onOpenThread={!message.thread_root_id ? onOpenThread : undefined}

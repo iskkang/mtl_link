@@ -1,6 +1,5 @@
 /** Shared action handler interface — used by MessageMenu (desktop) and MobileMessageSheet (mobile) */
 export interface MessageActions {
-  onReply:          () => void
   onCopy:           () => void
   onCreateTask:     () => void
   onOpenThread?:    () => void

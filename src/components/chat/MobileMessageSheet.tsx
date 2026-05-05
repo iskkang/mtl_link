@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { CornerDownLeft, Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare } from 'lucide-react'
+import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 
@@ -11,7 +11,7 @@ interface Props extends MessageActions, MessageActionContext {
 export function MobileMessageSheet({
   open, onClose,
   isOwn, canEdit, needsResponse, responseReceived,
-  onReply, onCopy, onCreateTask, onOpenThread,
+  onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
   onEdit, onDelete,
 }: Props) {
@@ -53,9 +53,8 @@ export function MobileMessageSheet({
         <div className="py-1" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
 
           {/* 항상 표시 */}
-          <SheetRow icon={CornerDownLeft} label={t('msgReply')}      onClick={act(onReply)} />
-          <SheetRow icon={Copy}           label={t('msgCopy')}       onClick={act(onCopy)} />
-          <SheetRow icon={CheckSquare}    label={t('msgCreateTask')} onClick={act(onCreateTask)} />
+          <SheetRow icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />
+          <SheetRow icon={CheckSquare} label={t('msgCreateTask')} onClick={act(onCreateTask)} />
           {onOpenThread && (
             <SheetRow icon={MessageSquare} label={t('threadOpenThread')} onClick={act(onOpenThread)} />
           )}
