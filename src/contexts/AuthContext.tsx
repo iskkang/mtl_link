@@ -11,6 +11,8 @@ import { supabase } from '../lib/supabase'
 import { useRoomStore } from '../stores/roomStore'
 import { useRequestStore } from '../stores/requestStore'
 import { subscribeToPushNotifications } from '../services/pushNotificationService'
+import { saveLanguage, SUPPORTED_LANGS } from '../lib/i18n'
+import i18n from 'i18next'
 import type { Profile } from '../types/chat'
 
 interface AuthContextValue {
@@ -36,6 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .single()
     setProfile(data ?? null)
+
+    // localStorage가 비어 있을 때만 (새 기기/캐시 삭제) 프로필 언어로 동기화
+    const storedLang = localStorage.getItem('mtl_lang')
+    if (!storedLang && data?.preferred_language && SUPPORTED_LANGS.some(l => l.code === data.preferred_language)) {
+      i18n.changeLanguage(data.preferred_language)
+      saveLanguage(data.preferred_language as (typeof SUPPORTED_LANGS)[number]['code'])
+    }
   }, [])
 
   const refreshProfile = useCallback(async () => {
