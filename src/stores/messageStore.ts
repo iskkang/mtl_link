@@ -25,7 +25,7 @@ export const MSG_SELECT = `
     content,
     message_type,
     deleted_at,
-    sender:profiles(id, name)
+    sender:profiles!sender_id(id, name)
   ),
   translations:message_translations(language, translated_text)
 ` as const
