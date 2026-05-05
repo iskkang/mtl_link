@@ -274,6 +274,23 @@ body, .chat-panel, .chat-header, .composer-panel,
   }
 }
 
+/* ── Mobile message sheet slide-up ─────────────────────────── */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Touch device: suppress callout/selection on message rows ─ */
+@media (pointer: coarse) {
+  .message-bubble-row {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+}
+
 /* ── MenuRail narrow scrollbar ──────────────────────────────── */
 .menu-rail-scroll { scrollbar-width: thin; scrollbar-color: var(--side-line) transparent; }
 .menu-rail-scroll::-webkit-scrollbar       { width: 3px; }

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { FollowupBadge } from './FollowupBadge'
+import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
 import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, CornerDownLeft, ScanText } from 'lucide-react'
@@ -64,6 +65,32 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const [deleteOpen,    setDeleteOpen]    = useState(false)
   const [taskOpen,      setTaskOpen]      = useState(false)
   const [followupBusy,  setFollowupBusy]  = useState(false)
+  const [sheetOpen,     setSheetOpen]     = useState(false)
+
+  // 롱프레스 감지 (모바일 touch 전용)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleTouchStart = useCallback(() => {
+    // sending/failed 메시지는 롱프레스 무시
+    if (message._status === 'failed' || message._status === 'sending') return
+    longPressTimer.current = setTimeout(() => {
+      setSheetOpen(true)
+      try { navigator.vibrate(10) } catch { /* 진동 미지원 무시 */ }
+    }, 500)
+  }, [message._status])
+
+  const handleCancelLongPress = useCallback(() => {
+    if (longPressTimer.current !== null) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  const handleCopy = useCallback(() => {
+    if (message.content) {
+      navigator.clipboard.writeText(message.content).catch(() => {})
+    }
+  }, [message.content])
 
   const hoursSince = message.needs_response
     ? Math.floor((Date.now() - new Date(message.created_at).getTime()) / 3_600_000)
@@ -170,9 +197,14 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
   return (
     <div
-      className={`flex items-end gap-2 px-2 md:px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`flex items-end gap-2 px-2 md:px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'} message-bubble-row`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleCancelLongPress}
+      onTouchEnd={handleCancelLongPress}
+      onTouchCancel={handleCancelLongPress}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* 아바타 (수신 메시지만) */}
       {!isOwn && (
@@ -473,6 +505,24 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           currentUserId={currentUserId}
         />
       )}
+
+      {/* 모바일 롱프레스 액션 시트 */}
+      <MobileMessageSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        isOwn={isOwn}
+        canEdit={canEdit}
+        needsResponse={message.needs_response ?? false}
+        responseReceived={message.response_received ?? false}
+        onReply={() => onReply?.()}
+        onCopy={handleCopy}
+        onTodo={() => setTaskOpen(true)}
+        onMarkFollowup={isOwn ? handleMarkFollowup : undefined}
+        onUnmarkRequest={isOwn ? handleUnmarkRequest : undefined}
+        onMarkReceived={isOwn ? handleMarkReceived : undefined}
+        onEdit={isOwn ? () => setEditing(true) : undefined}
+        onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
+      />
     </div>
   )
 }
