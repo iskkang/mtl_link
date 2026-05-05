@@ -24,6 +24,8 @@ import { DeleteRoomModal } from '../chat/DeleteRoomModal'
 import { ReplyPreview } from '../chat/ReplyPreview'
 import { MessageSearchBar } from '../chat/MessageSearchBar'
 import { GlobalSearchPanel } from '../chat/GlobalSearchPanel'
+import { AnnouncementBanner } from '../chat/AnnouncementBanner'
+import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
 interface Props {
@@ -98,10 +100,13 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
       .catch(() => setTargetLanguage('none'))
   }, [roomId])
 
+  const { announcement, dismiss: dismissAnnouncement } = useAnnouncement()
+
   const currentUserId = user?.id ?? ''
   const displayName   = room ? getRoomDisplayName(room, currentUserId) : null
   const avatarInfo    = room ? getRoomAvatarInfo(room, currentUserId) : null
-  const isGroup       = room?.room_type === 'group'
+  const isChannel     = room?.room_type === 'channel'
+  const isGroup       = room?.room_type === 'group' || isChannel
   const isDirect      = !!room && room.room_type === 'direct'
   const memberCount   = room?.members.length ?? 0
   const isOwner       = !!room && room.created_by === currentUserId
@@ -239,6 +244,17 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         onLeave={() => setLeaveOpen(true)}
         onDelete={() => setDeleteOpen(true)}
       />
+
+      {/* ── 공지 배너 ─────────────────────────────────── */}
+      {announcement && (
+        <AnnouncementBanner
+          announcement={announcement}
+          onDismiss={() => dismissAnnouncement(announcement.messageId)}
+          onNavigate={rid => {
+            if (rid !== roomId) onRoomSelect?.(rid)
+          }}
+        />
+      )}
 
       {/* ── 검색 바 ──────────────────────────────────── */}
       {searchOpen && room && (

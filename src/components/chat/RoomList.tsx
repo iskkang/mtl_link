@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { RoomListItemView } from './RoomListItem'
 import type { RoomListItem } from '../../types/chat'
 
@@ -10,23 +11,63 @@ interface Props {
 }
 
 export function RoomList({ rooms, loading, selectedRoomId, currentUserId, onSelectRoom }: Props) {
+  const { t } = useTranslation()
+
   if (loading && !rooms.length) {
     return <RoomListSkeleton />
   }
 
   if (!rooms.length) return null
 
+  const channels = rooms.filter(r => r.room_type === 'channel')
+  const dms      = rooms.filter(r => r.room_type !== 'channel')
+
   return (
     <div className="flex flex-col">
-      {rooms.map(room => (
-        <RoomListItemView
-          key={room.id}
-          room={room}
-          isSelected={room.id === selectedRoomId}
-          currentUserId={currentUserId}
-          onClick={() => onSelectRoom(room.id)}
-        />
-      ))}
+      {channels.length > 0 && (
+        <>
+          <SectionHeader label={t('sectionChannels')} />
+          {channels.map(room => (
+            <RoomListItemView
+              key={room.id}
+              room={room}
+              isSelected={room.id === selectedRoomId}
+              currentUserId={currentUserId}
+              onClick={() => onSelectRoom(room.id)}
+            />
+          ))}
+        </>
+      )}
+
+      {dms.length > 0 && (
+        <>
+          <SectionHeader label={t('sectionDMs')} />
+          {dms.map(room => (
+            <RoomListItemView
+              key={room.id}
+              room={room}
+              isSelected={room.id === selectedRoomId}
+              currentUserId={currentUserId}
+              onClick={() => onSelectRoom(room.id)}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div
+      className="px-4 pt-4 pb-1"
+    >
+      <span
+        className="text-[10px] font-semibold tracking-widest uppercase"
+        style={{ color: 'var(--ink-4)' }}
+      >
+        {label}
+      </span>
     </div>
   )
 }

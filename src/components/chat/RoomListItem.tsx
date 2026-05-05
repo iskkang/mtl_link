@@ -13,7 +13,8 @@ interface Props {
 
 export function RoomListItemView({ room, isSelected, currentUserId, onClick }: Props) {
   const { i18n } = useTranslation()
-  const displayName = getRoomDisplayName(room, currentUserId)
+  const rawName     = getRoomDisplayName(room, currentUserId)
+  const displayName = room.room_type === 'channel' ? `#${rawName}` : rawName
   const avatar      = getRoomAvatarInfo(room, currentUserId)
   const unread      = room.unread_count ?? 0
 
@@ -33,7 +34,19 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
     >
       {/* Avatar */}
       <div className="flex-shrink-0">
-        {room.room_type === 'group' ? (
+        {room.room_type === 'channel' ? (
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-[18px] font-bold flex-shrink-0"
+            style={{
+              background: room.is_announcement
+                ? 'linear-gradient(135deg, #F59E0B, #D97706)'
+                : 'linear-gradient(135deg, #3B82F6, #6366F1)',
+              color: 'white',
+            }}
+          >
+            #
+          </div>
+        ) : room.room_type === 'group' ? (
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[11px] font-bold"
             style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}

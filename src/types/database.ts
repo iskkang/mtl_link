@@ -77,34 +77,43 @@ export type Database = {
       rooms: {
         Row: {
           id:                           string
-          room_type:                    'direct' | 'group'
+          room_type:                    'direct' | 'group' | 'channel'
           name:                         string | null
           created_by:                   string | null
           last_message:                 string | null
           last_message_at:              string | null
           default_translation_language: SupportedLanguage | null
+          slug:                         string | null
+          description:                  string | null
+          is_announcement:              boolean
           created_at:                   string
           updated_at:                   string
         }
         Insert: {
           id?:                           string
-          room_type:                     'direct' | 'group'
+          room_type:                     'direct' | 'group' | 'channel'
           name?:                         string | null
           created_by?:                   string | null
           last_message?:                 string | null
           last_message_at?:              string | null
           default_translation_language?: SupportedLanguage | null
+          slug?:                         string | null
+          description?:                  string | null
+          is_announcement?:              boolean
           created_at?:                   string
           updated_at?:                   string
         }
         Update: {
           id?:                           string
-          room_type?:                    'direct' | 'group'
+          room_type?:                    'direct' | 'group' | 'channel'
           name?:                         string | null
           created_by?:                   string | null
           last_message?:                 string | null
           last_message_at?:              string | null
           default_translation_language?: SupportedLanguage | null
+          slug?:                         string | null
+          description?:                  string | null
+          is_announcement?:              boolean
           created_at?:                   string
           updated_at?:                   string
         }
