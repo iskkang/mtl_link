@@ -14,6 +14,7 @@ export async function sendTextMessage(
   replyToId?: string | null,
   replyMessage?: ReplyRef | null,
   needsResponse?: boolean,
+  threadRootId?: string | null,
 ): Promise<void> {
   const trimmed = content.trim()
   if (!trimmed) throw new Error('메시지가 비어있습니다')
@@ -39,6 +40,8 @@ export async function sendTextMessage(
     target_language:      null,
     translation_provider: null,
     reply_to_id:          replyToId ?? null,
+    thread_root_id:       threadRootId ?? null,
+    thread_reply_count:   0,
     created_at:           now,
     edited_at:            null,
     deleted_at:           null,
@@ -49,7 +52,9 @@ export async function sendTextMessage(
     attachments:          [],
     reply_message:        replyMessage ?? null,
   })
-  useRoomStore.getState().updateLastMessage(roomId, trimmed, now)
+  if (!threadRootId) {
+    useRoomStore.getState().updateLastMessage(roomId, trimmed, now)
+  }
 
   try {
     const { data, error } = await supabase
@@ -61,6 +66,7 @@ export async function sendTextMessage(
         content:         trimmed,
         source_language: srcLang,
         reply_to_id:     replyToId ?? null,
+        thread_root_id:  threadRootId ?? null,
         needs_response:  needsResponse || false,
       })
       .select()
@@ -109,11 +115,12 @@ export async function softDeleteMessage(messageId: string): Promise<void> {
 // ─── 파일 메시지 ─────────────────────────────────────────────────
 
 export async function sendFileMessage(
-  roomId:       string,
-  files:        File[],
-  caption?:     string,
-  replyToId?:   string | null,
+  roomId:        string,
+  files:         File[],
+  caption?:      string,
+  replyToId?:    string | null,
   replyMessage?: ReplyRef | null,
+  threadRootId?: string | null,
 ): Promise<void> {
   const validation = validateFiles(files)
   if (!validation.ok) throw new Error(validation.error)
@@ -132,11 +139,12 @@ export async function sendFileMessage(
     const { data: msg, error: msgErr } = await supabase
       .from('messages')
       .insert({
-        room_id:      roomId,
-        sender_id:    user.id,
-        message_type: msgType,
-        content:      caption?.trim() || null,
-        reply_to_id:  replyToId ?? null,
+        room_id:        roomId,
+        sender_id:      user.id,
+        message_type:   msgType,
+        content:        caption?.trim() || null,
+        reply_to_id:    replyToId ?? null,
+        thread_root_id: threadRootId ?? null,
       })
       .select()
       .single()
@@ -195,11 +203,13 @@ export async function sendFileMessage(
       throw new Error(reasons[0])
     }
 
-    // 푸시 알림
-    const pushBody = msgType === 'image' ? '📷 사진' : '📎 파일'
-    supabase.functions.invoke('send-push-notification', {
-      body: { roomId, senderId: user.id, body: pushBody },
-    }).catch(() => {})
+    // 푸시 알림 (스레드 답글은 제외)
+    if (!threadRootId) {
+      const pushBody = msgType === 'image' ? '📷 사진' : '📎 파일'
+      supabase.functions.invoke('send-push-notification', {
+        body: { roomId, senderId: user.id, body: pushBody },
+      }).catch(() => {})
+    }
 
   } finally {
     window.removeEventListener('beforeunload', onBeforeUnload)

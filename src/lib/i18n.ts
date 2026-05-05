@@ -322,6 +322,12 @@ const resources = {
       dashDisasterEmpty:    '현재 TC/EQ 이벤트 없음',
       dashDisasterError:    '데이터 로드 실패',
       dashDisasterRetry:    '다시 시도',
+      // ── 스레드 ───────────────────────────────────────────────────────────────
+      threadTitle:          '스레드',
+      threadReplies:        '답글 {{count}}개',
+      threadNoReplies:      '아직 답글이 없습니다',
+      threadInputPlaceholder: '스레드에 답글 작성…',
+      threadOpenThread:     '스레드에서 보기',
     },
   },
 
@@ -603,6 +609,12 @@ const resources = {
       dashDisasterEmpty:    'No active TC/EQ events',
       dashDisasterError:    'Failed to load data',
       dashDisasterRetry:    'Retry',
+      // ── Thread ───────────────────────────────────────────────────────────────
+      threadTitle:          'Thread',
+      threadReplies:        '{{count}} replies',
+      threadNoReplies:      'No replies yet',
+      threadInputPlaceholder: 'Reply in thread…',
+      threadOpenThread:     'View in thread',
     },
   },
 
@@ -884,6 +896,12 @@ const resources = {
       dashDisasterEmpty:    'Нет активных TC/EQ событий',
       dashDisasterError:    'Ошибка загрузки',
       dashDisasterRetry:    'Повторить',
+      // ── Тред ─────────────────────────────────────────────────────────────────
+      threadTitle:          'Тред',
+      threadReplies:        '{{count}} ответов',
+      threadNoReplies:      'Пока нет ответов',
+      threadInputPlaceholder: 'Ответить в треде…',
+      threadOpenThread:     'Открыть в треде',
     },
   },
 
@@ -1165,6 +1183,12 @@ const resources = {
       dashDisasterEmpty:    'Faol TC/EQ voqealar yo\'q',
       dashDisasterError:    'Ma\'lumot yuklanmadi',
       dashDisasterRetry:    'Qayta urinish',
+      // ── Mavzu ─────────────────────────────────────────────────────────────────
+      threadTitle:          'Mavzu',
+      threadReplies:        '{{count}} javob',
+      threadNoReplies:      'Hali javob yo\'q',
+      threadInputPlaceholder: 'Mavzuda javob yozing…',
+      threadOpenThread:     'Mavzuda ko\'rish',
     },
   },
 
@@ -1446,6 +1470,12 @@ const resources = {
       dashDisasterEmpty:    '暂无TC/EQ事件',
       dashDisasterError:    '数据加载失败',
       dashDisasterRetry:    '重试',
+      // ── 话题 ─────────────────────────────────────────────────────────────────
+      threadTitle:          '话题',
+      threadReplies:        '{{count}} 条回复',
+      threadNoReplies:      '暂无回复',
+      threadInputPlaceholder: '在话题中回复…',
+      threadOpenThread:     '在话题中查看',
     },
   },
 
@@ -1727,6 +1757,12 @@ const resources = {
       dashDisasterEmpty:    '現在TC/EQイベントなし',
       dashDisasterError:    'データ読込失敗',
       dashDisasterRetry:    '再試行',
+      // ── スレッド ──────────────────────────────────────────────────────────────
+      threadTitle:          'スレッド',
+      threadReplies:        '返信 {{count}} 件',
+      threadNoReplies:      'まだ返信はありません',
+      threadInputPlaceholder: 'スレッドに返信…',
+      threadOpenThread:     'スレッドで表示',
     },
   },
 }

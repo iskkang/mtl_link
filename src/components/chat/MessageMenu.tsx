@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { CornerDownLeft, Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2 } from 'lucide-react'
+import { CornerDownLeft, Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 
@@ -15,7 +15,7 @@ interface Props extends MessageActions, MessageActionContext {
 export function MessageMenu({
   open, onClose, excludeRef,
   isOwn, canEdit, needsResponse, responseReceived,
-  onReply, onCopy, onCreateTask,
+  onReply, onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
   onEdit, onDelete,
 }: Props) {
@@ -69,6 +69,9 @@ export function MessageMenu({
       <MenuItem icon={CornerDownLeft} label={t('msgReply')}      onClick={act(onReply)} />
       <MenuItem icon={Copy}           label={t('msgCopy')}       onClick={act(onCopy)} />
       <MenuItem icon={CheckSquare}    label={t('msgCreateTask')} onClick={act(onCreateTask)} />
+      {onOpenThread && (
+        <MenuItem icon={MessageSquare} label={t('threadOpenThread')} onClick={act(onOpenThread)} />
+      )}
 
       {/* 요청 관련 (내 메시지만) */}
       {isOwn && (onMarkFollowup || onUnmarkRequest || onMarkReceived) && (

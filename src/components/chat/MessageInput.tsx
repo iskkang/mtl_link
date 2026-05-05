@@ -13,12 +13,13 @@ interface Props {
   roomName?:        string
   isRequest?:       boolean
   onToggleRequest?: () => void
+  placeholder?:     string
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest }: Props) {
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder }: Props) {
   const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
   const [error,     setError]     = useState<string | null>(null)
@@ -108,7 +109,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
               ? t('captionPlaceholder')
               : disabled
                 ? t('selectRoomHint')
-                : t('msgPlaceholder')
+                : (placeholder ?? t('msgPlaceholder'))
           }
           rows={1}
           maxLength={MAX_LEN + 100}

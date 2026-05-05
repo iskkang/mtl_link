@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessages } from '../../hooks/useMessages'
 import { useMessageSearch } from '../../hooks/useMessageSearch'
+import { useIsDesktop } from '../../hooks/useIsDesktop'
 import { useRoomStore } from '../../stores/roomStore'
 import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
 import { sendFileMessage } from '../../services/messageService'
@@ -25,6 +26,8 @@ import { ReplyPreview } from '../chat/ReplyPreview'
 import { MessageSearchBar } from '../chat/MessageSearchBar'
 import { GlobalSearchPanel } from '../chat/GlobalSearchPanel'
 import { AnnouncementBanner } from '../chat/AnnouncementBanner'
+import { ThreadPanel } from '../chat/ThreadPanel'
+import { ThreadSheet } from '../chat/ThreadSheet'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender, ReplyRef } from '../../types/chat'
 
@@ -42,6 +45,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const { t } = useTranslation()
   const { mode } = useTheme()
   const { user } = useAuth()
+  const isDesktop = useIsDesktop()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
   const { removeRoom } = useRoomStore()
   const { messages, loading, hasMore, send, loadMore } = useMessages(roomId)
@@ -57,6 +61,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
   const [fileUploading,   setFileUploading]  = useState(false)
   const [isRequest,       setIsRequest]       = useState(false)
+
+  // 스레드
+  const [threadRootId, setThreadRootId] = useState<string | null>(null)
 
   // 검색 상태
   const [searchOpen,   setSearchOpen]   = useState(false)
@@ -91,6 +98,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     setSearchOpen(false)
     setSearchQuery('')
     setGlobalOpen(false)
+    setThreadRootId(null)
     if (!roomId) return
 
     Promise.resolve(
@@ -223,7 +231,10 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={`flex h-full ${isDesktop && threadRootId ? 'flex-row' : 'flex-col'}`}>
+
+      {/* ── 채팅 메인 영역 ──────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
       {/* ── 채팅창 헤더 ──────────────────────────────── */}
       <ChatHeader
@@ -323,6 +334,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               members={room.members}
               onLoadMore={loadMore}
               onReply={setReplyTo}
+              onOpenThread={setThreadRootId}
               onScrollToMessage={scrollToMessage}
               searchQuery={searchOpen ? searchQuery : ''}
               currentResultId={searchCurrent?.id ?? null}
@@ -434,6 +446,35 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         <DeleteRoomModal
           onConfirm={handleDelete}
           onClose={() => setDeleteOpen(false)}
+        />
+      )}
+
+      </div>{/* ── 채팅 메인 영역 끝 ── */}
+
+      {/* ── 스레드 패널 (데스크톱) ───────────────────── */}
+      {isDesktop && threadRootId && roomId && room && (
+        <ThreadPanel
+          roomId={roomId}
+          rootMessageId={threadRootId}
+          currentUserId={currentUserId}
+          members={room.members}
+          targetLanguage={targetLanguage}
+          isGroup={isGroup}
+          onClose={() => setThreadRootId(null)}
+        />
+      )}
+
+      {/* ── 스레드 시트 (모바일) ─────────────────────── */}
+      {!isDesktop && roomId && room && (
+        <ThreadSheet
+          open={!!threadRootId}
+          roomId={roomId}
+          rootMessageId={threadRootId ?? ''}
+          currentUserId={currentUserId}
+          members={room.members}
+          targetLanguage={targetLanguage}
+          isGroup={isGroup}
+          onClose={() => setThreadRootId(null)}
         />
       )}
     </div>

@@ -3,6 +3,7 @@ export interface MessageActions {
   onReply:          () => void
   onCopy:           () => void
   onCreateTask:     () => void
+  onOpenThread?:    () => void
   onMarkFollowup?:  () => void
   onUnmarkRequest?: () => void
   onMarkReceived?:  () => void

@@ -21,6 +21,7 @@ export function useRealtimeMessages(roomId: string | null) {
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
         async payload => {
           const msg = payload.new as Message
+          if (msg.thread_root_id) return // thread replies handled by useThreadMessages
           upsertMessage(roomId, {
             ...msg,
             _status:       'sent',

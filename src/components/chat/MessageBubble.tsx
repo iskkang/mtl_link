@@ -3,7 +3,7 @@ import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
-import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText } from 'lucide-react'
+import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare } from 'lucide-react'
 import { getLangName } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -30,6 +30,7 @@ interface Props {
   showSenderInfo:     boolean
   prevMessage?:       MessageWithSender | null
   onReply?:           () => void
+  onOpenThread?:      () => void
   onScrollToMessage?: (messageId: string) => void
   members:            RoomListItem['members']
   currentUserId:      string
@@ -55,7 +56,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage } = useMessageStore()
@@ -382,6 +383,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                 onReply={() => onReply?.()}
                 onCopy={handleCopy}
                 onCreateTask={() => setTaskOpen(true)}
+                onOpenThread={!message.thread_root_id ? onOpenThread : undefined}
                 onMarkFollowup={isOwn ? handleMarkFollowup : undefined}
                 onUnmarkRequest={isOwn ? handleUnmarkRequest : undefined}
                 onMarkReceived={isOwn ? handleMarkReceived : undefined}
@@ -406,6 +408,19 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             />
           )
         })()}
+
+        {/* 스레드 답글 배지 — 채널 메시지(thread_root_id 없음)에만 표시 */}
+        {!editing && !message.thread_root_id && (message.thread_reply_count ?? 0) > 0 && onOpenThread && (
+          <button
+            type="button"
+            onClick={onOpenThread}
+            className={`flex items-center gap-1 mt-1 mx-1 text-[11px] hover:underline ${isOwn ? 'self-end' : 'self-start'}`}
+            style={{ color: 'var(--brand)' }}
+          >
+            <MessageSquare size={11} className="flex-shrink-0" />
+            {t('threadReplies', { count: message.thread_reply_count })}
+          </button>
+        )}
 
         {/* 메타 정보 */}
         {!editing && (
@@ -509,6 +524,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         onReply={() => onReply?.()}
         onCopy={handleCopy}
         onCreateTask={() => setTaskOpen(true)}
+        onOpenThread={!message.thread_root_id ? onOpenThread : undefined}
         onMarkFollowup={isOwn ? handleMarkFollowup : undefined}
         onUnmarkRequest={isOwn ? handleUnmarkRequest : undefined}
         onMarkReceived={isOwn ? handleMarkReceived : undefined}

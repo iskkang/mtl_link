@@ -15,6 +15,7 @@ interface Props {
   members:           RoomListItem['members']
   onLoadMore:        () => void
   onReply:           (msg: MessageWithSender) => void
+  onOpenThread?:     (messageId: string) => void
   onScrollToMessage: (messageId: string) => void
   searchQuery?:      string
   currentResultId?:  string | null
@@ -22,7 +23,7 @@ interface Props {
   roomId?:           string
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage, roomId }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onOpenThread, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage, roomId }: Props) {
   const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -129,6 +130,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 showSenderInfo={isGroupRoom}
                 prevMessage={prev}
                 onReply={() => onReply(msg)}
+                onOpenThread={onOpenThread ? () => onOpenThread(msg.id) : undefined}
                 onScrollToMessage={onScrollToMessage}
                 members={members}
                 currentUserId={currentUserId}

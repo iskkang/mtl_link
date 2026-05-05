@@ -191,6 +191,8 @@ export type Database = {
           target_language:      SupportedLanguage | null
           translation_provider: 'claude' | 'openai' | 'google' | 'deepl' | null
           reply_to_id:          string | null
+          thread_root_id:       string | null
+          thread_reply_count:   number
           created_at:           string
           edited_at:            string | null
           deleted_at:           string | null
@@ -209,6 +211,8 @@ export type Database = {
           target_language?:      SupportedLanguage | null
           translation_provider?: 'claude' | 'openai' | 'google' | 'deepl' | null
           reply_to_id?:          string | null
+          thread_root_id?:       string | null
+          thread_reply_count?:   number
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null
@@ -227,6 +231,8 @@ export type Database = {
           target_language?:      SupportedLanguage | null
           translation_provider?: 'claude' | 'openai' | 'google' | 'deepl' | null
           reply_to_id?:          string | null
+          thread_root_id?:       string | null
+          thread_reply_count?:   number
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null

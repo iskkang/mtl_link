@@ -77,6 +77,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         .select(MSG_SELECT)
         .eq('room_id', roomId)
         .is('deleted_at', null)
+        .is('thread_root_id', null)
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -175,6 +176,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       .select(MSG_SELECT)
       .eq('room_id', roomId)
       .is('deleted_at', null)
+      .is('thread_root_id', null)
       .gt('created_at', lastMsg?.created_at ?? '1970-01-01T00:00:00Z')
       .order('created_at', { ascending: true })
 

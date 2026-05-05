@@ -60,6 +60,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
         .eq('room_id', room.id)
         .gt('created_at', lastRead)
         .is('deleted_at', null)
+        .is('thread_root_id', null)
         .neq('sender_id', user.id)
       return { roomId: room.id, count: count ?? 0 }
     }),
@@ -77,6 +78,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
         .select('content, created_at, message_type')
         .eq('room_id', room.id)
         .is('deleted_at', null)
+        .is('thread_root_id', null)
         .neq('message_type', 'system')
         .order('created_at', { ascending: false })
         .limit(1)
