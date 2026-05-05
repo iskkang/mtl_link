@@ -1,145 +1,131 @@
-import { useEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Pencil, Trash2, CheckSquare, Clock, CheckCheck } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { CornerDownLeft, Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { MessageActions, MessageActionContext } from './messageActions'
 
-interface Props {
-  canEdit:           boolean
-  canDelete:         boolean
-  onEdit:            () => void
-  onDelete:          () => void
-  onCreateTask:      () => void
-  needsResponse?:    boolean
-  responseReceived?: boolean
-  onMarkFollowup?:   () => void
-  onUnmarkRequest?:  () => void
-  onMarkReceived?:   () => void
+interface Props extends MessageActions, MessageActionContext {
+  open:        boolean
+  onClose:     () => void
+  /** Ref of the trigger button — excluded from click-outside detection so toggle works */
+  excludeRef?: React.RefObject<Element>
 }
 
-export function MessageMenu({ canEdit, canDelete, onEdit, onDelete, onCreateTask, needsResponse, responseReceived, onMarkFollowup, onUnmarkRequest, onMarkReceived }: Props) {
+export function MessageMenu({
+  open, onClose, excludeRef,
+  isOwn, canEdit, needsResponse, responseReceived,
+  onReply, onCopy, onCreateTask,
+  onMarkFollowup, onUnmarkRequest, onMarkReceived,
+  onEdit, onDelete,
+}: Props) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    const onMouse = (e: MouseEvent) => {
+      if (ref.current?.contains(e.target as Node)) return
+      if (excludeRef?.current?.contains(e.target as Node)) return
+      onClose()
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('mousedown', onMouse)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouse)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, onClose, excludeRef])
+
+  if (!open) return null
+
+  function act(fn: () => void) { return () => { fn(); onClose() } }
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center justify-center w-6 h-6 rounded-full border shadow-sm transition-colors"
-        style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink-4)' }}
-        aria-label="메시지 메뉴"
-      >
-        <MoreHorizontal size={13} />
-      </button>
+    <div
+      ref={ref}
+      className="absolute top-8 right-0 z-50 min-w-[148px] rounded-xl py-1 border text-sm"
+      style={{
+        background: 'var(--card)',
+        borderColor: 'var(--line)',
+        boxShadow: 'var(--shadow-lg)',
+        color: 'var(--ink)',
+      }}
+    >
+      {/* 항상 표시 */}
+      <MenuItem icon={CornerDownLeft} label={t('msgReply')}      onClick={act(onReply)} />
+      <MenuItem icon={Copy}           label={t('msgCopy')}       onClick={act(onCopy)} />
+      <MenuItem icon={CheckSquare}    label={t('msgCreateTask')} onClick={act(onCreateTask)} />
 
-      {open && (
-        <div
-          className="absolute bottom-full mb-1 right-0 z-50 min-w-[130px] rounded-xl py-1 border text-sm"
-          style={{
-            background: 'var(--card)',
-            borderColor: 'var(--line)',
-            boxShadow: 'var(--shadow-lg)',
-            color: 'var(--ink)',
-          }}
-        >
-          {/* Create task — always visible */}
-          <button
-            onClick={() => { setOpen(false); onCreateTask() }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
-            style={{ color: 'var(--ink)' }}
-            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
-            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-          >
-            <CheckSquare size={13} className="flex-shrink-0" />
-            {t('msgCreateTask')}
-          </button>
-
-          {/* Request options — own messages only */}
-          {canDelete && (onMarkFollowup || onUnmarkRequest || onMarkReceived) && (
-            <>
-              <div className="my-0.5 mx-2 border-t" style={{ borderColor: 'var(--line)' }} />
-
-              {!needsResponse && onMarkFollowup && (
-                <button
-                  onClick={() => { setOpen(false); onMarkFollowup() }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
-                  style={{ color: 'var(--ink)' }}
-                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
-                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-                >
-                  <Clock size={13} className="flex-shrink-0" />
-                  {t('msgMenuMarkRequest')}
-                </button>
-              )}
-
-              {needsResponse && onUnmarkRequest && (
-                <button
-                  onClick={() => { setOpen(false); onUnmarkRequest() }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
-                  style={{ color: 'var(--ink-3)' }}
-                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
-                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-                >
-                  <Clock size={13} className="flex-shrink-0 opacity-50" />
-                  {t('msgMenuUnmarkRequest')}
-                </button>
-              )}
-
-              {needsResponse && !responseReceived && onMarkReceived && (
-                <button
-                  onClick={() => { setOpen(false); onMarkReceived() }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
-                  style={{ color: '#22c55e' }}
-                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)')}
-                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-                >
-                  <CheckCheck size={13} className="flex-shrink-0" />
-                  {t('followupMarkReceived')}
-                </button>
-              )}
-            </>
+      {/* 요청 관련 (내 메시지만) */}
+      {isOwn && (onMarkFollowup || onUnmarkRequest || onMarkReceived) && (
+        <>
+          <Divider />
+          {!needsResponse && onMarkFollowup && (
+            <MenuItem icon={Clock} label={t('msgMenuMarkRequest')} onClick={act(onMarkFollowup)} />
           )}
-
-          {/* Edit / Delete only for own messages */}
-          {canDelete && (
-            <>
-              <div className="my-0.5 mx-2 border-t" style={{ borderColor: 'var(--line)' }} />
-
-              <button
-                onClick={() => { if (canEdit) { setOpen(false); onEdit() } }}
-                disabled={!canEdit}
-                title={canEdit ? undefined : t('msgEditExpired')}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
-                  ${canEdit ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
-                style={{ color: 'var(--ink)' }}
-                onMouseEnter={e => { if (canEdit) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-              >
-                <Pencil size={13} className="flex-shrink-0" />
-                {t('msgEdit')}
-              </button>
-
-              <button
-                onClick={() => { setOpen(false); onDelete() }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors text-red-500 dark:text-red-400"
-                onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.06)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-              >
-                <Trash2 size={13} className="flex-shrink-0" />
-                {t('msgDelete')}
-              </button>
-            </>
+          {needsResponse && onUnmarkRequest && (
+            <MenuItem icon={Clock} label={t('msgMenuUnmarkRequest')} onClick={act(onUnmarkRequest)} muted />
           )}
-        </div>
+          {needsResponse && !responseReceived && onMarkReceived && (
+            <MenuItem icon={CheckCheck} label={t('followupMarkReceived')} onClick={act(onMarkReceived)} green />
+          )}
+        </>
+      )}
+
+      {/* 수정·삭제 (내 메시지만) */}
+      {isOwn && onEdit && onDelete && (
+        <>
+          <Divider />
+          <MenuItem
+            icon={Pencil}
+            label={t('msgEdit')}
+            onClick={canEdit ? act(onEdit) : undefined}
+            disabled={!canEdit}
+            title={!canEdit ? t('msgEditExpired') : undefined}
+          />
+          <MenuItem icon={Trash2} label={t('msgDelete')} onClick={act(onDelete)} danger />
+        </>
       )}
     </div>
+  )
+}
+
+/* ── 내부 헬퍼 ───────────────────────────────────────────────── */
+function Divider() {
+  return <div className="my-0.5 mx-2 border-t" style={{ borderColor: 'var(--line)' }} />
+}
+
+function MenuItem({
+  icon: Icon, label, onClick, disabled, danger, muted, green, title,
+}: {
+  icon:      React.ElementType
+  label:     string
+  onClick?:  () => void
+  disabled?: boolean
+  danger?:   boolean
+  muted?:    boolean
+  green?:    boolean
+  title?:    string
+}) {
+  const color = danger ? 'var(--red)'
+    : green  ? '#22c55e'
+    : muted  ? 'var(--ink-3)'
+    : 'var(--ink)'
+
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={title}
+      className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
+                 disabled:opacity-40 disabled:cursor-not-allowed"
+      style={{ color }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'var(--bg)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+    >
+      <Icon size={13} className="flex-shrink-0" />
+      <span>{label}</span>
+    </button>
   )
 }

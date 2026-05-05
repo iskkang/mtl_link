@@ -3,7 +3,7 @@ import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
-import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, CornerDownLeft, ScanText } from 'lucide-react'
+import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText } from 'lucide-react'
 import { getLangName } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -61,11 +61,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const { upsertMessage } = useMessageStore()
 
   const [hovered,       setHovered]       = useState(false)
+  const [menuOpen,      setMenuOpen]      = useState(false)
   const [editing,       setEditing]       = useState(false)
   const [deleteOpen,    setDeleteOpen]    = useState(false)
   const [taskOpen,      setTaskOpen]      = useState(false)
   const [followupBusy,  setFollowupBusy]  = useState(false)
   const [sheetOpen,     setSheetOpen]     = useState(false)
+
+  // V 트리거 ref — MessageMenu 클릭 외부 감지에서 제외
+  const chevronRef = useRef<HTMLButtonElement>(null)
 
   // 롱프레스 감지 (모바일 touch 전용)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -160,9 +164,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const isSending = message._status === 'sending'
   const isSent    = message._status === 'sent' || !message._status
 
-  // 수정/삭제 권한
-  const canDelete = isOwn && isSent && message.message_type !== 'system'
-  const canEdit   = isOwn && isSent && message.message_type === 'text' && isWithin5Min(message.created_at)
+  // 수정 권한
+  const canEdit = isOwn && isSent && message.message_type === 'text' && isWithin5Min(message.created_at)
 
   // 2단 레이아웃 조건
   const voiceTwoPanel = (isVoice || isOcr) && !!message.content_original
@@ -219,33 +222,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         </div>
       )}
 
-      {/* 액션 버튼 (호버 시) - own: 버블 왼쪽 */}
-      {isOwn && (hovered || deleteOpen || editing || taskOpen) && !editing && (
-        <div className="self-end mb-1 flex-shrink-0 flex items-center gap-1.5">
-          <button
-            onClick={onReply}
-            title={t('msgReply')}
-            className="p-2 rounded-full shadow-md transition-colors"
-            style={{ background: 'var(--action-btn-bg)', color: 'var(--action-btn-icon)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--action-btn-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--action-btn-bg)')}
-          >
-            <CornerDownLeft size={16} />
-          </button>
-          <MessageMenu
-            canEdit={canEdit}
-            canDelete={canDelete}
-            onEdit={() => setEditing(true)}
-            onDelete={() => setDeleteOpen(true)}
-            onCreateTask={() => setTaskOpen(true)}
-            needsResponse={message.needs_response}
-            responseReceived={message.response_received}
-            onMarkFollowup={handleMarkFollowup}
-            onUnmarkRequest={handleUnmarkRequest}
-            onMarkReceived={handleMarkReceived}
-          />
-        </div>
-      )}
 
       <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
 
@@ -259,7 +235,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         {/* 말풍선 */}
         <div
           className={`
-            relative px-3 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
+            relative pl-3 pr-7 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
             ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
             ${isSending ? 'opacity-60' : ''}
           `}
@@ -373,6 +349,47 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               )}
             </>
           )}
+
+          {/* V chevron 트리거 — 데스크톱 호버 시만 표시 (모바일 hidden) */}
+          {!editing && isSent && (
+            <>
+              <button
+                ref={chevronRef}
+                type="button"
+                className="absolute top-1.5 right-1 hidden md:flex items-center justify-center w-5 h-5 rounded
+                           transition-opacity duration-150"
+                style={{
+                  opacity: (hovered || menuOpen) ? 1 : 0,
+                  color: 'var(--ink-3)',
+                  pointerEvents: (hovered || menuOpen) ? 'auto' : 'none',
+                }}
+                onClick={() => setMenuOpen(v => !v)}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
+                aria-label="메시지 메뉴"
+              >
+                <ChevronDown size={14} />
+              </button>
+
+              <MessageMenu
+                open={menuOpen}
+                onClose={() => setMenuOpen(false)}
+                excludeRef={chevronRef}
+                isOwn={isOwn}
+                canEdit={canEdit}
+                needsResponse={message.needs_response ?? false}
+                responseReceived={message.response_received ?? false}
+                onReply={() => onReply?.()}
+                onCopy={handleCopy}
+                onCreateTask={() => setTaskOpen(true)}
+                onMarkFollowup={isOwn ? handleMarkFollowup : undefined}
+                onUnmarkRequest={isOwn ? handleUnmarkRequest : undefined}
+                onMarkReceived={isOwn ? handleMarkReceived : undefined}
+                onEdit={isOwn ? () => setEditing(true) : undefined}
+                onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
+              />
+            </>
+          )}
         </div>
 
         {/* 링크 미리보기 */}
@@ -459,31 +476,6 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         )}
       </div>
 
-      {/* 수신 메시지 답장 버튼 (버블 오른쪽) */}
-      {!isOwn && (hovered || taskOpen) && (
-        <div className="self-end mb-1 flex-shrink-0 flex items-center gap-1.5">
-          <button
-            onClick={onReply}
-            title={t('msgReply')}
-            className="p-2 rounded-full shadow-md transition-colors"
-            style={{ background: 'var(--action-btn-bg)', color: 'var(--action-btn-icon)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--action-btn-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--action-btn-bg)')}
-          >
-            <CornerDownLeft size={16} />
-          </button>
-          {isSent && (
-            <MessageMenu
-              canEdit={false}
-              canDelete={false}
-              onEdit={() => {}}
-              onDelete={() => {}}
-              onCreateTask={() => setTaskOpen(true)}
-            />
-          )}
-
-        </div>
-      )}
 
       {/* 삭제 확인 모달 */}
       {deleteOpen && (
@@ -516,7 +508,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         responseReceived={message.response_received ?? false}
         onReply={() => onReply?.()}
         onCopy={handleCopy}
-        onTodo={() => setTaskOpen(true)}
+        onCreateTask={() => setTaskOpen(true)}
         onMarkFollowup={isOwn ? handleMarkFollowup : undefined}
         onUnmarkRequest={isOwn ? handleUnmarkRequest : undefined}
         onMarkReceived={isOwn ? handleMarkReceived : undefined}

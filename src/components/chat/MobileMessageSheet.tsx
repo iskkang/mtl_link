@@ -1,28 +1,17 @@
 import { useEffect } from 'react'
 import { CornerDownLeft, Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { MessageActions, MessageActionContext } from './messageActions'
 
-interface Props {
-  open:              boolean
-  onClose:           () => void
-  isOwn:             boolean
-  canEdit:           boolean
-  needsResponse?:    boolean
-  responseReceived?: boolean
-  onReply:           () => void
-  onCopy:            () => void
-  onTodo:            () => void
-  onMarkFollowup?:   () => void
-  onUnmarkRequest?:  () => void
-  onMarkReceived?:   () => void
-  onEdit?:           () => void
-  onDelete?:         () => void
+interface Props extends MessageActions, MessageActionContext {
+  open:    boolean
+  onClose: () => void
 }
 
 export function MobileMessageSheet({
-  open, onClose, isOwn, canEdit,
-  needsResponse, responseReceived,
-  onReply, onCopy, onTodo,
+  open, onClose,
+  isOwn, canEdit, needsResponse, responseReceived,
+  onReply, onCopy, onCreateTask,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
   onEdit, onDelete,
 }: Props) {
@@ -37,7 +26,6 @@ export function MobileMessageSheet({
 
   if (!open) return null
 
-  // 액션 실행 후 자동 닫힘
   function act(fn: () => void) {
     return () => { fn(); onClose() }
   }
@@ -67,9 +55,9 @@ export function MobileMessageSheet({
           {/* 항상 표시 */}
           <SheetRow icon={CornerDownLeft} label={t('msgReply')}      onClick={act(onReply)} />
           <SheetRow icon={Copy}           label={t('msgCopy')}       onClick={act(onCopy)} />
-          <SheetRow icon={CheckSquare}    label={t('msgCreateTask')} onClick={act(onTodo)} />
+          <SheetRow icon={CheckSquare}    label={t('msgCreateTask')} onClick={act(onCreateTask)} />
 
-          {/* 요청 관련 (공통 — 내 메시지만 표시) */}
+          {/* 요청 관련 (내 메시지만) */}
           {isOwn && !needsResponse && onMarkFollowup && (
             <SheetRow icon={Clock}     label={t('msgMenuMarkRequest')}   onClick={act(onMarkFollowup)} />
           )}
