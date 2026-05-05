@@ -132,14 +132,16 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
   }
 
   // 번역 대상 언어 결정:
-  // - 내 메시지: 내 언어(자기 메시지는 번역하지 않음)
-  // - 상대 메시지: get_target_language 결과(targetLanguage)를 우선 사용
-  //   → 'none' 이거나 미전달 시 프로필 언어 폴백
+  // - 내 메시지: 번역 불필요 → 내 언어
+  // - 그룹/채널: 항상 viewer 자신의 언어 (방 기본 언어는 전원 동일해서 뷰어별 분기 불가)
+  // - DM: 설정한 targetLanguage 우선, 없으면 내 언어
   const myLanguage = isOwn
     ? (profile?.preferred_language ?? 'ko')
-    : (targetLanguage && targetLanguage !== 'none'
-        ? targetLanguage
-        : (profile?.preferred_language ?? 'ko'))
+    : isGroup
+      ? (profile?.preferred_language ?? 'ko')
+      : (targetLanguage && targetLanguage !== 'none'
+          ? targetLanguage
+          : (profile?.preferred_language ?? 'ko'))
 
   const { translatedText, isTranslating, isTranslatable } =
     useMessageTranslation(message, myLanguage)
@@ -250,8 +252,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
               color: 'var(--ink)',
               boxShadow: 'var(--shadow-sm)',
             } : {
-              background: hasSelfMention ? 'rgba(59,130,246,0.07)' : 'var(--bubble-in)',
-              border: hasSelfMention ? '1px solid rgba(59,130,246,0.25)' : '1px solid var(--line)',
+              background: hasSelfMention ? 'rgba(147,51,234,0.08)' : 'var(--bubble-in)',
+              border: hasSelfMention ? '1px solid rgba(147,51,234,0.20)' : '1px solid var(--line)',
               color: 'var(--ink)',
               boxShadow: 'var(--shadow-sm)',
             }),
