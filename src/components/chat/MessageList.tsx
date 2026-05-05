@@ -33,29 +33,27 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
     prevLenRef.current = 0
   }, [roomId])
 
-  // 새 메시지 수신 시 하단 스크롤
+  // 메시지 변경 시 스크롤 처리
   useEffect(() => {
     if (!messages.length) return
-    // 새 메시지(아래쪽에 추가)가 있을 때만 스크롤 (페이지네이션으로 위에 추가된 경우 제외)
     if (messages.length > prevLenRef.current) {
-      const container = containerRef.current
-      if (container) {
-        const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200
-        if (nearBottom || messages[messages.length - 1]?.sender_id === currentUserId) {
-          bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      const isInitialLoad = prevLenRef.current === 0
+      if (isInitialLoad) {
+        // 초기 로드(방 전환 포함): isOwn 조건 없이 무조건 최신 메시지로 이동
+        bottomRef.current?.scrollIntoView()
+      } else {
+        // Realtime 새 메시지: nearBottom이거나 내 메시지일 때만 스크롤
+        const container = containerRef.current
+        if (container) {
+          const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200
+          if (nearBottom || messages[messages.length - 1]?.sender_id === currentUserId) {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }
         }
       }
     }
     prevLenRef.current = messages.length
   }, [messages, currentUserId])
-
-  // 초기 로드 시 맨 아래로
-  useEffect(() => {
-    if (!loading && messages.length && prevLenRef.current === 0) {
-      bottomRef.current?.scrollIntoView()
-      prevLenRef.current = messages.length
-    }
-  }, [loading, messages.length])
 
   const handleScroll = useCallback(() => {
     const container = containerRef.current
