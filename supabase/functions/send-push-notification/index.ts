@@ -5,12 +5,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const MENTION_PREFIX: Record<string, string> = {
+  ko: '멘션됨',
+  en: 'Mentioned you',
+  ru: 'Упомянул вас',
+  uz: "Sizni eslatib o'tdi",
+  zh: '提到了你',
+  ja: 'あなたをメンション',
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { roomId, senderId, body: notifBody } = await req.json()
-    console.log('[push] roomId:', roomId, 'senderId:', senderId)
+    const { roomId, senderId, body: notifBody, mentions = [] } = await req.json()
+    console.log('[push] roomId:', roomId, 'senderId:', senderId, 'mentions:', mentions.length)
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
     const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -41,12 +50,26 @@ Deno.serve(async (req) => {
 
     const userIds = members.map(m => m.user_id).join(',')
 
-    // 해당 유저들의 푸시 구독 조회
+    // 멘션된 수신자의 preferred_language 조회 (prefix 언어 결정용)
+    const mentionedIds: string[] = (mentions as string[]).filter((uid: string) =>
+      members.some(m => m.user_id === uid),
+    )
+    let langMap: Record<string, string> = {}
+    if (mentionedIds.length > 0) {
+      const profilesRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?id=in.(${mentionedIds.join(',')})&select=id,preferred_language`,
+        { headers: dbHeaders },
+      )
+      const profiles: { id: string; preferred_language: string }[] = await profilesRes.json()
+      langMap = Object.fromEntries(profiles.map(p => [p.id, p.preferred_language]))
+    }
+
+    // 해당 유저들의 푸시 구독 조회 (user_id 포함)
     const subsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=in.(${userIds})&select=endpoint,p256dh,auth`,
+      `${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=in.(${userIds})&select=user_id,endpoint,p256dh,auth`,
       { headers: dbHeaders },
     )
-    const subscriptions: { endpoint: string; p256dh: string; auth: string }[] = await subsRes.json()
+    const subscriptions: { user_id: string; endpoint: string; p256dh: string; auth: string }[] = await subsRes.json()
     console.log('[push] push_subscriptions found:', subscriptions.length)
 
     if (!subscriptions.length) {
@@ -61,20 +84,22 @@ Deno.serve(async (req) => {
       Deno.env.get('VAPID_PRIVATE_KEY')!,
     )
 
-    const payload = JSON.stringify({ title, body: notifBody, roomId, url: `/?room=${roomId}` })
-
     const results = await Promise.allSettled(
-      subscriptions.map(sub =>
-        webpush.sendNotification(
+      subscriptions.map(sub => {
+        const isMentioned = (mentions as string[]).includes(sub.user_id)
+        const lang        = langMap[sub.user_id] ?? 'ko'
+        const prefix      = isMentioned ? (MENTION_PREFIX[lang] ?? MENTION_PREFIX.en) : null
+        const body        = prefix ? `[${prefix}] ${notifBody}` : notifBody
+        const payload     = JSON.stringify({ title, body, roomId, url: `/?room=${roomId}` })
+
+        return webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
-          // Chrome은 aesgcm 거부 — aes128gcm 명시 필수
           { contentEncoding: 'aes128gcm' },
         )
-      ),
+      }),
     )
 
-    // 결과 로깅
     results.forEach((r, i) => {
       if (r.status === 'rejected') {
         console.error(`[push] sub[${i}] failed:`, r.reason)

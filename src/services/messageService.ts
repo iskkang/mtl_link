@@ -15,6 +15,7 @@ export async function sendTextMessage(
   replyMessage?: ReplyRef | null,
   needsResponse?: boolean,
   threadRootId?: string | null,
+  mentions?: string[],
 ): Promise<void> {
   const trimmed = content.trim()
   if (!trimmed) throw new Error('메시지가 비어있습니다')
@@ -42,6 +43,7 @@ export async function sendTextMessage(
     reply_to_id:          replyToId ?? null,
     thread_root_id:       threadRootId ?? null,
     thread_reply_count:   0,
+    mentions:             mentions ?? [],
     created_at:           now,
     edited_at:            null,
     deleted_at:           null,
@@ -68,6 +70,7 @@ export async function sendTextMessage(
         reply_to_id:     replyToId ?? null,
         thread_root_id:  threadRootId ?? null,
         needs_response:  needsResponse || false,
+        mentions:        mentions ?? [],
       })
       .select()
       .single()
@@ -84,7 +87,7 @@ export async function sendTextMessage(
 
     // 푸시 알림 (실패해도 메시지 전송에 영향 없음)
     supabase.functions.invoke('send-push-notification', {
-      body: { roomId, senderId: user.id, body: trimmed.slice(0, 100) },
+      body: { roomId, senderId: user.id, body: trimmed.slice(0, 100), mentions: mentions ?? [] },
     }).catch(() => {})
   } catch (err) {
     useMessageStore.getState().updateStatus(roomId, localId, 'failed')

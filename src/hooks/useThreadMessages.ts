@@ -66,9 +66,10 @@ export function useThreadMessages(rootMessageId: string | null) {
     sourceLanguage?: string,
     replyToId?:    string | null,
     replyMessage?: ReplyRef | null,
+    mentions?:     string[],
   ) => {
     if (!rootMessageId) return
-    await sendTextMessage(roomId, content, sourceLanguage, replyToId, replyMessage, false, rootMessageId)
+    await sendTextMessage(roomId, content, sourceLanguage, replyToId, replyMessage, false, rootMessageId, mentions)
   }, [rootMessageId])
 
   const sendFileReply = useCallback(async (

@@ -58,7 +58,7 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
     setPendingFiles(combined)
   }, [pendingFiles])
 
-  const handleSend = useCallback(async (content: string) => {
+  const handleSend = useCallback(async (content: string, mentions: string[]) => {
     const current  = replyTo
     const ref: ReplyRef | null = current
       ? { id: current.id, content: current.content, message_type: current.message_type, deleted_at: current.deleted_at, sender: current.sender }
@@ -77,7 +77,7 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
         setFileUploading(false)
       }
     } else {
-      await sendReply(roomId, content, profile?.preferred_language, current?.id ?? null, ref)
+      await sendReply(roomId, content, profile?.preferred_language, current?.id ?? null, ref, mentions)
     }
   }, [replyTo, pendingFiles, sendReply, sendFileReply, roomId, profile?.preferred_language])
 
@@ -226,6 +226,7 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
         targetLanguage={targetLanguage ?? null}
         placeholder={t('threadInputPlaceholder')}
         autoFocus
+        members={members}
       />
     </div>
   )

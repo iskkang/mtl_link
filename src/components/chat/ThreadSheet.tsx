@@ -55,14 +55,14 @@ export function ThreadSheet({ open, roomId, rootMessageId, currentUserId, member
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
-  const handleSend = useCallback(async (content: string) => {
+  const handleSend = useCallback(async (content: string, mentions: string[]) => {
     const current = replyTo
     const ref: ReplyRef | null = current
       ? { id: current.id, content: current.content, message_type: current.message_type, deleted_at: current.deleted_at, sender: current.sender }
       : null
     setReplyTo(null)
     try {
-      await sendReply(roomId, content, profile?.preferred_language, current?.id ?? null, ref)
+      await sendReply(roomId, content, profile?.preferred_language, current?.id ?? null, ref, mentions)
     } catch (err) {
       setFileError(getUserFriendlyMessage(err))
     }
@@ -205,6 +205,7 @@ export function ThreadSheet({ open, roomId, rootMessageId, currentUserId, member
             targetLanguage={targetLanguage ?? null}
             placeholder={t('threadInputPlaceholder')}
             autoFocus
+            members={members}
           />
         </div>
       </div>

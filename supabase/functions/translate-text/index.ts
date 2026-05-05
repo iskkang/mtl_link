@@ -74,6 +74,14 @@ Deno.serve(async (req: Request) => {
     const srcName = LANG_NAMES[source_language] ?? source_language
     const tgtName = LANG_NAMES[target_language] ?? target_language
 
+    // @mention 토큰을 placeholder로 치환 (번역 모델이 수정하지 못하도록)
+    const MENTION_RE_GLOBAL = /@[\w가-힣぀-ゟ゠-ヿ]+/g
+    const capturedMentions: string[] = []
+    const sanitized = source_text.replace(MENTION_RE_GLOBAL, (m) => {
+      const idx = capturedMentions.push(m) - 1
+      return `__M${idx}__`
+    })
+
     const systemPrompt = `You are a translator. Translate the user's text from ${srcName} to ${tgtName}.
 
 Rules:
@@ -84,6 +92,8 @@ Rules:
   화물=Cargo, 운임=Freight, 견적=Quotation, 인보이스=Invoice,
   포워더=Freight forwarder, 창고=Warehouse, 수입=Import, 수출=Export
 - Preserve: numbers, dates, names, codes (B/L, FCL, etc.) exactly
+- Preserve @username tokens (format: @word) EXACTLY as-is — never translate or modify them
+- Preserve __M{N}__ placeholder tokens EXACTLY as-is — these are protected mention markers
 - Translate casual messages naturally too (greetings, questions, etc.)
 - NEVER respond with English explanations
 - NEVER ask for clarification
@@ -100,7 +110,7 @@ Rules:
         model:      'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system:   systemPrompt,
-        messages: [{ role: 'user', content: source_text }],
+        messages: [{ role: 'user', content: sanitized }],
       }),
     })
 
@@ -112,8 +122,13 @@ Rules:
     const claudeData = await claudeRes.json() as {
       content?: { type: string; text: string }[]
     }
-    const translated = claudeData.content?.[0]?.text?.trim()
-    if (!translated) throw new Error('Empty translation response from Claude')
+    const rawTranslated = claudeData.content?.[0]?.text?.trim()
+    if (!rawTranslated) throw new Error('Empty translation response from Claude')
+
+    // placeholder 복원
+    const translated = capturedMentions.length > 0
+      ? rawTranslated.replace(/__M(\d+)__/g, (_, i) => capturedMentions[+i] ?? '')
+      : rawTranslated
 
     // Persist to cache (ignore conflict — race condition safe)
     await db.from('message_translations').upsert(

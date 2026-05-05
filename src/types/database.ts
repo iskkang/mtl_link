@@ -193,6 +193,7 @@ export type Database = {
           reply_to_id:          string | null
           thread_root_id:       string | null
           thread_reply_count:   number
+          mentions:             string[]
           created_at:           string
           edited_at:            string | null
           deleted_at:           string | null
@@ -213,6 +214,7 @@ export type Database = {
           reply_to_id?:          string | null
           thread_root_id?:       string | null
           thread_reply_count?:   number
+          mentions?:             string[]
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null
@@ -233,6 +235,7 @@ export type Database = {
           reply_to_id?:          string | null
           thread_root_id?:       string | null
           thread_reply_count?:   number
+          mentions?:             string[]
           created_at?:           string
           edited_at?:            string | null
           deleted_at?:           string | null

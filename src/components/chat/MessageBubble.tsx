@@ -16,7 +16,7 @@ import { CreateActionItemModal } from './CreateActionItemModal'
 import { QuotedMessage } from './QuotedMessage'
 import { ReadReceipt } from './ReadReceipt'
 import { useReadStatus } from '../../hooks/useReadStatus'
-import { linkifyText } from '../../lib/linkify'
+import { linkifyText, parseMentionsAndLinks, isMentionPart } from '../../lib/linkify'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessageTranslation } from '../../hooks/useMessageTranslation'
@@ -159,6 +159,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
   const isRequestPending  = (message.needs_response ?? false) && !(message.response_received ?? false)
   const isRequestAnswered = (message.needs_response ?? false) && (message.response_received ?? false)
 
+  // 자기 멘션 여부 (수신 메시지에서 나를 호출했는지)
+  const hasSelfMention = !isOwn && (message.mentions ?? []).includes(currentUserId)
+
   const isVoice   = message.message_type === 'voice_translated'
   const isOcr     = message.message_type === 'text_translated' && !!message.content_original
   const isFailed  = message._status === 'failed'
@@ -247,8 +250,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
               color: 'var(--ink)',
               boxShadow: 'var(--shadow-sm)',
             } : {
-              background: 'var(--bubble-in)',
-              border: '1px solid var(--line)',
+              background: hasSelfMention ? 'rgba(59,130,246,0.07)' : 'var(--bubble-in)',
+              border: hasSelfMention ? '1px solid rgba(59,130,246,0.25)' : '1px solid var(--line)',
               color: 'var(--ink)',
               boxShadow: 'var(--shadow-sm)',
             }),
@@ -316,7 +319,13 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                 {isOcr
                   ? (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)
-                  : translatedText}
+                  : translatedText && parseMentionsAndLinks(translatedText, message.mentions ?? [], members, currentUserId).map((part, i) =>
+                      isMentionPart(part)
+                        ? <span key={i} className="font-medium cursor-default" style={{ color: 'var(--brand)' }}>@{part.name}</span>
+                        : typeof part === 'string'
+                          ? <span key={i}>{part}</span>
+                          : <a key={i} href={part.href} target="_blank" rel="noopener noreferrer" className="underline break-all" style={{ color: 'var(--brand)' }}>{part.href}</a>
+                    )}
               </p>
             </div>
           ) : (
@@ -325,20 +334,30 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
                 <span>
                   {searchQuery
                     ? highlightText(message.content, searchQuery)
-                    : linkifyText(message.content).map((part, i) =>
-                        typeof part === 'string'
-                          ? <span key={i}>{part}</span>
-                          : (
-                            <a
+                    : parseMentionsAndLinks(message.content, message.mentions ?? [], members, currentUserId).map((part, i) =>
+                        isMentionPart(part)
+                          ? (
+                            <span
                               key={i}
-                              href={part.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline break-all" style={{ color: 'var(--brand)' }}
+                              className="font-medium cursor-default"
+                              style={{ color: 'var(--brand)' }}
                             >
-                              {part.href}
-                            </a>
-                          ),
+                              @{part.name}
+                            </span>
+                          )
+                          : typeof part === 'string'
+                            ? <span key={i}>{part}</span>
+                            : (
+                              <a
+                                key={i}
+                                href={part.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline break-all" style={{ color: 'var(--brand)' }}
+                              >
+                                {part.href}
+                              </a>
+                            ),
                       )}
                 </span>
               )}

@@ -62,8 +62,8 @@ export function useMessages(roomId: string | null) {
     messages: roomId ? (store.messagesByRoom[roomId] ?? []) : [],
     loading:  roomId ? (store.loadingByRoom[roomId] ?? false) : false,
     hasMore:  roomId ? (store.hasMoreByRoom[roomId] ?? false) : false,
-    send: (content: string, replyToId?: string | null, replyMessage?: ReplyRef | null, needsResponse?: boolean) =>
-      sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage, needsResponse),
+    send: (content: string, replyToId?: string | null, replyMessage?: ReplyRef | null, needsResponse?: boolean, mentions?: string[]) =>
+      sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage, needsResponse, undefined, mentions),
     loadMore,
   }
 }

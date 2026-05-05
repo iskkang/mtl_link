@@ -1,12 +1,20 @@
-import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo, type KeyboardEvent } from 'react'
 import { Send, MessageCircleQuestion } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getUserFriendlyMessage } from '../../lib/errors'
+import { ACTIVE_MENTION_RE } from '../../lib/linkify'
+import { MentionPopup } from './MentionPopup'
+
+interface MentionMember {
+  id:        string
+  name:      string
+  avatar_url?: string | null
+}
 
 interface Props {
   value:            string
   onChange:         (v: string) => void
-  onSend:           (content: string) => Promise<void>
+  onSend:           (content: string, mentions: string[]) => Promise<void>
   disabled?:        boolean
   hasPendingFiles?: boolean
   targetLanguage?:  string | null
@@ -15,15 +23,21 @@ interface Props {
   onToggleRequest?: () => void
   placeholder?:     string
   autoFocus?:       boolean
+  members?:         MentionMember[]
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder, autoFocus }: Props) {
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder, autoFocus, members }: Props) {
   const { t } = useTranslation()
-  const [sending,   setSending]   = useState(false)
-  const [error,     setError]     = useState<string | null>(null)
+  const [sending,          setSending]          = useState(false)
+  const [error,            setError]            = useState<string | null>(null)
+  const [mentionQuery,     setMentionQuery]     = useState<string | null>(null)
+  const [mentionAnchorPos, setMentionAnchorPos] = useState(0)
+  const [mentionPopupIdx,  setMentionPopupIdx]  = useState(0)
+  const [selectedMentions, setSelectedMentions] = useState<MentionMember[]>([])
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -33,7 +47,16 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus])
 
-  // 텍스트가 있거나, 첨부 파일이 선택된 경우 전송 가능
+  // 팝업 후보 목록 (query 기반 필터)
+  const mentionCandidates = useMemo<MentionMember[]>(() => {
+    if (mentionQuery === null || !members?.length) return []
+    const q = mentionQuery.toLowerCase()
+    return members.filter(m => m.name.toLowerCase().includes(q)).slice(0, 6)
+  }, [mentionQuery, members])
+
+  // 팝업 열림 상태
+  const mentionOpen = mentionQuery !== null && mentionCandidates.length > 0
+
   const canSend = (value.trim().length > 0 || !!hasPendingFiles) &&
                   !sending && !disabled && value.length <= MAX_LEN
 
@@ -44,10 +67,57 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
     el.style.height = Math.min(el.scrollHeight, 120) + 'px'
   }, [])
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val    = e.target.value
+    const cursor = e.target.selectionStart ?? val.length
+    onChange(val)
+    autoResize()
+
+    const before = val.slice(0, cursor)
+    const match  = ACTIVE_MENTION_RE.exec(before)
+    if (match) {
+      setMentionQuery(match[1])
+      setMentionAnchorPos(cursor - match[0].length)
+      setMentionPopupIdx(0)
+    } else {
+      setMentionQuery(null)
+    }
+  }
+
+  const confirmMention = useCallback((member: MentionMember) => {
+    const before  = value.slice(0, mentionAnchorPos)
+    const queryLen = mentionQuery?.length ?? 0
+    const after   = value.slice(mentionAnchorPos + 1 + queryLen)
+    const spacer  = after.startsWith(' ') ? '' : ' '
+    const newVal  = before + '@' + member.name + spacer + after
+    onChange(newVal)
+
+    setSelectedMentions(prev =>
+      prev.some(m => m.id === member.id) ? prev : [...prev, member],
+    )
+    setMentionQuery(null)
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newCursor = mentionAnchorPos + 1 + member.name.length + (spacer ? 1 : 0)
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(newCursor, newCursor)
+      }
+    }, 0)
+  }, [value, mentionAnchorPos, mentionQuery, onChange])
+
   const handleSend = async () => {
     if (!canSend) return
     const content = value.trim()
+
+    // 전송 직전 최종 content에 실제로 등장하는 mention만 추출
+    const finalMentionIds = selectedMentions
+      .filter(m => content.includes('@' + m.name))
+      .map(m => m.id)
+
     onChange('')
+    setSelectedMentions([])
+    setMentionQuery(null)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
       textareaRef.current.focus()
@@ -55,23 +125,48 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
     setSending(true)
     setError(null)
     try {
-      await onSend(content)
+      await onSend(content, finalMentionIds)
     } catch (err) {
       setError(getUserFriendlyMessage(err))
-      if (content) onChange(content) // 텍스트 실패 시 복원 (파일만 있는 경우엔 복원 불필요)
+      if (content) onChange(content)
     } finally {
       setSending(false)
     }
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // 팝업 열림: 방향키/Enter/Tab/Esc를 팝업 제어로 가로채기
+    if (mentionOpen) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setMentionPopupIdx(i => Math.min(i + 1, mentionCandidates.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setMentionPopupIdx(i => Math.max(i - 1, 0))
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        const sel = mentionCandidates[mentionPopupIdx]
+        if (sel) confirmMention(sel)
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMentionQuery(null)
+        return
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
 
-  const remaining = MAX_LEN - value.length
+  const remaining        = MAX_LEN - value.length
   const activeTranslation = targetLanguage && targetLanguage !== 'none'
 
   return (
@@ -87,9 +182,19 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
       )}
 
       <div
-        className="flex items-end gap-2 rounded-2xl border px-3 py-1.5"
+        className="relative flex items-end gap-2 rounded-2xl border px-3 py-1.5"
         style={{ background: 'var(--bg)', borderColor: 'var(--line)' }}
       >
+        {/* MentionPopup */}
+        {mentionOpen && (
+          <MentionPopup
+            query={mentionQuery ?? ''}
+            members={mentionCandidates}
+            selectedIndex={mentionPopupIdx}
+            onSelect={confirmMention}
+          />
+        )}
+
         {/* 요청 토글 버튼 */}
         {onToggleRequest && (
           <button
@@ -129,7 +234,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
             color: 'var(--ink)',
             caretColor: 'var(--brand)',
           }}
-          onChange={e => { onChange(e.target.value); autoResize() }}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
         />
         {value.length >= WARN_AT && (

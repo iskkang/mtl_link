@@ -159,7 +159,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   }, [])
 
   // 전송: 파일이 있으면 sendFileMessage, 없으면 텍스트 전송
-  const handleSend = useCallback(async (content: string) => {
+  const handleSend = useCallback(async (content: string, mentions: string[]) => {
     if (!roomId) return
     const reqFlag = isRequest
     setIsRequest(false)
@@ -176,7 +176,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         setFileUploading(false)
       }
     } else {
-      await send(content, null, null, reqFlag)
+      await send(content, null, null, reqFlag, mentions)
     }
   }, [isRequest, send, pendingFiles, roomId])
 
@@ -397,6 +397,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
             roomName={displayName ?? undefined}
             isRequest={isRequest}
             onToggleRequest={() => setIsRequest(v => !v)}
+            members={room?.members}
           />
         </DragDropZone>
       ) : (
