@@ -272,7 +272,13 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                             flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg
                             bg-red-500 text-white text-xs font-medium max-w-xs text-center">
               {fileError}
-              <button onClick={() => setFileError(null)} className="flex-shrink-0 hover:opacity-75">
+              <button
+                onClick={() => setFileError(null)}
+                className="flex-shrink-0 transition-opacity"
+                onMouseEnter={e => (e.currentTarget.style.opacity = '0.65')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                aria-label="닫기"
+              >
                 <X size={13} />
               </button>
             </div>

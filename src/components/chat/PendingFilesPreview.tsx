@@ -50,18 +50,18 @@ function PendingItem({ file, onRemove }: { file: File; onRemove: () => void }) {
         )}
       </div>
 
-      {/* X 버튼 */}
+      {/* X 버튼 — 터치 타겟 28×28px */}
       <button
         onClick={onRemove}
-        className="absolute -top-1.5 -right-1.5
-                   w-5 h-5 rounded-full flex items-center justify-center
+        className="absolute -top-2 -right-2
+                   w-7 h-7 rounded-full flex items-center justify-center
                    text-white shadow-md transition-colors"
         style={{ background: 'var(--ink-3)' }}
         onMouseEnter={e => (e.currentTarget.style.background = '#EF4444')}
         onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-3)')}
         aria-label={`${file.name} 제거`}
       >
-        <X size={11} />
+        <X size={12} />
       </button>
 
       {/* 파일명 툴팁 (이미지는 hover 시) */}

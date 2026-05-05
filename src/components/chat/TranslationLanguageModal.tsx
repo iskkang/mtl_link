@@ -55,7 +55,7 @@ export function TranslationLanguageModal({
       onClick={onClose}
     >
       <div
-        className="relative w-[340px] rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-[calc(100vw-2rem)] max-w-[340px] rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: 'var(--card)', border: '1px solid var(--line)' }}
         onClick={e => e.stopPropagation()}
       >

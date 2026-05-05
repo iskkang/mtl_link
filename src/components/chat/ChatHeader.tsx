@@ -49,9 +49,10 @@ export function ChatHeader({
         {onBack && (
           <button
             onClick={onBack}
-            className="md:hidden p-1.5 rounded-full flex-shrink-0 transition-colors
-                       hover:bg-gray-100 dark:hover:bg-[#1E293B]
-                       text-gray-500 dark:text-[#94A3B8]"
+            className="md:hidden p-1.5 rounded-full flex-shrink-0 transition-colors"
+            style={{ color: 'var(--ink-3)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             aria-label={t('backBtn')}
           >
             <ArrowLeft size={20} />

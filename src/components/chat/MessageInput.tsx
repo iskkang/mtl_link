@@ -85,7 +85,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
           disabled={disabled || sending}
           placeholder={
             hasPendingFiles
-              ? '캡션 입력... (선택)'
+              ? t('captionPlaceholder')
               : disabled
                 ? t('selectRoomHint')
                 : t('msgPlaceholder')
