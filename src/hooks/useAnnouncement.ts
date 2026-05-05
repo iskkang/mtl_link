@@ -24,7 +24,7 @@ export function useAnnouncement() {
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (!data?.content) { setAnnouncement(null); return }
 
