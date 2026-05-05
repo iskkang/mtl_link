@@ -493,12 +493,13 @@ function VoiceBubbleContent({
   isOwn:          boolean
   searchQuery:    string
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-1.5 min-w-[160px]">
       {/* 헤더: 마이크 아이콘 + 레이블 */}
       <div className="flex items-center gap-1.5">
         <Mic size={12} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-        <span className="text-[11px] italic" style={{ color: 'var(--ink-3)' }}>음성</span>
+        <span className="text-[11px] italic" style={{ color: 'var(--ink-3)' }}>{t('voiceLabel')}</span>
       </div>
       <div style={{ height: '1px', background: 'var(--line)' }} />
 

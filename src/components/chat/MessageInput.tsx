@@ -130,11 +130,11 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
       <div className="flex items-center justify-between mt-1.5 px-1">
         <p className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
           <kbd className="font-mono-ui">Enter</kbd>
-          <span className="mx-1" style={{ color: 'var(--ink-4)' }}>전송 ·</span>
+          <span className="mx-1" style={{ color: 'var(--ink-4)' }}>{t('kbdSend')} ·</span>
           <kbd className="font-mono-ui">Shift</kbd>
           <span className="mx-0.5">+</span>
           <kbd className="font-mono-ui">Enter</kbd>
-          <span className="ml-1">줄바꿈</span>
+          <span className="ml-1">{t('kbdNewline')}</span>
         </p>
         {activeTranslation && (
           <p className="text-[10px] text-right" style={{ color: 'var(--ink-4)' }}>

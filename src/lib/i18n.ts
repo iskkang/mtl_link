@@ -263,6 +263,14 @@ const resources = {
       emptyMsgsDesc:      '아래 입력창에서 대화를 시작할 수 있어요',
       autoTranslateHint:   '✦ 입력한 메시지가 상대방 언어로 자동 번역됩니다',
       autoTranslateBanner: '✦ MTL Link가 메시지를 자동으로 번역하고 있어요. 메시지를 클릭하면 원문을 볼 수 있습니다.',
+      // ── 음성 녹음 UI ──────────────────────────────────────────────────────────
+      voiceSpeakNow:   '말씀해 주세요…',
+      voiceCancel:     '취소',
+      voiceSend:       '전송',
+      voiceProcessing: '음성 번역 중…',
+      voiceLabel:      '음성',
+      kbdSend:         '전송',
+      kbdNewline:      '줄바꿈',
       // ── 대시보드 ─────────────────────────────────────────────────────────────
       greetMorning:         '좋은 아침이에요',
       greetAfternoon:       '좋은 오후예요',
@@ -532,6 +540,14 @@ const resources = {
       emptyMsgsDesc:      'Start the conversation below',
       autoTranslateHint:   '✦ Your messages are auto-translated to the recipient\'s language',
       autoTranslateBanner: '✦ MTL Link is auto-translating messages. Tap a message to see the original.',
+      // ── Voice recording UI ────────────────────────────────────────────────────
+      voiceSpeakNow:   'Speak now…',
+      voiceCancel:     'Cancel',
+      voiceSend:       'Send',
+      voiceProcessing: 'Translating voice…',
+      voiceLabel:      'Voice',
+      kbdSend:         'Send',
+      kbdNewline:      'New line',
       // ── Dashboard ────────────────────────────────────────────────────────────
       greetMorning:         'Good morning',
       greetAfternoon:       'Good afternoon',
@@ -801,6 +817,14 @@ const resources = {
       emptyMsgsDesc:      'Начните разговор ниже',
       autoTranslateHint:   '✦ Ваши сообщения автоматически переводятся на язык собеседника',
       autoTranslateBanner: '✦ MTL Link автоматически переводит сообщения. Нажмите на сообщение, чтобы увидеть оригинал.',
+      // ── Запись голоса UI ──────────────────────────────────────────────────────
+      voiceSpeakNow:   'Говорите…',
+      voiceCancel:     'Отмена',
+      voiceSend:       'Отправить',
+      voiceProcessing: 'Перевод голоса…',
+      voiceLabel:      'Голосовое',
+      kbdSend:         'Отправить',
+      kbdNewline:      'Новая строка',
       // ── Дашборд ──────────────────────────────────────────────────────────────
       greetMorning:         'Доброе утро',
       greetAfternoon:       'Добрый день',
@@ -1070,6 +1094,14 @@ const resources = {
       emptyMsgsDesc:      'Quyidan suhbatni boshlang',
       autoTranslateHint:   '✦ Xabarlaringiz suhbatdoshingiz tiliga avtomatik tarjima qilinadi',
       autoTranslateBanner: '✦ MTL Link xabarlarni avtomatik tarjima qilmoqda. Asl nusxani ko\'rish uchun xabarga bosing.',
+      // ── Ovoz yozish UI ────────────────────────────────────────────────────────
+      voiceSpeakNow:   'Gapirayotganda…',
+      voiceCancel:     'Bekor qilish',
+      voiceSend:       'Yuborish',
+      voiceProcessing: 'Ovozni tarjima qilinmoqda…',
+      voiceLabel:      'Ovozli',
+      kbdSend:         'Yuborish',
+      kbdNewline:      'Yangi qator',
       // ── Dashboard ────────────────────────────────────────────────────────────
       greetMorning:         'Xayrli tong',
       greetAfternoon:       'Xayrli kun',
@@ -1339,6 +1371,14 @@ const resources = {
       emptyMsgsDesc:      '在下方开始对话',
       autoTranslateHint:   '✦ 您的消息将自动翻译为对方的语言',
       autoTranslateBanner: '✦ MTL Link 正在自动翻译消息。点击消息可查看原文。',
+      // ── 语音录制 UI ───────────────────────────────────────────────────────────
+      voiceSpeakNow:   '请说话…',
+      voiceCancel:     '取消',
+      voiceSend:       '发送',
+      voiceProcessing: '正在翻译语音…',
+      voiceLabel:      '语音',
+      kbdSend:         '发送',
+      kbdNewline:      '换行',
       // ── 仪表板 ────────────────────────────────────────────────────────────────
       greetMorning:         '早上好',
       greetAfternoon:       '下午好',
@@ -1608,6 +1648,14 @@ const resources = {
       emptyMsgsDesc:      '下から会話を始めましょう',
       autoTranslateHint:   '✦ 入力したメッセージは相手の言語に自動翻訳されます',
       autoTranslateBanner: '✦ MTL Linkがメッセージを自動翻訳中です。メッセージをタップすると原文を確認できます。',
+      // ── 音声録音 UI ───────────────────────────────────────────────────────────
+      voiceSpeakNow:   '話してください…',
+      voiceCancel:     'キャンセル',
+      voiceSend:       '送信',
+      voiceProcessing: '音声を翻訳中…',
+      voiceLabel:      '音声',
+      kbdSend:         '送信',
+      kbdNewline:      '改行',
       // ── ダッシュボード ────────────────────────────────────────────────────────
       greetMorning:         'おはようございます',
       greetAfternoon:       'こんにちは',

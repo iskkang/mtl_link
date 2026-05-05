@@ -102,7 +102,7 @@ export function MessageActionBar({
           {fmtTime(elapsedMs)}
         </span>
         <span className="flex-1 text-sm" style={{ color: 'var(--ink-3)' }}>
-          말씀해 주세요…
+          {t('voiceSpeakNow')}
         </span>
         {/* 취소 */}
         <button
@@ -112,7 +112,7 @@ export function MessageActionBar({
           onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
         >
-          취소
+          {t('voiceCancel')}
         </button>
         {/* 전송 */}
         <button
@@ -121,7 +121,7 @@ export function MessageActionBar({
           style={{ background: 'var(--brand)' }}
         >
           <Send size={13} />
-          전송
+          {t('voiceSend')}
         </button>
       </div>
     )
@@ -136,7 +136,7 @@ export function MessageActionBar({
       >
         <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin block"
               style={{ color: 'var(--brand)' }} />
-        <span className="text-sm" style={{ color: 'var(--ink-3)' }}>음성 번역 중…</span>
+        <span className="text-sm" style={{ color: 'var(--ink-3)' }}>{t('voiceProcessing')}</span>
       </div>
     )
   }
