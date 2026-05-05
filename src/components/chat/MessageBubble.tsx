@@ -227,7 +227,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         {/* 말풍선 */}
         <div
           className={`
-            relative px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
+            relative px-3 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
             ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
             ${isSending ? 'opacity-60' : ''}
           `}
@@ -236,6 +236,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               background: 'var(--bubble-out)',
               border: '1px solid var(--bubble-out-bd)',
               color: 'var(--ink)',
+              boxShadow: 'var(--shadow-sm)',
             } : {
               background: 'var(--bubble-in)',
               border: '1px solid var(--line)',
@@ -359,7 +360,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
         {/* 메타 정보 */}
         {!editing && (
-          <div className={`flex items-center gap-1.5 mt-0.5 mx-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+          <div className={`flex items-center flex-wrap gap-x-1.5 gap-y-0.5 mt-1 mx-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
 
             {isFailed && (
               <span className="text-[10px] text-red-500 flex items-center gap-0.5">

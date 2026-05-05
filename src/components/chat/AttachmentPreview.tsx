@@ -108,29 +108,31 @@ function FileCard({ attachment }: { attachment: Attachment }) {
   }
 
   return (
-    <div className="px-3 py-2.5 rounded-xl
-                    bg-black/5 dark:bg-black/20
-                    border border-black/5 dark:border-white/5">
+    <div
+      className="px-3 py-2.5 rounded-xl border"
+      style={{ background: 'var(--bg-primary)', borderColor: 'var(--line)' }}
+    >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
-                        bg-white/60 dark:bg-surface-input">
-          <FileTypeIcon mime={attachment.mime_type} className="w-5 h-5 text-gray-500 dark:text-[#8696a0]" />
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: 'var(--card)', color: 'var(--ink-3)' }}
+        >
+          <FileTypeIcon mime={attachment.mime_type} className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium truncate text-gray-800 dark:text-[#e9edef]">
+          <p className="text-xs font-medium truncate" style={{ color: 'var(--ink)' }}>
             {attachment.file_name}
           </p>
-          <p className="text-[10px] text-gray-400 dark:text-[#8696a0]">
+          <p className="text-[10px]" style={{ color: 'var(--ink-3)' }}>
             {formatBytes(attachment.file_size)}
           </p>
         </div>
         <button
           onClick={handleDownload}
-          className="p-1.5 rounded-lg flex-shrink-0
-                     hover:bg-black/10 dark:hover:bg-white/10
-                     text-gray-400 dark:text-[#8696a0]
-                     hover:text-gray-700 dark:hover:text-[#e9edef]
-                     transition-colors"
+          className="p-1.5 rounded-lg flex-shrink-0 transition-colors"
+          style={{ color: 'var(--ink-3)' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-3)'; e.currentTarget.style.background = 'transparent' }}
           aria-label="다운로드"
         >
           <Download size={15} />
@@ -139,11 +141,10 @@ function FileCard({ attachment }: { attachment: Attachment }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1.5 rounded-lg flex-shrink-0
-                     hover:bg-black/10 dark:hover:bg-white/10
-                     text-gray-400 dark:text-[#8696a0]
-                     hover:text-gray-700 dark:hover:text-[#e9edef]
-                     transition-colors"
+          className="p-1.5 rounded-lg flex-shrink-0 transition-colors"
+          style={{ color: 'var(--ink-3)' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-3)'; e.currentTarget.style.background = 'transparent' }}
           aria-label="새 탭에서 열기"
         >
           <ExternalLink size={13} />

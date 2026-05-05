@@ -36,15 +36,14 @@ function PendingItem({ file, onRemove }: { file: File; onRemove: () => void }) {
     <div className="relative flex-shrink-0 group">
       <div
         className="w-[60px] h-[60px] rounded-xl overflow-hidden border flex flex-col items-center justify-center"
-        style={{ borderColor: 'var(--line)', background: 'var(--bg)' }}
+        style={{ borderColor: 'var(--line)', background: 'var(--bg)', color: 'var(--ink-3)' }}
       >
         {isImage && preview ? (
           <img src={preview} alt={file.name} className="w-full h-full object-cover" />
         ) : (
           <>
-            <MimeIcon mime={file.type} size={22} className="text-gray-400 dark:text-[#8696a0]" />
-            <span className="mt-0.5 text-[8px] text-gray-400 dark:text-[#8696a0]
-                             max-w-[52px] truncate px-1 text-center leading-tight">
+            <MimeIcon mime={file.type} size={22} className="" />
+            <span className="mt-0.5 text-[8px] max-w-[52px] truncate px-1 text-center leading-tight">
               {file.name}
             </span>
           </>
@@ -56,8 +55,10 @@ function PendingItem({ file, onRemove }: { file: File; onRemove: () => void }) {
         onClick={onRemove}
         className="absolute -top-1.5 -right-1.5
                    w-5 h-5 rounded-full flex items-center justify-center
-                   bg-gray-500 hover:bg-red-500
                    text-white shadow-md transition-colors"
+        style={{ background: 'var(--ink-3)' }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#EF4444')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-3)')}
         aria-label={`${file.name} 제거`}
       >
         <X size={11} />

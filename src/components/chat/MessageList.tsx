@@ -62,7 +62,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
   if (loading && !messages.length) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-gray-300 dark:text-[#8696a0]" />
+        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--ink-3)' }} />
       </div>
     )
   }
@@ -89,7 +89,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
       {/* 이전 메시지 로딩 */}
       {loading && messages.length > 0 && (
         <div className="flex justify-center py-2">
-          <Loader2 size={18} className="animate-spin text-gray-400 dark:text-[#8696a0]" />
+          <Loader2 size={18} className="animate-spin" style={{ color: 'var(--ink-3)' }} />
         </div>
       )}
 
@@ -100,23 +100,23 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
         return (
           <div key={msg._localId ?? msg.id} data-message-id={msg.id}>
             {showDate && (
-              <div className="flex justify-center my-3">
+              <div className="flex justify-center my-4">
                 <span
-                className="text-[11px] px-3 py-1 rounded-full shadow-sm backdrop-blur-sm"
-                style={{ background: 'var(--card)', color: 'var(--ink-3)', border: '1px solid var(--line)' }}
-              >
-                {formatDateSeparator(msg.created_at)}
-              </span>
+                  className="text-[11px] font-medium px-3.5 py-1 rounded-full shadow-sm"
+                  style={{ background: 'var(--card)', color: 'var(--ink-3)', border: '1px solid var(--line)' }}
+                >
+                  {formatDateSeparator(msg.created_at)}
+                </span>
               </div>
             )}
             {msg.message_type === 'system' ? (
-              <div className="flex justify-center my-1.5 px-3">
+              <div className="flex justify-center my-2 px-3">
                 <span
-                className="text-[11px] px-3 py-1 rounded-full shadow-sm backdrop-blur-sm italic"
-                style={{ background: 'var(--card)', color: 'var(--ink-4)', border: '1px solid var(--line)' }}
-              >
-                {msg.content}
-              </span>
+                  className="text-[11px] px-3 py-0.5"
+                  style={{ color: 'var(--ink-4)' }}
+                >
+                  {msg.content}
+                </span>
               </div>
             ) : (
               <MessageBubble
