@@ -1,16 +1,18 @@
 import { useTranslation } from 'react-i18next'
+import { Plus } from 'lucide-react'
 import { RoomListItemView } from './RoomListItem'
 import type { RoomListItem } from '../../types/chat'
 
 interface Props {
-  rooms:          RoomListItem[]
-  loading:        boolean
-  selectedRoomId: string | null
-  currentUserId:  string
-  onSelectRoom:   (id: string) => void
+  rooms:           RoomListItem[]
+  loading:         boolean
+  selectedRoomId:  string | null
+  currentUserId:   string
+  onSelectRoom:    (id: string) => void
+  onAddChannel?:   () => void
 }
 
-export function RoomList({ rooms, loading, selectedRoomId, currentUserId, onSelectRoom }: Props) {
+export function RoomList({ rooms, loading, selectedRoomId, currentUserId, onSelectRoom, onAddChannel }: Props) {
   const { t } = useTranslation()
 
   if (loading && !rooms.length) {
@@ -26,7 +28,7 @@ export function RoomList({ rooms, loading, selectedRoomId, currentUserId, onSele
     <div className="flex flex-col">
       {channels.length > 0 && (
         <>
-          <SectionHeader label={t('sectionChannels')} />
+          <SectionHeader label={t('sectionChannels')} onAdd={onAddChannel} />
           {channels.map(room => (
             <RoomListItemView
               key={room.id}
@@ -57,17 +59,28 @@ export function RoomList({ rooms, loading, selectedRoomId, currentUserId, onSele
   )
 }
 
-function SectionHeader({ label }: { label: string }) {
+function SectionHeader({ label, onAdd }: { label: string; onAdd?: () => void }) {
   return (
-    <div
-      className="px-4 pt-4 pb-1"
-    >
+    <div className="flex items-center justify-between px-4 pt-4 pb-1">
       <span
         className="text-[10px] font-semibold tracking-widest uppercase"
         style={{ color: 'var(--ink-4)' }}
       >
         {label}
       </span>
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="p-0.5 rounded transition-colors"
+          style={{ color: 'var(--ink-4)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink-2)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-4)')}
+          aria-label="채널 탐색"
+        >
+          <Plus size={13} />
+        </button>
+      )}
     </div>
   )
 }

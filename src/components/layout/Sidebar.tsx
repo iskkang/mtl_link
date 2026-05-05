@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
 import { RoomList } from '../chat/RoomList'
+import { ChannelBrowseModal } from '../chat/ChannelBrowseModal'
 import { FriendsList } from '../chat/FriendsList'
 import { type SidebarTab } from '../chat/SidebarTabs'
 import { ActionItemList } from '../actionitems/ActionItemList'
@@ -35,7 +36,8 @@ export function Sidebar({
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { rooms, loading } = useRooms()
+  const { rooms, loading, refresh } = useRooms()
+  const [channelBrowseOpen, setChannelBrowseOpen] = useState(false)
   const { received, created, done, reload } = useActionItems()
   const pendingCount = received.length + created.length
   const requestCount = useRequestStore(s => s.receivedCount)
@@ -116,6 +118,7 @@ export function Sidebar({
                   selectedRoomId={selectedRoomId}
                   currentUserId={user?.id ?? ''}
                   onSelectRoom={onSelectRoom}
+                  onAddChannel={() => setChannelBrowseOpen(true)}
                 />
               )
             }
@@ -147,6 +150,14 @@ export function Sidebar({
         <div className="flex flex-col flex-1 min-h-0">
           <RequestList onSelectRequest={onSelectRequest} />
         </div>
+      )}
+
+      {/* ── 채널 탐색 모달 ─────────────────────────────── */}
+      {channelBrowseOpen && (
+        <ChannelBrowseModal
+          onJoined={roomId => { refresh(); onSelectRoom(roomId) }}
+          onClose={() => setChannelBrowseOpen(false)}
+        />
       )}
 
       {/* Spacer for MobileTabBar (fixed 56px + safe-area-inset-bottom) */}

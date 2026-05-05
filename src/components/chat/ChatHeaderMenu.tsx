@@ -6,17 +6,18 @@ import { SUPPORTED_LANGS } from '../../lib/i18n'
 import { LanguagePickerModal } from '../ui/LanguagePickerModal'
 
 interface Props {
-  notifEnabled:  boolean
-  onToggleNotif: () => void
-  isOwner:       boolean
-  isDirect:      boolean
-  onLeave:       () => void
-  onDelete:      () => void
+  notifEnabled:    boolean
+  onToggleNotif:   () => void
+  isOwner:         boolean
+  isDirect:        boolean
+  isAnnouncement?: boolean
+  onLeave:         () => void
+  onDelete:        () => void
 }
 
 export function ChatHeaderMenu({
   notifEnabled, onToggleNotif,
-  isOwner, isDirect, onLeave, onDelete,
+  isOwner, isDirect, isAnnouncement, onLeave, onDelete,
 }: Props) {
   const { t, i18n } = useTranslation()
   const { mode, toggle: toggleTheme } = useTheme()
@@ -86,12 +87,14 @@ export function ChatHeaderMenu({
           <div className="my-1 border-t" style={{ borderColor: 'var(--line)' }} />
 
           {/* Section 2: Room actions (danger zone) */}
-          <MenuRow
-            icon={<LogOut size={15} />}
-            label={t('roomLeave')}
-            onClick={() => { setOpen(false); onLeave() }}
-            danger
-          />
+          {!isAnnouncement && (
+            <MenuRow
+              icon={<LogOut size={15} />}
+              label={t('roomLeave')}
+              onClick={() => { setOpen(false); onLeave() }}
+              danger
+            />
+          )}
           {!isDirect && isOwner && (
             <MenuRow
               icon={<Trash2 size={15} />}

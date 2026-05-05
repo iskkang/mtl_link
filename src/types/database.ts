@@ -86,6 +86,8 @@ export type Database = {
           slug:                         string | null
           description:                  string | null
           is_announcement:              boolean
+          is_private:                   boolean
+          is_default:                   boolean
           created_at:                   string
           updated_at:                   string
         }
@@ -100,6 +102,8 @@ export type Database = {
           slug?:                         string | null
           description?:                  string | null
           is_announcement?:              boolean
+          is_private?:                   boolean
+          is_default?:                   boolean
           created_at?:                   string
           updated_at?:                   string
         }
@@ -114,6 +118,8 @@ export type Database = {
           slug?:                         string | null
           description?:                  string | null
           is_announcement?:              boolean
+          is_private?:                   boolean
+          is_default?:                   boolean
           created_at?:                   string
           updated_at?:                   string
         }
@@ -544,6 +550,10 @@ export type Database = {
         Returns: string
       }
       leave_room: {
+        Args: { p_room_id: string }
+        Returns: void
+      }
+      join_channel: {
         Args: { p_room_id: string }
         Returns: void
       }

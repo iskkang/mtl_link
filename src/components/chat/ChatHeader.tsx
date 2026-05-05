@@ -20,10 +20,11 @@ interface Props {
   searchOpen:     boolean
   onToggleSearch: () => void
 
-  notifEnabled:  boolean
-  onToggleNotif: () => void
-  onLeave:       () => void
-  onDelete:      () => void
+  notifEnabled:    boolean
+  onToggleNotif:   () => void
+  isAnnouncement?: boolean
+  onLeave:         () => void
+  onDelete:        () => void
 }
 
 export function ChatHeader({
@@ -31,7 +32,7 @@ export function ChatHeader({
   onBack,
   effectivePeerLang, onOpenTranslation,
   searchOpen, onToggleSearch,
-  notifEnabled, onToggleNotif, onLeave, onDelete,
+  notifEnabled, onToggleNotif, isAnnouncement, onLeave, onDelete,
 }: Props) {
   const { t } = useTranslation()
 
@@ -153,6 +154,7 @@ export function ChatHeader({
               onToggleNotif={onToggleNotif}
               isOwner={isOwner}
               isDirect={isDirect}
+              isAnnouncement={isAnnouncement}
               onLeave={onLeave}
               onDelete={onDelete}
             />

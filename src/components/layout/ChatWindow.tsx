@@ -243,6 +243,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         onToggleSearch={() => { setSearchOpen(v => !v); setGlobalOpen(false) }}
         notifEnabled={notifEnabled}
         onToggleNotif={onToggleNotif}
+        isAnnouncement={room?.is_announcement}
         onLeave={() => setLeaveOpen(true)}
         onDelete={() => setDeleteOpen(true)}
       />

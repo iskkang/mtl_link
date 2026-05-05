@@ -157,6 +157,56 @@ export async function leaveRoom(roomId: string): Promise<void> {
   if (error) throw error
 }
 
+export async function joinChannel(roomId: string): Promise<void> {
+  const { error } = await supabase.rpc('join_channel', { p_room_id: roomId })
+  if (error) throw error
+}
+
+export interface PublicChannel {
+  id:          string
+  name:        string
+  description: string | null
+  is_default:  boolean
+  memberCount: number
+  isJoined:    boolean
+}
+
+export async function fetchPublicChannels(): Promise<PublicChannel[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: channels, error } = await supabase
+    .from('rooms')
+    .select('id, name, description, is_default')
+    .eq('room_type', 'channel')
+    .eq('is_private', false)
+    .order('name')
+  if (error) throw error
+  if (!channels?.length) return []
+
+  const channelIds = channels.map(c => c.id)
+
+  const [{ data: allMembers }, { data: myMemberships }] = await Promise.all([
+    supabase.from('room_members').select('room_id').in('room_id', channelIds),
+    supabase.from('room_members').select('room_id').in('room_id', channelIds).eq('user_id', user.id),
+  ])
+
+  const countMap: Record<string, number> = {}
+  for (const m of allMembers ?? []) {
+    countMap[m.room_id] = (countMap[m.room_id] ?? 0) + 1
+  }
+  const joinedSet = new Set((myMemberships ?? []).map(m => m.room_id))
+
+  return channels.map(c => ({
+    id:          c.id,
+    name:        c.name ?? '',
+    description: c.description ?? null,
+    is_default:  c.is_default ?? false,
+    memberCount: countMap[c.id] ?? 0,
+    isJoined:    joinedSet.has(c.id),
+  }))
+}
+
 export async function deleteRoom(roomId: string): Promise<void> {
   const { error } = await supabase.from('rooms').delete().eq('id', roomId)
   if (error) throw error

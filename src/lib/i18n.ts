@@ -328,6 +328,13 @@ const resources = {
       threadNoReplies:      '아직 답글이 없습니다',
       threadInputPlaceholder: '스레드에 답글 작성…',
       threadOpenThread:     '답글 달기',
+      // ── 채널 탐색 ─────────────────────────────────────────────────────────────
+      channelBrowseTitle:   '채널 탐색',
+      channelBrowseSearch:  '채널 검색',
+      channelBrowseJoin:    '참여',
+      channelBrowseJoined:  '참여중',
+      channelBrowseEmpty:   '참여 가능한 공개 채널이 없습니다',
+      channelBrowseMembers: '멤버 {{count}}명',
     },
   },
 
@@ -615,6 +622,13 @@ const resources = {
       threadNoReplies:      'No replies yet',
       threadInputPlaceholder: 'Reply in thread…',
       threadOpenThread:     'Reply in thread',
+      // ── Channel browse ───────────────────────────────────────────────────────
+      channelBrowseTitle:   'Browse Channels',
+      channelBrowseSearch:  'Search channels',
+      channelBrowseJoin:    'Join',
+      channelBrowseJoined:  'Joined',
+      channelBrowseEmpty:   'No public channels available',
+      channelBrowseMembers: '{{count}} members',
     },
   },
 
@@ -902,6 +916,13 @@ const resources = {
       threadNoReplies:      'Пока нет ответов',
       threadInputPlaceholder: 'Ответить в треде…',
       threadOpenThread:     'Ответить в треде',
+      // ── Просмотр каналов ─────────────────────────────────────────────────────
+      channelBrowseTitle:   'Просмотр каналов',
+      channelBrowseSearch:  'Поиск каналов',
+      channelBrowseJoin:    'Присоединиться',
+      channelBrowseJoined:  'Участник',
+      channelBrowseEmpty:   'Нет доступных публичных каналов',
+      channelBrowseMembers: '{{count}} участников',
     },
   },
 
@@ -1189,6 +1210,13 @@ const resources = {
       threadNoReplies:      'Hali javob yo\'q',
       threadInputPlaceholder: 'Mavzuda javob yozing…',
       threadOpenThread:     'Mavzuda javob berish',
+      // ── Kanal ko'rish ────────────────────────────────────────────────────────
+      channelBrowseTitle:   'Kanallarni ko\'rish',
+      channelBrowseSearch:  'Kanal qidirish',
+      channelBrowseJoin:    'Qo\'shilish',
+      channelBrowseJoined:  'Qo\'shilgan',
+      channelBrowseEmpty:   'Mavjud ommaviy kanallar yo\'q',
+      channelBrowseMembers: '{{count}} ta a\'zo',
     },
   },
 
@@ -1476,6 +1504,13 @@ const resources = {
       threadNoReplies:      '暂无回复',
       threadInputPlaceholder: '在话题中回复…',
       threadOpenThread:     '在话题中回复',
+      // ── 浏览频道 ──────────────────────────────────────────────────────────────
+      channelBrowseTitle:   '浏览频道',
+      channelBrowseSearch:  '搜索频道',
+      channelBrowseJoin:    '加入',
+      channelBrowseJoined:  '已加入',
+      channelBrowseEmpty:   '没有可用的公开频道',
+      channelBrowseMembers: '{{count}}位成员',
     },
   },
 
@@ -1763,6 +1798,13 @@ const resources = {
       threadNoReplies:      'まだ返信はありません',
       threadInputPlaceholder: 'スレッドに返信…',
       threadOpenThread:     'スレッドで返信',
+      // ── チャンネル閲覧 ────────────────────────────────────────────────────────
+      channelBrowseTitle:   'チャンネルを探す',
+      channelBrowseSearch:  'チャンネルを検索',
+      channelBrowseJoin:    '参加',
+      channelBrowseJoined:  '参加済み',
+      channelBrowseEmpty:   '参加可能な公開チャンネルがありません',
+      channelBrowseMembers: '{{count}}人のメンバー',
     },
   },
 }
