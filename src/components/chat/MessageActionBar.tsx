@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react'
-import { Smile, Paperclip, Mic, Send, ClipboardCheck } from 'lucide-react'
+import { Smile, Paperclip, Mic, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../contexts/ThemeContext'
 import { EmojiPickerPopup } from '../emoji/EmojiPickerPopup'
@@ -25,14 +25,11 @@ interface Props {
   targetLanguage:         string | null
   peerLanguage?:          string | null
   onOpenTranslationModal: () => void
-  isRequest?:             boolean
-  onToggleRequest?:       () => void
 }
 
 export function MessageActionBar({
   roomId, disabled, uploading, onEmojiSelect, onError,
   onFilesSelected, targetLanguage, peerLanguage,
-  isRequest, onToggleRequest,
 }: Props) {
   const { t } = useTranslation()
   const { mode } = useTheme()
@@ -193,24 +190,6 @@ export function MessageActionBar({
         onError={onError}
       />
 
-      {/* 요청 토글 */}
-      {onToggleRequest && (
-        <button
-          type="button"
-          onClick={onToggleRequest}
-          title={isRequest ? t('inputRequestActive') : t('inputMarkAsRequest')}
-          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ml-auto flex-shrink-0"
-          style={isRequest
-            ? { background: 'rgba(234,179,8,0.15)', color: '#CA8A04', border: '1px solid rgba(234,179,8,0.4)' }
-            : { color: 'var(--ink-4)', border: '1px solid transparent' }
-          }
-          onMouseEnter={e => { if (!isRequest) (e.currentTarget.style.background = 'var(--bg)') }}
-          onMouseLeave={e => { if (!isRequest) (e.currentTarget.style.background = 'transparent') }}
-        >
-          <ClipboardCheck size={15} />
-          <span>{t('inputRequest')}</span>
-        </button>
-      )}
     </div>
   )
 }

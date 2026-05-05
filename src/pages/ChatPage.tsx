@@ -15,7 +15,6 @@ import type { Section }       from '../components/layout/MenuRail'
 export default function ChatPage() {
   const { user } = useAuth()
   const rooms    = useRoomStore(s => s.rooms)
-  usePollingRefresh()
 
   const [selectedRoomId,     setSelectedRoomId]     = useState<string | null>(null)
   const [showChat,           setShowChat]           = useState(false)
@@ -24,6 +23,8 @@ export default function ChatPage() {
   const [toast,              setToast]              = useState<string | null>(null)
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  usePollingRefresh(selectedRoomId)
 
   // Request count for MenuRail badge (Zustand — no duplicate subscription risk)
   const requestCount = useRequestStore(s => s.receivedCount)
@@ -35,6 +36,7 @@ export default function ChatPage() {
   }
 
   const handleSelectRoom = (id: string) => {
+    useRoomStore.getState().resetUnread(id)
     setSelectedRoomId(id)
     setShowChat(true)
     setActiveSection('chat')

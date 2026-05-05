@@ -311,6 +311,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               searchQuery={searchOpen ? searchQuery : ''}
               currentResultId={searchCurrent?.id ?? null}
               targetLanguage={targetLanguage ?? undefined}
+              roomId={roomId ?? ''}
             />
             {globalOpen && (
               <GlobalSearchPanel
@@ -339,8 +340,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
             targetLanguage={targetLanguage}
             peerLanguage={effectivePeerLang ?? null}
             onOpenTranslationModal={() => setTranslationOpen(true)}
-            isRequest={isRequest}
-            onToggleRequest={() => setIsRequest(v => !v)}
           />
 
           {/* 요청 활성 배너 */}
@@ -385,6 +384,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
             hasPendingFiles={pendingFiles.length > 0}
             targetLanguage={targetLanguage}
             roomName={displayName ?? undefined}
+            isRequest={isRequest}
+            onToggleRequest={() => setIsRequest(v => !v)}
           />
         </DragDropZone>
       ) : (

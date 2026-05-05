@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { useMessageStore } from '../stores/messageStore'
 import { useRoomStore } from '../stores/roomStore'
 import { validateFiles } from '../lib/fileValidation'
+import { detectLanguage } from '../utils/detectLanguage'
 import type { ReplyRef } from '../types/chat'
 
 // ─── 텍스트 메시지 (Optimistic UI) ──────────────────────────────
@@ -23,7 +24,7 @@ export async function sendTextMessage(
 
   const localId = crypto.randomUUID()
   const now     = new Date().toISOString()
-  const srcLang = (sourceLanguage ?? null) as import('../types/database').SupportedLanguage | null
+  const srcLang = (sourceLanguage ?? detectLanguage(trimmed) ?? 'en') as import('../types/database').SupportedLanguage | null
 
   useMessageStore.getState().upsertMessage(roomId, {
     id:                   localId,

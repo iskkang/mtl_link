@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { translateMessage } from '../services/translationService'
 import type { MessageWithSender } from '../types/chat'
 import { useMessageStore } from '../stores/messageStore'
+import { detectLanguage } from '../utils/detectLanguage'
 
 // Module-level cache — shared across all hook instances, persists for session
 const cache   = new Map<string, string>()
@@ -25,7 +26,7 @@ export function useMessageTranslation(
   message: MessageWithSender,
   myLanguage: string,
 ): TranslationState {
-  const srcLang = message.source_language
+  const srcLang = message.source_language ?? (message.content ? detectLanguage(message.content) : null)
 
   const isTranslatable =
     message.message_type === 'text' &&

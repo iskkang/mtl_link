@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
-import { Send } from 'lucide-react'
+import { Send, MessageCircleQuestion } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getUserFriendlyMessage } from '../../lib/errors'
 
@@ -11,12 +11,14 @@ interface Props {
   hasPendingFiles?: boolean
   targetLanguage?:  string | null
   roomName?:        string
+  isRequest?:       boolean
+  onToggleRequest?: () => void
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage }: Props) {
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest }: Props) {
   const { t } = useTranslation()
   const [sending,   setSending]   = useState(false)
   const [error,     setError]     = useState<string | null>(null)
@@ -79,6 +81,24 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
         className="flex items-end gap-2 rounded-2xl border px-3 py-1.5"
         style={{ background: 'var(--bg)', borderColor: 'var(--line)' }}
       >
+        {/* 요청 토글 버튼 */}
+        {onToggleRequest && (
+          <button
+            type="button"
+            onClick={onToggleRequest}
+            title={isRequest ? t('inputRequestActive') : t('inputMarkAsRequest')}
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full transition-colors"
+            style={isRequest
+              ? { color: '#CA8A04', background: 'rgba(234,179,8,0.15)' }
+              : { color: 'var(--ink-4)', background: 'transparent' }
+            }
+            onMouseEnter={e => { if (!isRequest) (e.currentTarget.style.background = 'var(--bg-hover)') }}
+            onMouseLeave={e => { if (!isRequest) (e.currentTarget.style.background = 'transparent') }}
+          >
+            <MessageCircleQuestion size={16} />
+          </button>
+        )}
+
         <textarea
           ref={textareaRef}
           value={value}

@@ -19,13 +19,19 @@ interface Props {
   searchQuery?:      string
   currentResultId?:  string | null
   targetLanguage?:   string
+  roomId?:           string
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onReply, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage, roomId }: Props) {
   const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLenRef = useRef(0)
+
+  // 방 전환 시 스크롤 ref 초기화 → 초기 로드 스크롤 재트리거
+  useEffect(() => {
+    prevLenRef.current = 0
+  }, [roomId])
 
   // 새 메시지 수신 시 하단 스크롤
   useEffect(() => {
