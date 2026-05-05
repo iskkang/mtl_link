@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
+import { QuickEmojiPicker } from './QuickEmojiPicker'
 
 interface Props extends MessageActions, MessageActionContext {
   open:    boolean
@@ -13,7 +14,7 @@ export function MobileMessageSheet({
   isOwn, canEdit, needsResponse, responseReceived,
   onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
-  onEdit, onDelete,
+  onEdit, onDelete, onReact,
 }: Props) {
   const { t } = useTranslation()
 
@@ -51,6 +52,16 @@ export function MobileMessageSheet({
 
         {/* 액션 목록 */}
         <div className="py-1" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+
+          {/* 이모지 반응 빠른 선택 */}
+          {onReact && (
+            <>
+              <div className="px-5 py-2">
+                <QuickEmojiPicker onSelect={(emoji) => { onReact(emoji); onClose() }} />
+              </div>
+              <div className="mx-4 my-1 border-t" style={{ borderColor: 'var(--line)' }} />
+            </>
+          )}
 
           {/* 항상 표시 */}
           <SheetRow icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />

@@ -23,6 +23,8 @@ export interface MessageWithSender extends Message {
   reply_message: ReplyRef | null
   /** DB에서 join된 번역 캐시 (message_translations 테이블) */
   translations?: { language: string; translated_text: string }[]
+  /** DB에서 join된 이모지 반응 (message_reactions 테이블) */
+  reactions?: { emoji: string; user_id: string }[]
   /** Optimistic UI용 로컬 ID */
   _localId?: string
   /** 전송 상태 */

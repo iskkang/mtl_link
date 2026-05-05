@@ -33,10 +33,12 @@ export function EmojiPickerPopup({ onSelect, onClose }: Props) {
         theme={mode === 'dark' ? Theme.DARK : Theme.LIGHT}
         emojiStyle={EmojiStyle.NATIVE}
         onEmojiClick={d => onSelect(d.emoji)}
-        height={360}
-        width={320}
+        height={320}
+        width={300}
         searchPlaceholder="이모지 검색…"
         lazyLoadEmojis
+        skinTonesDisabled
+        previewConfig={{ showPreview: false }}
       />
     </div>
   )

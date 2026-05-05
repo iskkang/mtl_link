@@ -6,7 +6,7 @@ import { useAuth } from './useAuth'
 import type { Message, Attachment } from '../types/chat'
 
 export function useRealtimeMessages(roomId: string | null) {
-  const { upsertMessage, addAttachment, refetchSinceLastSeen } = useMessageStore()
+  const { upsertMessage, addAttachment, refetchSinceLastSeen, setReactions } = useMessageStore()
   const updateMemberReadAt = useRoomStore(s => s.updateMemberReadAt)
   const { user } = useAuth()
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -57,6 +57,30 @@ export function useRealtimeMessages(roomId: string | null) {
         },
       )
       .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'message_reactions', filter: `room_id=eq.${roomId}` },
+        async payload => {
+          const { message_id } = payload.new as { message_id: string; room_id: string; user_id: string; emoji: string }
+          const { data } = await supabase
+            .from('message_reactions')
+            .select('emoji, user_id')
+            .eq('message_id', message_id)
+          if (data) setReactions(roomId, message_id, data)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'message_reactions', filter: `room_id=eq.${roomId}` },
+        async payload => {
+          const { message_id } = payload.old as { message_id: string }
+          const { data } = await supabase
+            .from('message_reactions')
+            .select('emoji, user_id')
+            .eq('message_id', message_id)
+          if (data) setReactions(roomId, message_id, data)
+        },
+      )
+      .on(
         'broadcast',
         { event: 'read_receipt' },
         ({ payload }) => {
@@ -87,5 +111,5 @@ export function useRealtimeMessages(roomId: string | null) {
       channel.unsubscribe()
       channelRef.current = null
     }
-  }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen, updateMemberReadAt, user?.id])
+  }, [roomId, upsertMessage, addAttachment, refetchSinceLastSeen, updateMemberReadAt, setReactions, user?.id])
 }

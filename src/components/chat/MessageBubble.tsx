@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
-import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare } from 'lucide-react'
+import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare, Smile } from 'lucide-react'
 import { getLangName } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -15,6 +15,7 @@ import { DeleteMessageModal } from './DeleteMessageModal'
 import { CreateActionItemModal } from './CreateActionItemModal'
 import { QuotedMessage } from './QuotedMessage'
 import { ReadReceipt } from './ReadReceipt'
+import { ReactionBar } from './ReactionBar'
 import { useReadStatus } from '../../hooks/useReadStatus'
 import { linkifyText, parseMentionsAndLinks, isMentionPart } from '../../lib/linkify'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
@@ -22,6 +23,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useMessageTranslation } from '../../hooks/useMessageTranslation'
 import { useMessageStore } from '../../stores/messageStore'
 import { editMessage, softDeleteMessage } from '../../services/messageService'
+import { toggleReaction } from '../../services/reactionService'
 import type { MessageWithSender, RoomListItem } from '../../types/chat'
 
 interface Props {
@@ -59,7 +61,7 @@ function isWithin5Min(createdAt: string) {
 export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
-  const { upsertMessage } = useMessageStore()
+  const { upsertMessage, setReactions } = useMessageStore()
 
   const [hovered,       setHovered]       = useState(false)
   const [menuOpen,      setMenuOpen]      = useState(false)
@@ -71,6 +73,28 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
 
   // V 트리거 ref — MessageMenu 클릭 외부 감지에서 제외
   const chevronRef = useRef<HTMLButtonElement>(null)
+
+  // 이름 맵 (ReactionBar 툴팁용)
+  const senderNames = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const m of members) map[m.id] = m.name
+    return map
+  }, [members])
+
+  const handleReact = useCallback(async (emoji: string) => {
+    if (!message.room_id) return
+    const currentReactions = message.reactions ?? []
+    const alreadyReacted = currentReactions.some(r => r.emoji === emoji && r.user_id === currentUserId)
+    const next = alreadyReacted
+      ? currentReactions.filter(r => !(r.emoji === emoji && r.user_id === currentUserId))
+      : [...currentReactions, { emoji, user_id: currentUserId }]
+    setReactions(message.room_id, message.id, next)
+    try {
+      await toggleReaction(message.id, message.room_id, emoji, currentUserId, currentReactions)
+    } catch {
+      setReactions(message.room_id!, message.id, currentReactions)
+    }
+  }, [message, currentUserId, setReactions])
 
   // 롱프레스 감지 (모바일 touch 전용)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -372,9 +396,27 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
             </>
           )}
 
-          {/* V chevron 트리거 — 데스크톱 호버 시만 표시 (모바일 hidden) */}
+          {/* V chevron + 😊 트리거 — 데스크톱 호버 시만 표시 (모바일 hidden) */}
           {!editing && isSent && (
             <>
+              {/* 😊 이모지 반응 버튼 */}
+              <button
+                type="button"
+                className="absolute top-1.5 right-6 hidden md:flex items-center justify-center w-5 h-5 rounded
+                           transition-opacity duration-150"
+                style={{
+                  opacity: (hovered || menuOpen) ? 1 : 0,
+                  color: 'var(--ink-3)',
+                  pointerEvents: (hovered || menuOpen) ? 'auto' : 'none',
+                }}
+                onClick={() => setMenuOpen(v => !v)}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-3)')}
+                aria-label="이모지 반응"
+              >
+                <Smile size={14} />
+              </button>
+
               <button
                 ref={chevronRef}
                 type="button"
@@ -409,10 +451,22 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
                 onMarkReceived={isOwn ? handleMarkReceived : undefined}
                 onEdit={isOwn ? () => setEditing(true) : undefined}
                 onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
+                onReact={handleReact}
               />
             </>
           )}
         </div>
+
+        {/* 이모지 반응 바 */}
+        {!editing && message.room_id && (message.reactions?.length ?? 0) > 0 && (
+          <ReactionBar
+            messageId={message.id}
+            roomId={message.room_id}
+            reactions={message.reactions ?? []}
+            currentUserId={currentUserId}
+            senderNames={senderNames}
+          />
+        )}
 
         {/* 링크 미리보기 */}
         {!editing && !isFailed && !isSending && message.room_id && message.content && (() => {
@@ -549,6 +603,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
         onMarkReceived={isOwn ? handleMarkReceived : undefined}
         onEdit={isOwn ? () => setEditing(true) : undefined}
         onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
+        onReact={handleReact}
       />
     </div>
   )

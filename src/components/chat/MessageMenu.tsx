@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
+import { QuickEmojiPicker } from './QuickEmojiPicker'
 
 const ESTIMATED_HEIGHT = 320  // 최대 메뉴 항목 수 기준 여유 높이(px)
 
@@ -17,7 +18,7 @@ export function MessageMenu({
   isOwn, canEdit, needsResponse, responseReceived,
   onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
-  onEdit, onDelete,
+  onEdit, onDelete, onReact,
 }: Props) {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
@@ -65,6 +66,16 @@ export function MessageMenu({
         color: 'var(--ink)',
       }}
     >
+      {/* 이모지 반응 빠른 선택 */}
+      {onReact && (
+        <>
+          <div className="px-2 py-1.5">
+            <QuickEmojiPicker onSelect={(emoji) => { onReact(emoji); onClose() }} />
+          </div>
+          <Divider />
+        </>
+      )}
+
       {/* 항상 표시 */}
       <MenuItem icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />
       <MenuItem icon={CheckSquare} label={t('msgCreateTask')} onClick={act(onCreateTask)} />

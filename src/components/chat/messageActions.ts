@@ -8,6 +8,7 @@ export interface MessageActions {
   onMarkReceived?:  () => void
   onEdit?:          () => void
   onDelete?:        () => void
+  onReact?:         (emoji: string) => void
 }
 
 /** Shared context for conditional action visibility */

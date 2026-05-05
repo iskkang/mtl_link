@@ -13,6 +13,7 @@ interface MessageStore {
   updateStatus:         (roomId: string, localIdOrId: string, status: MessageWithSender['_status']) => void
   refetchSinceLastSeen: (roomId: string) => Promise<void>
   setTranslation:      (roomId: string, messageId: string, text: string) => void
+  setReactions:        (roomId: string, messageId: string, reactions: { emoji: string; user_id: string }[]) => void
 }
 
 export const MSG_SELECT = `
@@ -26,7 +27,8 @@ export const MSG_SELECT = `
     deleted_at,
     sender:profiles(id, name)
   ),
-  translations:message_translations(language, translated_text)
+  translations:message_translations(language, translated_text),
+  reactions:message_reactions(emoji, user_id)
 ` as const
 
 type RawReplyMessage = {
@@ -118,6 +120,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
         ...incoming,
         attachments:   next[idIdx].attachments,
         translations:  incoming.translations  ?? next[idIdx].translations,
+        reactions:     incoming.reactions     ?? next[idIdx].reactions,
         sender:        incoming.sender        ?? next[idIdx].sender,
         reply_message: incoming.reply_message ?? next[idIdx].reply_message,
       }
@@ -192,6 +195,15 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     if (list[idx]._translatedText === text) return {}
     const next = [...list]
     next[idx] = { ...next[idx], _translatedText: text }
+    return { messagesByRoom: { ...s.messagesByRoom, [roomId]: next } }
+  }),
+
+  setReactions: (roomId, messageId, reactions) => set(s => {
+    const list = s.messagesByRoom[roomId] ?? []
+    const idx = list.findIndex(m => m.id === messageId)
+    if (idx < 0) return {}
+    const next = [...list]
+    next[idx] = { ...next[idx], reactions }
     return { messagesByRoom: { ...s.messagesByRoom, [roomId]: next } }
   }),
 }))
