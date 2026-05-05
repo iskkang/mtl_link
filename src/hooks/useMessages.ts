@@ -5,6 +5,7 @@ import { markAsRead } from '../services/roomService'
 import { sendTextMessage } from '../services/messageService'
 import { useRealtimeMessages } from './useRealtimeMessages'
 import { useAuth } from './useAuth'
+import { supabase } from '../lib/supabase'
 import type { ReplyRef, MessageWithSender } from '../types/chat'
 
 function msgPreview(msg: MessageWithSender): string | null {
@@ -26,7 +27,7 @@ export function useMessages(roomId: string | null) {
     // 첫 진입: 메시지 미로드 시 fetch
     if (!store.messagesByRoom[roomId]) {
       store.fetchMessages(roomId)
-        .then(() => {
+        .then(async () => {
           // DB의 rooms.last_message가 null인 경우 로드된 메시지로 동기화
           const msgs = useMessageStore.getState().messagesByRoom[roomId]
           if (!msgs?.length) return
@@ -37,6 +38,25 @@ export function useMessages(roomId: string | null) {
             if (preview) {
               useRoomStore.getState().updateLastMessage(roomId, preview, m.created_at)
               break
+            }
+          }
+          // reactions는 MSG_SELECT join에서 분리해 별도 로드 (join이 channel 구독에 영향 주는 것을 방지)
+          const messageIds = msgs.map(m => m.id)
+          if (messageIds.length > 0) {
+            const { data: reactionRows } = await supabase
+              .from('message_reactions')
+              .select('message_id, emoji, user_id')
+              .in('message_id', messageIds)
+            if (reactionRows && reactionRows.length > 0) {
+              const byMsg = new Map<string, { emoji: string; user_id: string }[]>()
+              for (const r of reactionRows) {
+                if (!byMsg.has(r.message_id)) byMsg.set(r.message_id, [])
+                byMsg.get(r.message_id)!.push({ emoji: r.emoji, user_id: r.user_id })
+              }
+              const storeState = useMessageStore.getState()
+              for (const [msgId, reactions] of byMsg) {
+                storeState.setReactions(roomId, msgId, reactions)
+              }
             }
           }
         })

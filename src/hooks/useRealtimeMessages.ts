@@ -58,6 +58,7 @@ export function useRealtimeMessages(roomId: string | null) {
       )
       .on(
         'postgres_changes',
+        // INSERT: payload.new에 room_id 포함 → filter 사용 가능
         { event: 'INSERT', schema: 'public', table: 'message_reactions', filter: `room_id=eq.${roomId}` },
         async payload => {
           const { message_id } = payload.new as { message_id: string; room_id: string; user_id: string; emoji: string }
@@ -70,14 +71,17 @@ export function useRealtimeMessages(roomId: string | null) {
       )
       .on(
         'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'message_reactions', filter: `room_id=eq.${roomId}` },
+        // DELETE: payload.old는 PK 컬럼만 포함 (room_id는 PK 아님) → filter 없이 전체 수신
+        // RLS가 서버 사이드에서 접근 제어 보장. setReactions는 다른 방 메시지 id에 no-op.
+        { event: 'DELETE', schema: 'public', table: 'message_reactions' },
         async payload => {
-          const { message_id } = payload.old as { message_id: string }
+          const old = payload.old as { message_id?: string }
+          if (!old.message_id) return
           const { data } = await supabase
             .from('message_reactions')
             .select('emoji, user_id')
-            .eq('message_id', message_id)
-          if (data) setReactions(roomId, message_id, data)
+            .eq('message_id', old.message_id)
+          if (data) setReactions(roomId, old.message_id, data)
         },
       )
       .on(

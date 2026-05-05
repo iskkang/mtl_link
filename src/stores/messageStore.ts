@@ -27,8 +27,7 @@ export const MSG_SELECT = `
     deleted_at,
     sender:profiles(id, name)
   ),
-  translations:message_translations(language, translated_text),
-  reactions:message_reactions(emoji, user_id)
+  translations:message_translations(language, translated_text)
 ` as const
 
 type RawReplyMessage = {
