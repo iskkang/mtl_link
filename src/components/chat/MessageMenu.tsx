@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { CornerDownLeft, Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 
+const ESTIMATED_HEIGHT = 320  // 최대 메뉴 항목 수 기준 여유 높이(px)
+
 interface Props extends MessageActions, MessageActionContext {
   open:        boolean
   onClose:     () => void
-  /** Ref of the trigger button — excluded from click-outside detection so toggle works */
+  /** Ref of the trigger button — excluded from click-outside + used for placement measurement */
   excludeRef?: React.RefObject<Element>
 }
 
@@ -36,6 +38,17 @@ export function MessageMenu({
     }
   }, [open, onClose, excludeRef])
 
+  // 열릴 때 한 번 측정 → fixed 좌표 결정 (스크롤/리사이즈 재계산 불필요)
+  const posStyle = useMemo<React.CSSProperties>(() => {
+    if (!open || !excludeRef?.current) return {}
+    const rect = excludeRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const rightFromEdge = window.innerWidth - rect.right
+    return spaceBelow < ESTIMATED_HEIGHT
+      ? { position: 'fixed', bottom: window.innerHeight - rect.top + 4, right: rightFromEdge }
+      : { position: 'fixed', top: rect.bottom + 4, right: rightFromEdge }
+  }, [open, excludeRef])
+
   if (!open) return null
 
   function act(fn: () => void) { return () => { fn(); onClose() } }
@@ -43,8 +56,9 @@ export function MessageMenu({
   return (
     <div
       ref={ref}
-      className="absolute top-8 right-0 z-50 min-w-[148px] rounded-xl py-1 border text-sm"
+      className="z-50 min-w-[148px] rounded-xl py-1 border text-sm"
       style={{
+        ...posStyle,
         background: 'var(--card)',
         borderColor: 'var(--line)',
         boxShadow: 'var(--shadow-lg)',
