@@ -20,6 +20,7 @@ interface Props {
   currentResultId?:  string | null
   targetLanguage?:   string
   roomId?:           string
+  isBotTyping?:      boolean
 }
 
 export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage, roomId }: Props) {

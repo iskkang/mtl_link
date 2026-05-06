@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useMessageStore } from '../stores/messageStore'
 import { useRoomStore } from '../stores/roomStore'
 import { markAsRead } from '../services/roomService'
@@ -6,6 +6,7 @@ import { sendTextMessage } from '../services/messageService'
 import { useRealtimeMessages } from './useRealtimeMessages'
 import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
+import { BOT_USER_ID } from '../constants/bot'
 import type { ReplyRef, MessageWithSender } from '../types/chat'
 
 function msgPreview(msg: MessageWithSender): string | null {
@@ -20,7 +21,11 @@ function msgPreview(msg: MessageWithSender): string | null {
 export function useMessages(roomId: string | null) {
   const store = useMessageStore()
   const resetUnread = useRoomStore(s => s.resetUnread)
+  const room = useRoomStore(s => s.rooms.find(r => r.id === roomId))
   const { profile } = useAuth()
+
+  const isBotRoom = room?.members?.some(m => m.id === BOT_USER_ID || m.is_bot) ?? false
+  const [isBotTyping, setIsBotTyping] = useState(false)
 
   useEffect(() => {
     if (!roomId) return
@@ -78,12 +83,37 @@ export function useMessages(roomId: string | null) {
     }
   }
 
+  const send = async (
+    content: string,
+    replyToId?: string | null,
+    replyMessage?: ReplyRef | null,
+    needsResponse?: boolean,
+    mentions?: string[],
+  ) => {
+    await sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage, needsResponse, undefined, mentions)
+    if (isBotRoom) {
+      setIsBotTyping(true)
+      try {
+        await supabase.functions.invoke('bot-respond', {
+          body: {
+            roomId,
+            userMessage: content,
+            userLanguage: profile?.preferred_language ?? 'ko',
+          },
+        })
+      } finally {
+        setIsBotTyping(false)
+      }
+    }
+  }
+
   return {
-    messages: roomId ? (store.messagesByRoom[roomId] ?? []) : [],
-    loading:  roomId ? (store.loadingByRoom[roomId] ?? false) : false,
-    hasMore:  roomId ? (store.hasMoreByRoom[roomId] ?? false) : false,
-    send: (content: string, replyToId?: string | null, replyMessage?: ReplyRef | null, needsResponse?: boolean, mentions?: string[]) =>
-      sendTextMessage(roomId!, content, profile?.preferred_language, replyToId, replyMessage, needsResponse, undefined, mentions),
+    messages:    roomId ? (store.messagesByRoom[roomId] ?? []) : [],
+    loading:     roomId ? (store.loadingByRoom[roomId] ?? false) : false,
+    hasMore:     roomId ? (store.hasMoreByRoom[roomId] ?? false) : false,
+    send,
     loadMore,
+    isBotTyping,
+    isBotRoom,
   }
 }

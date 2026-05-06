@@ -46,7 +46,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const isDesktop = useIsDesktop()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
   const { removeRoom } = useRoomStore()
-  const { messages, loading, hasMore, send, loadMore } = useMessages(roomId)
+  const { messages, loading, hasMore, send, loadMore, isBotTyping } = useMessages(roomId)
 
   const [draft,           setDraft]           = useState('')
   const [fileError,       setFileError]       = useState<string | null>(null)
@@ -331,6 +331,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               currentResultId={searchCurrent?.id ?? null}
               targetLanguage={targetLanguage ?? undefined}
               roomId={roomId ?? ''}
+              isBotTyping={isBotTyping}
             />
             {globalOpen && (
               <GlobalSearchPanel
