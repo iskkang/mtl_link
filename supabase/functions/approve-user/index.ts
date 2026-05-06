@@ -12,10 +12,14 @@ async function sign(message: string, secret: string): Promise<string> {
 }
 
 function page(emoji: string, title: string, body: string): Response {
-  return new Response(
-    `<!DOCTYPE html><html lang="ko"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title></head>
+  const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+</head>
 <body style="margin:0;padding:60px 16px;background:#f3f4f6;
              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center">
   <div style="max-width:420px;margin:0 auto;background:#fff;border-radius:16px;
@@ -25,9 +29,12 @@ function page(emoji: string, title: string, body: string): Response {
     <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6">${body}</p>
     <p style="margin:24px 0 0;font-size:12px;color:#9ca3af">MTL Link 관리 시스템</p>
   </div>
-</body></html>`,
-    { headers: { 'Content-Type': 'text/html;charset=utf-8' } },
-  )
+</body>
+</html>`
+  const bytes = new TextEncoder().encode(html)
+  return new Response(bytes, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  })
 }
 
 Deno.serve(async (req: Request) => {
