@@ -4,7 +4,7 @@ const CORS_HEADERS = {
 }
 
 const RESEND_API = 'https://api.resend.com/emails'
-const FROM_EMAIL = 'noreply@send.mtlb.co.kr'
+const FROM_EMAIL = 'noreply@mtlb.co.kr'
 const APP_NAME   = 'MTL Link'
 
 Deno.serve(async (req: Request) => {
