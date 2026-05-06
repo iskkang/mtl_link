@@ -27,6 +27,11 @@ if ('serviceWorker' in navigator) {
   })
 }
 
+// Vite dynamic-import chunk stale cache: reload when a new deployment replaces old hashes
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload()
+})
+
 window.addEventListener('appinstalled', () => {
   console.log('[PWA] App installed')
   localStorage.setItem('pwa-installed', 'true')
