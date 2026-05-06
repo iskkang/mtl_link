@@ -29,6 +29,7 @@ export type Database = {
           avatar_url:           string | null
           status:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin:             boolean
+          is_bot:               boolean
           must_change_password: boolean
           preferred_language:   SupportedLanguage
           created_at:           string
@@ -43,6 +44,7 @@ export type Database = {
           avatar_url?:           string | null
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
+          is_bot?:               boolean
           must_change_password?: boolean
           preferred_language?:   SupportedLanguage
           created_at?:           string
@@ -57,6 +59,7 @@ export type Database = {
           avatar_url?:           string | null
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
+          is_bot?:               boolean
           must_change_password?: boolean
           preferred_language?:   SupportedLanguage
           created_at?:           string
