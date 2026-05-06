@@ -31,7 +31,7 @@ export function Dashboard({ onSectionChange }: Props) {
         <RegionalTicker />
       </header>
 
-      <div className="flex-1 min-h-0 p-4 flex flex-col gap-3">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4 flex flex-col gap-3">
 
         {/* Row 1: GreetingWeather | Requests | ShippingIndex */}
         <div
@@ -53,10 +53,11 @@ export function Dashboard({ onSectionChange }: Props) {
           - Col 2 row 2 → Disaster   (same 1/3 width as Row1 col2)
         */}
         <div
-          className="grid gap-3 flex-1 min-h-0"
+          className="grid gap-3 flex-1"
           style={{
             gridTemplateColumns: '1fr 1fr 1fr',
             gridTemplateRows:    '1fr 220px',
+            minHeight:           '460px',
           }}
         >
           {/* Map: col 1-2, row 1 */}
