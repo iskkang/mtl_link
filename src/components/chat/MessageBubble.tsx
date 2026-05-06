@@ -155,17 +155,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
     } catch (e) { console.error(e) } finally { setFollowupBusy(false) }
   }
 
-  // 번역 대상 언어 결정:
-  // - 내 메시지: 번역 불필요 → 내 언어
-  // - 그룹/채널: 항상 viewer 자신의 언어 (방 기본 언어는 전원 동일해서 뷰어별 분기 불가)
-  // - DM: 설정한 targetLanguage 우선, 없으면 내 언어
-  const myLanguage = isOwn
-    ? (profile?.preferred_language ?? 'ko')
-    : isGroup
-      ? (profile?.preferred_language ?? 'ko')
-      : (targetLanguage && targetLanguage !== 'none'
-          ? targetLanguage
-          : (profile?.preferred_language ?? 'ko'))
+  // 받은 메시지는 항상 보는 사람(viewer)의 언어로 번역
+  // targetLanguage는 발신 번역(내가 보내는 메시지를 상대 언어로)에만 사용되므로
+  // 수신 메시지 표시에는 사용하지 않음
+  const myLanguage = profile?.preferred_language ?? 'ko'
 
   const { translatedText, isTranslating, isTranslatable } =
     useMessageTranslation(message, myLanguage)
