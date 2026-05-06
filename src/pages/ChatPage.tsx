@@ -4,7 +4,8 @@ import { ChatWindow }         from '../components/layout/ChatWindow'
 import { Dashboard }          from './Dashboard'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
-import { createDirectRoom }   from '../services/roomService'
+import { createDirectRoom, fetchRooms } from '../services/roomService'
+import { BOT_USER_ID } from '../constants/bot'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
 import { useRequestStore }    from '../stores/requestStore'
@@ -68,6 +69,21 @@ export default function ChatPage() {
     setActiveSection('chat')
   }
 
+  const handleSectionChange = async (s: Section) => {
+    if (s === 'bots') {
+      try {
+        const roomId = await createDirectRoom(BOT_USER_ID)
+        const rooms = await fetchRooms()
+        useRoomStore.getState().setRooms(rooms)
+        handleSelectRoom(roomId)
+      } catch (err) {
+        console.error('봇 방 생성 실패:', err)
+      }
+      return
+    }
+    setActiveSection(s)
+  }
+
   const handleSelectRequest = (roomId: string, messageId: string) => {
     setSelectedRoomId(roomId)
     setShowChat(true)
@@ -107,7 +123,7 @@ export default function ChatPage() {
       <AppLayout
         showChat={showChat}
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
         onSelectRoom={handleSelectRoom}
         onNewChat={() => setNewRoomOpen(true)}

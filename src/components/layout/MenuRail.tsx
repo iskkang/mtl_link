@@ -49,7 +49,6 @@ export function MenuRail({
     { id: 'calendar',      Icon: Calendar,   label: t('menuRailCalendar')      },
     { id: 'files',         Icon: FolderOpen, label: t('menuRailFiles')         },
     { id: 'channels',      Icon: Hash,       label: t('menuRailChannels')      },
-    { id: 'bots',          Icon: Bot,        label: t('menuRailBots')          },
   ]
 
   return (
@@ -74,6 +73,17 @@ export function MenuRail({
               onClick={() => onSectionChange(id)}
             />
           ))}
+        </div>
+
+        <div className="w-8 my-1.5 border-t flex-shrink-0" style={{ borderColor: 'var(--side-line)' }} />
+
+        <div className="flex flex-col items-center gap-0.5 w-full">
+          <RailBtn
+            Icon={Bot}
+            label={t('menuRailBots')}
+            active={false}
+            onClick={() => onSectionChange('bots')}
+          />
         </div>
 
         <div className="w-8 my-1.5 border-t flex-shrink-0" style={{ borderColor: 'var(--side-line)' }} />
