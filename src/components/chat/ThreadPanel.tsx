@@ -176,7 +176,6 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
                 members={members}
                 currentUserId={currentUserId}
                 isGroup={isGroup}
-                targetLanguage={targetLanguage ?? undefined}
               />
             </div>
           )

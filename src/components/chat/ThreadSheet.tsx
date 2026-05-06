@@ -175,7 +175,6 @@ export function ThreadSheet({ open, roomId, rootMessageId, currentUserId, member
                   members={members}
                   currentUserId={currentUserId}
                   isGroup={isGroup}
-                  targetLanguage={targetLanguage ?? undefined}
                 />
               </div>
             )

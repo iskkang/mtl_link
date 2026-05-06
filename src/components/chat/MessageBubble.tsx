@@ -39,7 +39,6 @@ interface Props {
   isGroup:            boolean
   searchQuery?:       string
   isCurrentResult?:   boolean
-  targetLanguage?:    string
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -58,7 +57,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, targetLanguage }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage, setReactions } = useMessageStore()

@@ -329,7 +329,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               onScrollToMessage={scrollToMessage}
               searchQuery={searchOpen ? searchQuery : ''}
               currentResultId={searchCurrent?.id ?? null}
-              targetLanguage={targetLanguage ?? undefined}
               roomId={roomId ?? ''}
               isBotTyping={isBotTyping}
             />
