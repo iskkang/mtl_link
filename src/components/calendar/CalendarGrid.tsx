@@ -163,8 +163,8 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
                              hidden group-hover:block z-20
                              px-2 py-1 rounded-md text-[11px] shadow-lg"
                   style={{
-                    background: 'var(--ink-1)',
-                    color:      'var(--chat-bg)',
+                    background: 'rgba(0,0,0,0.82)',
+                    color:      '#ffffff',
                     maxWidth:   180,
                     whiteSpace: 'pre-line',
                     textAlign:  'center',
