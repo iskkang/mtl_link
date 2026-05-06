@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
 import { Dashboard }          from './Dashboard'
+import { CalendarPage }       from '../components/calendar/CalendarPage'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
@@ -121,7 +122,7 @@ export default function ChatPage() {
   return (
     <>
       <AppLayout
-        showChat={showChat}
+        showChat={showChat || activeSection === 'calendar'}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
@@ -135,7 +136,9 @@ export default function ChatPage() {
         onToggleNotif={toggleNotif}
         onLogoClick={handleLogoClick}
       >
-        {selectedRoomId ? (
+        {activeSection === 'calendar' ? (
+          <CalendarPage onSectionChange={handleSectionChange} />
+        ) : selectedRoomId ? (
           <ChatWindow
             roomId={selectedRoomId}
             onBack={() => setShowChat(false)}

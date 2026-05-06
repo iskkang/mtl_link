@@ -135,7 +135,7 @@ export function ChatSidebar({
       )}
 
       {/* ── Placeholder sections ── */}
-      {(['announcements', 'calendar', 'files', 'channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
+      {(['announcements', 'files', 'channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
         <ComingSoon label={title} section={activeSection} onSectionChange={onSectionChange} />
       )}
     </div>
