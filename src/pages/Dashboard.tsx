@@ -36,7 +36,7 @@ export function Dashboard({ onSectionChange }: Props) {
         {/* Row 1: GreetingWeather | Requests | ShippingIndex */}
         <div
           className="grid grid-cols-3 gap-3 flex-shrink-0"
-          style={{ height: '160px', gridTemplateRows: '1fr', overflow: 'hidden' }}
+          style={{ height: '200px', gridTemplateRows: '1fr', overflow: 'hidden' }}
         >
           <GreetingWeatherCard />
           <RequestsCard onSectionChange={onSectionChange} />
@@ -70,7 +70,7 @@ export function Dashboard({ onSectionChange }: Props) {
             style={{ gridColumn: '3', gridRow: '1 / 3' }}
             className="flex flex-col gap-3 min-h-0"
           >
-            <div style={{ height: '165px' }} className="flex-shrink-0">
+            <div style={{ height: '220px' }} className="flex-shrink-0">
               <GlobalTradeCard />
             </div>
             <div className="flex-1 min-h-0">
