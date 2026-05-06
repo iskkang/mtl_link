@@ -161,17 +161,17 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
                 <div
                   className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1
                              hidden group-hover:block z-20
-                             px-2 py-1 rounded-md text-[11px] shadow-lg whitespace-nowrap"
+                             px-2 py-1 rounded-md text-[11px] shadow-lg"
                   style={{
-                    background:  'var(--ink-1)',
-                    color:       'var(--chat-bg)',
-                    maxWidth:    160,
-                    whiteSpace:  'normal',
-                    textAlign:   'center',
-                    lineHeight:  '1.4',
+                    background: 'var(--ink-1)',
+                    color:      'var(--chat-bg)',
+                    maxWidth:   180,
+                    whiteSpace: 'pre-line',
+                    textAlign:  'center',
+                    lineHeight: '1.5',
                   }}
                 >
-                  {hols.map(h => h.localName).join('\n')}
+                  {hols.map(h => h.localName || h.name).join('\n')}
                 </div>
               )}
             </div>
