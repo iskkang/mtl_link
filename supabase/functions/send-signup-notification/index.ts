@@ -7,6 +7,19 @@ const RESEND_API = 'https://api.resend.com/emails'
 const FROM_EMAIL = 'noreply@mtlb.co.kr'
 const APP_NAME   = 'MTL Link'
 
+async function sign(message: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const buf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message))
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
 
@@ -17,7 +30,8 @@ Deno.serve(async (req: Request) => {
     })
 
   try {
-    const { name, email, department } = await req.json() as {
+    const { userId, name, email, department } = await req.json() as {
+      userId?:     string
       name:        string
       email:       string
       department?: string
@@ -26,13 +40,11 @@ Deno.serve(async (req: Request) => {
     if (!name || !email) return json({ error: 'name and email are required' }, 400)
 
     const resendKey = Deno.env.get('RESEND_API_KEY')
-
     if (!resendKey) {
       console.warn('[send-signup-notification] RESEND_API_KEY not set — skipping email')
       return json({ ok: true, sent: 0, warn: 'RESEND_API_KEY not configured' })
     }
 
-    // 관리자 수신 이메일 — ADMIN_EMAIL 환경변수 (쉼표로 복수 지정 가능)
     const adminEmailEnv = Deno.env.get('ADMIN_EMAIL')
     if (!adminEmailEnv) {
       console.warn('[send-signup-notification] ADMIN_EMAIL not set — skipping email')
@@ -41,9 +53,20 @@ Deno.serve(async (req: Request) => {
     const adminEmails = adminEmailEnv.split(',').map(e => e.trim()).filter(Boolean)
     if (adminEmails.length === 0) return json({ ok: true, sent: 0 })
 
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://your-domain.vercel.app'
+    // 승인/거절 링크 생성
+    const approvalSecret = Deno.env.get('APPROVAL_SECRET')
+    const projectUrl     = Deno.env.get('SUPABASE_URL') ?? ''
+    const functionsBase  = `${projectUrl}/functions/v1`
 
-    // Resend 발송
+    let approveUrl = ''
+    let rejectUrl  = ''
+    if (userId && approvalSecret) {
+      const approveSig = await sign(`${userId}:approve`, approvalSecret)
+      const rejectSig  = await sign(`${userId}:reject`,  approvalSecret)
+      approveUrl = `${functionsBase}/approve-user?uid=${userId}&action=approve&sig=${approveSig}`
+      rejectUrl  = `${functionsBase}/approve-user?uid=${userId}&action=reject&sig=${rejectSig}`
+    }
+
     const resendRes = await fetch(RESEND_API, {
       method:  'POST',
       headers: {
@@ -54,7 +77,7 @@ Deno.serve(async (req: Request) => {
         from:    `${APP_NAME} <${FROM_EMAIL}>`,
         to:      adminEmails,
         subject: `[${APP_NAME}] 새 가입 신청 — ${name}`,
-        html:    buildHtml({ name, email, department, siteUrl }),
+        html:    buildHtml({ name, email, department, approveUrl, rejectUrl }),
       }),
     })
 
@@ -76,10 +99,11 @@ Deno.serve(async (req: Request) => {
 // ─── HTML 이메일 빌더 ────────────────────────────────────────────────────────
 
 function buildHtml(p: {
-  name:       string
-  email:      string
+  name:        string
+  email:       string
   department?: string
-  siteUrl:    string
+  approveUrl:  string
+  rejectUrl:   string
 }): string {
   const row = (label: string, value: string) => `
     <tr>
@@ -89,6 +113,25 @@ function buildHtml(p: {
                  border-bottom:1px solid #e5e7eb">${value}</td>
     </tr>`
 
+  const actionButtons = p.approveUrl ? `
+      <div style="margin-top:28px;display:flex;gap:12px;justify-content:center">
+        <a href="${p.approveUrl}"
+           style="display:inline-block;background:#16a34a;color:#fff;
+                  text-decoration:none;padding:12px 32px;border-radius:8px;
+                  font-size:14px;font-weight:600;letter-spacing:.3px">
+          ✅ 승인
+        </a>
+        <a href="${p.rejectUrl}"
+           style="display:inline-block;background:#dc2626;color:#fff;
+                  text-decoration:none;padding:12px 32px;border-radius:8px;
+                  font-size:14px;font-weight:600;letter-spacing:.3px">
+          ❌ 거절
+        </a>
+      </div>` : `
+      <div style="margin-top:28px;text-align:center">
+        <p style="font-size:13px;color:#9ca3af">관리자 페이지에서 직접 승인해 주세요.</p>
+      </div>`
+
   return `<!DOCTYPE html>
 <html lang="ko">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -96,7 +139,6 @@ function buildHtml(p: {
              font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:480px;margin:0 auto">
 
-    <!-- 헤더 -->
     <div style="background:linear-gradient(135deg,#0f3460 0%,#00b4d8 100%);
                 border-radius:12px 12px 0 0;padding:24px 32px">
       <p style="margin:0;color:#fff;font-size:20px;font-weight:700;letter-spacing:.5px">
@@ -107,7 +149,6 @@ function buildHtml(p: {
       </p>
     </div>
 
-    <!-- 본문 -->
     <div style="background:#fff;padding:32px;border-left:1px solid #e5e7eb;
                 border-right:1px solid #e5e7eb">
       <h2 style="margin:0 0 8px;font-size:16px;font-weight:700;color:#111827">
@@ -115,7 +156,7 @@ function buildHtml(p: {
       </h2>
       <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6">
         아래 사용자가 MTL Link 가입을 신청했습니다.<br>
-        관리자 페이지에서 승인 또는 거절해 주세요.
+        승인 또는 거절 버튼을 눌러 처리해 주세요.
       </p>
 
       <table style="width:100%;border-collapse:collapse;font-size:14px;
@@ -125,17 +166,9 @@ function buildHtml(p: {
         ${p.department ? row('소속', p.department) : ''}
       </table>
 
-      <div style="margin-top:28px;text-align:center">
-        <a href="${p.siteUrl}/admin"
-           style="display:inline-block;background:#0f3460;color:#fff;
-                  text-decoration:none;padding:12px 36px;border-radius:8px;
-                  font-size:14px;font-weight:600;letter-spacing:.3px">
-          관리자 페이지 열기
-        </a>
-      </div>
+      ${actionButtons}
     </div>
 
-    <!-- 푸터 -->
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:none;
                 border-radius:0 0 12px 12px;padding:16px 32px;text-align:center">
       <p style="margin:0;font-size:11px;color:#9ca3af">

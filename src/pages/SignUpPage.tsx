@@ -42,7 +42,7 @@ export default function SignUpPage() {
   const onSubmit = async (values: FormValues) => {
     setServerError(null)
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email:    values.email,
         password: values.password,
         options: {
@@ -64,6 +64,7 @@ export default function SignUpPage() {
       // 관리자에게 가입 알림 이메일 발송 (fire-and-forget)
       supabase.functions.invoke('send-signup-notification', {
         body: {
+          userId:     data.user?.id,
           name:       values.name,
           email:      values.email,
           department: values.department,
