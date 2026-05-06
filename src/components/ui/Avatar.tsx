@@ -1,8 +1,11 @@
+import { Bot } from 'lucide-react'
+
 interface Props {
   name: string
   avatarUrl?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
+  is_bot?: boolean
 }
 
 const SIZES = {
@@ -31,9 +34,20 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export function Avatar({ name, avatarUrl, size = 'md', className = '' }: Props) {
+export function Avatar({ name, avatarUrl, size = 'md', className = '', is_bot = false }: Props) {
   const sizeClass = SIZES[size]
   const colorClass = colorFor(name)
+
+  if (is_bot) {
+    return (
+      <div
+        className={`${sizeClass} rounded-full flex items-center justify-center flex-shrink-0 ${className}`}
+        style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
+      >
+        <Bot size={size === 'xs' ? 12 : size === 'sm' ? 14 : size === 'lg' ? 20 : 16} />
+      </div>
+    )
+  }
 
   if (avatarUrl) {
     return (

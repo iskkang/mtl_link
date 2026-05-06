@@ -246,6 +246,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
             <Avatar
               name={message.sender.name}
               avatarUrl={message.sender.avatar_url}
+              is_bot={message.sender?.is_bot ?? false}
               size="sm"
             />
           )}
@@ -256,9 +257,14 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
       <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
 
         {/* 발신자 이름 (그룹방, 첫 메시지) */}
-        {showSenderInfo && !isOwn && !isContinuation && message.sender && (
-          <span className="text-[11px] font-semibold mb-1 ml-1" style={{ color: 'var(--brand)' }}>
+        {(showSenderInfo || message.sender?.is_bot) && !isOwn && !isContinuation && message.sender && (
+          <span className="text-[11px] font-semibold mb-1 ml-1 flex items-center gap-1" style={{ color: 'var(--brand)' }}>
             {message.sender.name}
+            {message.sender?.is_bot && (
+              <span className="text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: 'var(--brand)', color: 'white', lineHeight: 1 }}>
+                AI
+              </span>
+            )}
           </span>
         )}
 
@@ -281,6 +287,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
               color: 'var(--ink)',
               boxShadow: 'var(--shadow-sm)',
             }),
+            ...(!isOwn && (message.sender?.is_bot ?? false) && !isRequestPending && !isRequestAnswered
+              ? { borderLeft: '2px solid var(--brand)' }
+              : {}),
             ...(isRequestPending  ? { borderLeft: '3px solid #EAB308' } : {}),
             ...(isRequestAnswered ? { borderLeft: '3px solid var(--brand)' } : {}),
           }}

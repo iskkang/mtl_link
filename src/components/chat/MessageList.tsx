@@ -23,7 +23,7 @@ interface Props {
   isBotTyping?:      boolean
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage, roomId }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, searchQuery = '', currentResultId = null, targetLanguage, roomId, isBotTyping = false }: Props) {
   const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -142,6 +142,12 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
           </div>
         )
       })}
+
+      {isBotTyping && (
+        <div className="px-4 py-2 text-sm" style={{ color: 'var(--side-mute)' }}>
+          {t('botTyping')}
+        </div>
+      )}
 
       <div ref={bottomRef} />
     </div>
