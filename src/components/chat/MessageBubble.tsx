@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
@@ -366,35 +367,50 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
           ) : (
             <>
               {message.content && (
-                <span>
-                  {searchQuery
-                    ? highlightText(message.content, searchQuery)
-                    : parseMentionsAndLinks(message.content, message.mentions ?? [], members, currentUserId).map((part, i) =>
-                        isMentionPart(part)
-                          ? (
-                            <span
-                              key={i}
-                              className="font-medium cursor-default"
-                              style={{ color: 'var(--brand)' }}
-                            >
-                              @{part.name}
-                            </span>
-                          )
-                          : typeof part === 'string'
-                            ? <span key={i}>{part}</span>
-                            : (
-                              <a
+                message.sender?.is_bot ? (
+                  <ReactMarkdown
+                    components={{
+                      p:      ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      ul:     ({ children }) => <ul className="list-disc pl-4 space-y-0.5">{children}</ul>,
+                      ol:     ({ children }) => <ol className="list-decimal pl-4 space-y-0.5">{children}</ol>,
+                      li:     ({ children }) => <li>{children}</li>,
+                      code:   ({ children }) => <code className="px-1 py-0.5 rounded text-[12px]" style={{ background: 'var(--card)', border: '1px solid var(--line)' }}>{children}</code>,
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                ) : (
+                  <span>
+                    {searchQuery
+                      ? highlightText(message.content, searchQuery)
+                      : parseMentionsAndLinks(message.content, message.mentions ?? [], members, currentUserId).map((part, i) =>
+                          isMentionPart(part)
+                            ? (
+                              <span
                                 key={i}
-                                href={part.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline break-all" style={{ color: 'var(--brand)' }}
+                                className="font-medium cursor-default"
+                                style={{ color: 'var(--brand)' }}
                               >
-                                {part.href}
-                              </a>
-                            ),
-                      )}
-                </span>
+                                @{part.name}
+                              </span>
+                            )
+                            : typeof part === 'string'
+                              ? <span key={i}>{part}</span>
+                              : (
+                                <a
+                                  key={i}
+                                  href={part.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline break-all" style={{ color: 'var(--brand)' }}
+                                >
+                                  {part.href}
+                                </a>
+                              ),
+                        )}
+                  </span>
+                )
               )}
               {isTranslating && (
                 <span className="ml-1.5 inline-flex items-center gap-1 text-[10px]" style={{ color: 'var(--ink-4)' }}>
