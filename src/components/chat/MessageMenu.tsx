@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft, Share2 } from 'lucide-react'
+import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft, Forward } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 import { QuickEmojiPicker } from './QuickEmojiPicker'
@@ -82,7 +82,7 @@ export function MessageMenu({
       )}
       <MenuItem icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />
       {onForward && (
-        <MenuItem icon={Share2} label={t('msgForward')} onClick={act(onForward)} />
+        <MenuItem icon={Forward} label={t('msgForward')} onClick={act(onForward)} />
       )}
       <MenuItem icon={CheckSquare} label={t('msgCreateTask')} onClick={act(onCreateTask)} />
       {onOpenThread && (
