@@ -14,11 +14,18 @@ type Budget  = 'low' | 'medium' | 'high'
 const FLAG_KEYS = ['battery', 'dangerous', 'used', 'brand'] as const
 type FlagKey = typeof FLAG_KEYS[number]
 
-const FLAG_LABELS: Record<FlagKey, string> = {
-  battery:   '배터리',
-  dangerous: '위험물',
-  used:      '중고품',
-  brand:     '브랜드품',
+const FLAG_I18N_KEYS: Record<FlagKey, string> = {
+  battery:   'transportFlagBattery',
+  dangerous: 'transportFlagDG',
+  used:      'transportFlagUsed',
+  brand:     'transportFlagBrand',
+}
+
+const FLAG_EN_LABELS: Record<FlagKey, string> = {
+  battery:   'Battery',
+  dangerous: 'Dangerous Goods',
+  used:      'Used Goods',
+  brand:     'Brand Goods',
 }
 
 function parseTransportResult(text: string) {
@@ -68,7 +75,7 @@ export function TransportPage({ onBack }: Props) {
           destination,
           urgency,
           budgetSensitivity: budget,
-          riskFlags:        [...flags].map(f => FLAG_LABELS[f]).join(', '),
+          riskFlags:        [...flags].map(f => FLAG_EN_LABELS[f]).join(', '),
           userLanguage:     profile?.preferred_language ?? i18n.language ?? 'ko',
           userId:           user?.id,
         },
@@ -260,7 +267,7 @@ export function TransportPage({ onBack }: Props) {
                     borderColor: flags.has(f) ? 'var(--brand)' : 'var(--line)',
                   }}
                 >
-                  {FLAG_LABELS[f]}
+                  {t(FLAG_I18N_KEYS[f])}
                 </button>
               ))}
             </div>
