@@ -89,7 +89,7 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
         {/* Theme toggle */}
         <MenuRow
           icon={mode === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          label={mode === 'dark' ? '라이트 모드' : '다크 모드'}
+          label={t(mode === 'dark' ? 'chatHeaderLightMode' : 'chatHeaderDarkMode')}
           onClick={toggleTheme}
         />
 
@@ -139,7 +139,7 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
       <div className="border-t py-1" style={{ borderColor: 'var(--line)' }}>
         <MenuRow
           icon={<KeyRound size={15} />}
-          label="비밀번호 변경"
+          label={t('morePw')}
           onClick={handleChangePw}
         />
         <MenuRow

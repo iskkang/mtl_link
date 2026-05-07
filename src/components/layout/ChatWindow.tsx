@@ -297,8 +297,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           canPrev={searchCanGoPrev}
           onGlobal={() => setGlobalOpen(v => !v)}
           onEnter={() => searchForce(searchQuery)}
-          placeholder="메시지 검색"
-          labelGlobal="통합검색"
+          placeholder={t('searchPlaceholder')}
+          labelGlobal={t('searchGlobal')}
         />
       )}
 
