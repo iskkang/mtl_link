@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react'
-import { LogOut, Sun, Moon, Bell, BellOff, KeyRound, UserRound } from 'lucide-react'
+import { useRef, useEffect, useState } from 'react'
+import { LogOut, Sun, Moon, Bell, BellOff, KeyRound, UserRound, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,6 +7,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { Avatar } from '../ui/Avatar'
 import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
+import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
 
 interface Props {
   notifEnabled:  boolean
@@ -21,6 +22,7 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
   const { mode, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
+  const [notifOpen, setNotifOpen] = useState(false)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -99,6 +101,11 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
           label={notifEnabled ? t('notifOn') : t('notifOff')}
           onClick={onToggleNotif}
         />
+        <MenuRow
+          icon={<Settings2 size={15} />}
+          label={t('notifSettings')}
+          onClick={() => setNotifOpen(true)}
+        />
       </div>
 
       {/* Language picker */}
@@ -149,6 +156,8 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
           danger
         />
       </div>
+
+      {notifOpen && <NotificationSettingsModal onClose={() => setNotifOpen(false)} />}
     </div>
   )
 }

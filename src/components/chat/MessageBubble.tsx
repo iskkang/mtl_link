@@ -19,6 +19,7 @@ import { ReadReceipt } from './ReadReceipt'
 import { ReactionBar } from './ReactionBar'
 import { useReadStatus } from '../../hooks/useReadStatus'
 import { linkifyText, parseMentionsAndLinks, isMentionPart } from '../../lib/linkify'
+import { highlightKeywords } from '../../lib/highlightKeywords'
 import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessageTranslation } from '../../hooks/useMessageTranslation'
@@ -41,6 +42,7 @@ interface Props {
   isGroup:            boolean
   searchQuery?:       string
   isCurrentResult?:   boolean
+  keywords?:          string[]
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -59,7 +61,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onForward, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onForward, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, keywords = [] }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage, setReactions } = useMessageStore()
@@ -370,7 +372,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                             </span>
                           )
                           : typeof part === 'string'
-                            ? <span key={i}>{part}</span>
+                            ? <span key={i}>{!isOwn && keywords.length ? highlightKeywords(part, keywords) : part}</span>
                             : (
                               <a
                                 key={i}

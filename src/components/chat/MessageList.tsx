@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { MessageBubble } from './MessageBubble'
 import { formatDateSeparator, isSameDayStr } from '../../lib/date'
 import { EmptyState } from '../ui/EmptyState'
+import { useNotificationSettings } from '../../hooks/useNotificationSettings'
 import type { MessageWithSender, RoomListItem } from '../../types/chat'
 
 interface Props {
@@ -29,6 +30,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLenRef = useRef(0)
+  const { settings: notifSettings } = useNotificationSettings()
 
   // 방 전환 시 스크롤 ref 초기화 → 초기 로드 스크롤 재트리거
   useEffect(() => {
@@ -139,6 +141,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 isGroup={isGroupRoom}
                 searchQuery={searchQuery}
                 isCurrentResult={msg.id === currentResultId}
+                keywords={notifSettings.keywords}
               />
             )}
           </div>

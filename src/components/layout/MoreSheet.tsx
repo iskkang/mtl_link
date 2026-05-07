@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Sun, Moon, Bell, BellOff, Globe, KeyRound, LogOut,
-  Megaphone, Calendar, FolderOpen, Hash, Bot, ChevronRight,
+  Megaphone, Calendar, FolderOpen, Hash, Bot, ChevronRight, Settings2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +11,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { SUPPORTED_LANGS } from '../../lib/i18n'
 import { Avatar } from '../ui/Avatar'
 import { LanguagePickerModal } from '../ui/LanguagePickerModal'
+import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
 import type { Section } from './MenuRail'
 
 interface Props {
@@ -35,7 +36,8 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
   const { mode, toggle: toggleTheme } = useTheme()
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
-  const [langOpen, setLangOpen] = useState(false)
+  const [langOpen,  setLangOpen]  = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
 
   const currentLang = SUPPORTED_LANGS.find(l => i18n.language.startsWith(l.code))
 
@@ -159,6 +161,13 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
             }
           />
           <SheetRow
+            icon={<Settings2 size={18} />}
+            label={t('notifSettings')}
+            onClick={() => setNotifOpen(true)}
+            right={<ChevronRight size={15} />}
+            muted
+          />
+          <SheetRow
             icon={<Globe size={18} />}
             label={t('chatHeaderLanguage')}
             onClick={() => setLangOpen(true)}
@@ -188,7 +197,8 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
         </div>
       </div>
 
-      {langOpen && <LanguagePickerModal onClose={() => setLangOpen(false)} />}
+      {langOpen  && <LanguagePickerModal onClose={() => setLangOpen(false)} />}
+      {notifOpen && <NotificationSettingsModal onClose={() => setNotifOpen(false)} />}
     </>,
     document.body,
   )
