@@ -52,6 +52,8 @@ export default function ChatPage() {
   const handleSelectFriend = async (userId: string) => {
     try {
       const roomId = await createDirectRoom(userId)
+      const updatedRooms = await fetchRooms()
+      useRoomStore.getState().setRooms(updatedRooms)
       handleSelectRoom(roomId)
     } catch (err) {
       console.error('DM 방 생성 실패:', err)

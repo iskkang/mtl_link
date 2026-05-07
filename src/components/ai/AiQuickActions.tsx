@@ -10,47 +10,41 @@ export function AiQuickActions({ onSelect }: Props) {
   const ACTIONS = [
     {
       labelKey: 'aiQuickQuotation',
-      subKey:   null,
       sub:      '누락 정보 자동분석',
       icon:     '📋',
-      prompt:   '견적 체크리스트를 만들어줘. 고객 문의 내용을 입력할게:',
+      prompt:   t('aiPromptQuotation'),
     },
     {
       labelKey: 'aiQuickMessage',
-      subKey:   null,
       sub:      '다국어/톤별 생성',
       icon:     '✉️',
-      prompt:   '고객/파트너에게 보낼 메시지를 작성해줘. 상황을 설명할게:',
+      prompt:   t('aiPromptMessage'),
     },
     {
       labelKey: 'aiQuickTransport',
-      subKey:   null,
       sub:      '항공/해상/철도',
       icon:     '🚢',
-      prompt:   '운송 모드를 추천해줘. 화물 정보를 알려줄게:',
+      prompt:   t('aiPromptTransport'),
     },
     {
       labelKey: 'aiQuickCustoms',
-      subKey:   null,
       sub:      '국가별 확인사항',
       icon:     '🌍',
-      prompt:   '통관 리스크 체크리스트를 만들어줘. 품목과 국가를 알려줄게:',
+      prompt:   t('aiPromptCustoms'),
     },
     {
       labelKey: 'aiQuickHsCode',
-      subKey:   null,
       sub:      '품목별 후보 저장',
       icon:     '📦',
-      prompt:   'HS-code 후보를 찾아줘. 품목명을 입력할게:',
+      prompt:   t('aiPromptHsCode'),
     },
     {
       labelKey: 'aiQuickTracking',
-      subKey:   null,
       sub:      '번호 검증+링크',
       icon:     '🔍',
-      prompt:   '트래킹 번호를 확인해줘. 번호를 입력할게:',
+      prompt:   t('aiPromptTracking'),
     },
-  ] as const
+  ]
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 overflow-y-auto">
@@ -80,8 +74,8 @@ export function AiQuickActions({ onSelect }: Props) {
             className="flex flex-col items-start gap-1.5 p-3.5 rounded-2xl text-left
                        transition-all duration-100 border"
             style={{
-              background:   'var(--card)',
-              borderColor:  'var(--line)',
+              background:  'var(--card)',
+              borderColor: 'var(--line)',
             }}
             onMouseEnter={e => {
               e.currentTarget.style.borderColor = 'var(--brand)'
