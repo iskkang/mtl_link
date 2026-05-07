@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import { useRoomStore } from '../stores/roomStore'
+import { useRoomStore, sortByRecency } from '../stores/roomStore'
 import type { RoomListItem, Profile } from '../types/chat'
 
 function roomMsgPreview(msg: { message_type: string; content: string | null }): string | null {
@@ -130,14 +130,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
     }
   })
 
-  // DB order는 rooms.last_message_at(denormalized)이지만 각 row의 실제값은
-  // 별도 쿼리에서 가져온 messages.created_at로 교체됐으므로 클라이언트에서 재정렬.
-  mapped.sort((a, b) => {
-    const ta = a.last_message_at ?? a.created_at
-    const tb = b.last_message_at ?? b.created_at
-    return tb.localeCompare(ta)
-  })
-  return mapped
+  return sortByRecency(mapped)
 }
 
 export async function markAsRead(roomId: string): Promise<void> {

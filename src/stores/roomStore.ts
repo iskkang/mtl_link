@@ -1,12 +1,16 @@
 import { create } from 'zustand'
 import type { RoomListItem } from '../types/chat'
 
-function sortByRecency(rooms: RoomListItem[]): RoomListItem[] {
-  return [...rooms].sort((a, b) => {
-    const ta = a.last_message_at ?? a.created_at
-    const tb = b.last_message_at ?? b.created_at
-    return tb.localeCompare(ta)
-  })
+function getTime(r: RoomListItem): number {
+  const t = r.last_message_at ?? r.created_at
+  return t ? new Date(t).getTime() : 0
+}
+
+export function sortByRecency(rooms: RoomListItem[]): RoomListItem[] {
+  const sorted = [...rooms].sort((a, b) => getTime(b) - getTime(a)) // DESC
+  console.log('[sort input]',  rooms.map(r => ({ name: r.name, t: r.last_message_at })))
+  console.log('[sort output]', sorted.map(r => ({ name: r.name, t: r.last_message_at })))
+  return sorted
 }
 
 interface RoomStore {
