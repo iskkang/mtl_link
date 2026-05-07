@@ -6,6 +6,24 @@ import type { Message } from '../types/chat'
 
 const NOTIF_KEY = 'mtl_notif'
 
+function playNotificationBeep() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(880, ctx.currentTime)        // A5
+    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1) // E5
+    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.25)
+  } catch (err) {
+    console.warn('[in-app beep] failed:', err)
+  }
+}
+
 interface Options {
   userId:       string | undefined
   currentRoomId: string | null
@@ -123,6 +141,12 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
           // Permission prompt: show once when first foreign message arrives
           if (!promptShownRef.current && 'Notification' in window && Notification.permission === 'default') {
             setShowPrompt(true)
+          }
+
+          // 앱 활성 중 in-app 사운드 + 진동 (OS 배너는 SW가 담당, 여기선 효과만)
+          if (document.visibilityState === 'visible') {
+            playNotificationBeep()
+            if ('vibrate' in navigator) navigator.vibrate(200)
           }
 
           // OS 알림은 SW push가 전담하므로 new Notification() 호출 제거.
