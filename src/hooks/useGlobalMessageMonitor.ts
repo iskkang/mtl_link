@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRoomStore } from '../stores/roomStore'
-import { getRoomDisplayName } from '../services/roomService'
 import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '../services/pushNotificationService'
 import type { Message } from '../types/chat'
 
@@ -77,6 +76,21 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
     promptShownRef.current = true
   }
 
+  // ── Dedup: 동일 메시지 ID가 재연결 등으로 두 번 처리되는 것을 방지 ──
+  const MAX_PROCESSED = 500
+  const processedIds = useRef<Set<string>>(new Set())
+
+  const markProcessed = (id: string): boolean => {
+    if (processedIds.current.has(id)) return false
+    processedIds.current.add(id)
+    // 삽입 순서 보존(Set) — 500개 초과 시 가장 오래된 항목 제거
+    if (processedIds.current.size > MAX_PROCESSED) {
+      const oldest = processedIds.current.values().next().value
+      if (oldest !== undefined) processedIds.current.delete(oldest)
+    }
+    return true
+  }
+
   // ── Global messages INSERT listener ────────────────────────
   useEffect(() => {
     if (!userId) return
@@ -88,6 +102,10 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
         { event: 'INSERT', schema: 'public', table: 'messages' },
         payload => {
           const msg = payload.new as Message
+
+          // ★ 이미 처리한 메시지 ID면 즉시 스킵 (재연결 dedup, 이중 카운트 방지)
+          if (!markProcessed(msg.id)) return
+
           if (msg.sender_id === userIdRef.current) return // own message
           if (msg.deleted_at) return
 
@@ -107,33 +125,9 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
             setShowPrompt(true)
           }
 
-          // Browser notification
-          if (
-            !isCurrent &&
-            notifEnabledRef.current &&
-            'Notification' in window &&
-            Notification.permission === 'granted' &&
-            !room.is_muted
-          ) {
-            const sender  = room.members.find(m => m.id === msg.sender_id)
-            const title   = sender?.name ?? getRoomDisplayName(room, userIdRef.current ?? '')
-            const preview = msg.content?.slice(0, 80) ?? ''
-
-            try {
-              const notif = new Notification(title, {
-                body: preview || '📎 파일',
-                icon: sender?.avatar_url ?? '/mtl-logo.png',
-                tag:  msg.room_id,
-              } as NotificationOptions)
-              notif.onclick = () => {
-                window.focus()
-                onSelectRef.current(msg.room_id)
-                notif.close()
-              }
-            } catch {
-              // Notification may be blocked or unavailable
-            }
-          }
+          // OS 알림은 SW push가 전담하므로 new Notification() 호출 제거.
+          // (SW push + new Notification() 이중 알림 문제 해결)
+          // in-app 업데이트(unread badge, 사이드바 정렬)는 위 로직으로 그대로 처리됨.
         },
       )
       .subscribe((_status, err) => {

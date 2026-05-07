@@ -71,24 +71,30 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const options = {
-    body: data.body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-96x96.png',
-    tag: data.roomId || 'default',
-    renotify: true,
-    requireInteraction: false,
-    data: {
-      roomId: data.roomId,
-      url: data.url || '/',
-    },
-  };
+  event.waitUntil((async () => {
+    // 포커스된 탭이 있으면(사용자가 앱을 적극적으로 보는 중) OS 알림 스킵.
+    // in-app Realtime이 이미 메시지를 표시하므로 이중 알림 방지.
+    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const hasFocusedClient = allClients.some(c => c.focused === true);
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-      .then(() => console.log('[SW] Notification shown'))
-      .catch(err => console.error('[SW] showNotification error:', err))
-  );
+    if (hasFocusedClient) {
+      console.log('[SW] App is focused — skipping OS notification');
+      return;
+    }
+
+    return self.registration.showNotification(data.title, {
+      body:               data.body,
+      icon:               '/icons/icon-192x192.png',
+      badge:              '/icons/icon-96x96.png',
+      tag:                data.roomId || 'default',
+      renotify:           true,
+      requireInteraction: false,
+      data: {
+        roomId: data.roomId,
+        url:    data.url || '/',
+      },
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {
