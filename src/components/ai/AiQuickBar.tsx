@@ -33,7 +33,10 @@ export function AiQuickBar({ onSelect, onNavigate }: Props) {
         <button
           key={labelKey}
           type="button"
-          onClick={() => navigate ? onNavigate?.(navigate) : onSelect(t(promptKey))}
+          onPointerUp={(e) => {
+            e.preventDefault()
+            navigate ? onNavigate?.(navigate) : onSelect(t(promptKey))
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
                      whitespace-nowrap flex-shrink-0 border transition-all duration-100"
           style={{
