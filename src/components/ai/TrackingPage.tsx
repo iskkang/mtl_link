@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ExternalLink, Loader2, Copy, Check, ChevronDown } from 'lucide-react'
+import { ChevronLeft, ExternalLink, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -58,19 +58,20 @@ function TypeBadge({ type, t }: { type: TrackingType; t: (k: string) => string }
 }
 
 export function TrackingPage({ onBack }: Props) {
-  const { t, i18n } = useTranslation()
-  const { user, profile } = useAuth()
+  const { t } = useTranslation()
+  const { user } = useAuth()
 
-  const [activeTab,   setActiveTab]   = useState<ActiveTab>('query')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('query')
 
   // Query tab state
-  const [input,       setInput]       = useState('')
-  const [detectedType, setDetectedType] = useState<TrackingType>('unknown')
-  const [guessedCarrier, setGuessedCarrier] = useState<Carrier | null>(null)
+  const [input,           setInput]           = useState('')
+  const [detectedType,    setDetectedType]    = useState<TrackingType>('unknown')
+  const [guessedCarrier,  setGuessedCarrier]  = useState<Carrier | null>(null)
   const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null)
-  const [carrierOpen, setCarrierOpen] = useState(false)
+  const [carrierOpen,     setCarrierOpen]     = useState(false)
 
-  // Manual status form
+  // Manual memo form (collapsible)
+  const [memoOpen,        setMemoOpen]        = useState(false)
   const [currentStatus,   setCurrentStatus]   = useState('')
   const [currentLocation, setCurrentLocation] = useState('')
   const [eta,             setEta]             = useState('')
@@ -78,19 +79,11 @@ export function TrackingPage({ onBack }: Props) {
   const [saving,          setSaving]          = useState(false)
   const [saveSuccess,     setSaveSuccess]     = useState(false)
 
-  // Customer notice
-  const [noticeLanguage, setNoticeLanguage] = useState(profile?.preferred_language ?? i18n.language ?? 'ko')
-  const [generating,     setGenerating]     = useState(false)
-  const [notice,         setNotice]         = useState<string | null>(null)
-  const [noticeError,    setNoticeError]    = useState<string | null>(null)
-  const [copied,         setCopied]         = useState(false)
-
   // History tab
-  const [history,         setHistory]         = useState<TrackingRecord[]>([])
-  const [historyLoading,  setHistoryLoading]  = useState(false)
-  const [expandedId,      setExpandedId]      = useState<string | null>(null)
+  const [history,        setHistory]        = useState<TrackingRecord[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [expandedId,     setExpandedId]     = useState<string | null>(null)
 
-  // Detect type and guess carrier on input change
   useEffect(() => {
     const clean = input.trim()
     if (!clean) {
@@ -125,6 +118,12 @@ export function TrackingPage({ onBack }: Props) {
 
   const activeCarrier = selectedCarrier ?? guessedCarrier
 
+  const handleOpenTracking = () => {
+    if (!activeCarrier || !input.trim()) return
+    const url = activeCarrier.trackingUrl(input.trim().toUpperCase())
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   const handleSave = async () => {
     if (!input.trim() || !user) return
     setSaving(true)
@@ -133,7 +132,7 @@ export function TrackingPage({ onBack }: Props) {
       tracking_no:           input.trim().toUpperCase(),
       tracking_type:         detectedType,
       carrier_name:          activeCarrier?.name ?? null,
-      official_tracking_url: activeCarrier?.url ?? null,
+      official_tracking_url: activeCarrier ? activeCarrier.trackingUrl(input.trim().toUpperCase()) : null,
       current_status:        currentStatus.trim() || null,
       current_location:      currentLocation.trim() || null,
       eta:                   eta || null,
@@ -143,50 +142,6 @@ export function TrackingPage({ onBack }: Props) {
     setSaveSuccess(true)
     setTimeout(() => setSaveSuccess(false), 2500)
   }
-
-  const handleGenerate = async () => {
-    if (!input.trim() || !currentStatus.trim() || !user) return
-    setGenerating(true)
-    setNotice(null)
-    setNoticeError(null)
-
-    const { data, error: fnError } = await supabase.functions.invoke('ai-tracking-message', {
-      body: {
-        trackingNo:      input.trim().toUpperCase(),
-        carrierName:     activeCarrier?.name ?? '',
-        currentStatus:   currentStatus.trim(),
-        currentLocation: currentLocation.trim(),
-        eta,
-        memo:            memo.trim() || undefined,
-        language:        noticeLanguage,
-        userLanguage:    profile?.preferred_language ?? i18n.language ?? 'ko',
-        userId:          user.id,
-      },
-    })
-
-    if (fnError || data?.error) {
-      setNoticeError(fnError?.message ?? data?.error ?? 'Error')
-    } else {
-      setNotice(data?.result ?? '')
-    }
-    setGenerating(false)
-  }
-
-  const handleCopy = async () => {
-    if (!notice) return
-    await navigator.clipboard.writeText(notice)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const LANG_OPTIONS = [
-    { code: 'ko', label: '한국어' },
-    { code: 'en', label: 'English' },
-    { code: 'ru', label: 'Русский' },
-    { code: 'uz', label: "O'zbek" },
-    { code: 'zh', label: '中文' },
-    { code: 'ja', label: '日本語' },
-  ]
 
   const oceanCarriers = CARRIERS.filter(c => c.type === 'ocean')
   const airCarriers   = CARRIERS.filter(c => c.type === 'air')
@@ -254,36 +209,23 @@ export function TrackingPage({ onBack }: Props) {
               />
             </div>
 
-            {/* Type detection result */}
+            {/* Detection result + carrier selector + deep-link */}
             {input.trim() && (
               <div
-                className="rounded-xl px-4 py-3 flex flex-col gap-2.5"
+                className="rounded-xl px-4 py-3 flex flex-col gap-3"
                 style={{ background: 'var(--card)', border: '1px solid var(--line)' }}
               >
+                {/* Type badge + guessed carrier */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <TypeBadge type={detectedType} t={t} />
                   {guessedCarrier && (
                     <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
-                      {guessedCarrier.name} 추정
+                      {t('trackingCarrier')}: {guessedCarrier.name}
                     </span>
                   )}
                 </div>
 
-                {/* Official link */}
-                {activeCarrier && (
-                  <a
-                    href={activeCarrier.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs font-medium w-fit"
-                    style={{ color: 'var(--brand)' }}
-                  >
-                    <ExternalLink size={12} />
-                    {t('trackingOpenLink')} — {activeCarrier.name}
-                  </a>
-                )}
-
-                {/* Carrier selector */}
+                {/* Carrier selector dropdown */}
                 <div className="relative">
                   <button
                     type="button"
@@ -292,7 +234,7 @@ export function TrackingPage({ onBack }: Props) {
                     style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
                   >
                     <span className="flex-1">
-                      {t('trackingCarrier')}: {activeCarrier?.name ?? '선택…'}
+                      {activeCarrier?.name ?? t('trackingCarrier')}
                     </span>
                     <ChevronDown size={12} />
                   </button>
@@ -302,12 +244,12 @@ export function TrackingPage({ onBack }: Props) {
                       style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
                     >
                       {[
-                        { label: '── 해상 ──', items: oceanCarriers },
-                        { label: '── 항공 ──', items: airCarriers },
+                        { labelKey: 'trackingOcean', items: oceanCarriers },
+                        { labelKey: 'trackingAir',   items: airCarriers },
                       ].map(group => (
-                        <div key={group.label}>
+                        <div key={group.labelKey}>
                           <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-4)' }}>
-                            {group.label}
+                            {t(group.labelKey)}
                           </p>
                           {group.items.map(c => (
                             <button
@@ -330,154 +272,115 @@ export function TrackingPage({ onBack }: Props) {
                     </div>
                   )}
                 </div>
+
+                {/* Deep-link open button */}
+                <button
+                  type="button"
+                  onClick={handleOpenTracking}
+                  disabled={!activeCarrier}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                  style={{ background: 'var(--brand)' }}
+                  onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) e.currentTarget.style.filter = 'brightness(1.1)' }}
+                  onMouseLeave={e => (e.currentTarget.style.filter = '')}
+                >
+                  <ExternalLink size={14} />
+                  {t('trackingOpenLink')}
+                  {activeCarrier && (
+                    <span className="font-normal opacity-80 text-xs">— {activeCarrier.name}</span>
+                  )}
+                </button>
+
+                {/* Preview URL */}
+                {activeCarrier && (
+                  <p className="text-[10px] break-all" style={{ color: 'var(--ink-4)' }}>
+                    {activeCarrier.trackingUrl(input.trim().toUpperCase())}
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Manual status form */}
+            {/* Manual memo save (collapsible) */}
             <div
-              className="rounded-2xl border p-4 flex flex-col gap-3"
+              className="rounded-2xl border overflow-hidden"
               style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
             >
-              <p className="text-xs font-semibold" style={{ color: 'var(--ink-3)' }}>수동 상태 입력</p>
-
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
-                  {t('trackingStatus')}
-                </label>
-                <input
-                  value={currentStatus}
-                  onChange={e => setCurrentStatus(e.target.value)}
-                  placeholder="Departed Busan Port"
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
-                  style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
-                    {t('trackingLocation')}
-                  </label>
-                  <input
-                    value={currentLocation}
-                    onChange={e => setCurrentLocation(e.target.value)}
-                    placeholder="Busan, Korea"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
-                    style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
-                    {t('trackingEta')}
-                  </label>
-                  <input
-                    type="date"
-                    value={eta}
-                    onChange={e => setEta(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
-                    style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
-                  {t('trackingMemo')}
-                </label>
-                <textarea
-                  value={memo}
-                  onChange={e => setMemo(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none border resize-none"
-                  style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                />
-              </div>
-
               <button
-                onClick={() => void handleSave()}
-                disabled={!input.trim() || saving}
-                className="w-full py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                style={{ background: saveSuccess ? '#22C55E' : 'var(--brand)' }}
+                type="button"
+                className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold"
+                style={{ color: 'var(--ink-3)' }}
+                onClick={() => setMemoOpen(v => !v)}
               >
-                {saving
-                  ? <Loader2 size={14} className="animate-spin" />
-                  : saveSuccess
-                    ? <><Check size={14} /> 저장됨</>
-                    : t('trackingSave')}
-              </button>
-            </div>
-
-            {/* Customer notice generation */}
-            <div
-              className="rounded-2xl border p-4 flex flex-col gap-3"
-              style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-            >
-              <p className="text-xs font-semibold" style={{ color: 'var(--ink-3)' }}>고객 안내문 생성</p>
-
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ink-3)' }}>출력 언어</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {LANG_OPTIONS.map(l => (
-                    <button
-                      key={l.code}
-                      type="button"
-                      onClick={() => setNoticeLanguage(l.code)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-all"
-                      style={{
-                        background:  noticeLanguage === l.code ? 'var(--brand)' : 'transparent',
-                        color:       noticeLanguage === l.code ? 'white'        : 'var(--ink-3)',
-                        borderColor: noticeLanguage === l.code ? 'var(--brand)' : 'var(--line)',
-                      }}
-                    >
-                      {l.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => void handleGenerate()}
-                disabled={!input.trim() || !currentStatus.trim() || generating}
-                className="w-full py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                style={{ background: 'var(--brand)' }}
-                onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) e.currentTarget.style.filter = 'brightness(1.1)' }}
-                onMouseLeave={e => (e.currentTarget.style.filter = '')}
-              >
-                {generating
-                  ? <><Loader2 size={14} className="animate-spin" /> 생성 중…</>
-                  : t('trackingGenerate')}
+                {t('trackingMemoSave')}
+                {memoOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
               </button>
 
-              {noticeError && (
-                <p className="text-xs text-center text-red-500">{noticeError}</p>
-              )}
+              {memoOpen && (
+                <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--line)' }}>
+                  <div className="pt-3">
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
+                      {t('trackingStatus')}
+                    </label>
+                    <input
+                      value={currentStatus}
+                      onChange={e => setCurrentStatus(e.target.value)}
+                      placeholder="Departed Busan Port"
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
+                      style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                    />
+                  </div>
 
-              {notice && (
-                <div
-                  className="rounded-xl border overflow-hidden"
-                  style={{ borderColor: 'var(--line)' }}
-                >
-                  <div
-                    className="flex items-center justify-between px-3 py-2 border-b"
-                    style={{ borderColor: 'var(--line)', background: 'var(--chat-bg)' }}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
+                        {t('trackingLocation')}
+                      </label>
+                      <input
+                        value={currentLocation}
+                        onChange={e => setCurrentLocation(e.target.value)}
+                        placeholder="Busan, Korea"
+                        className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
+                        style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
+                        {t('trackingEta')}
+                      </label>
+                      <input
+                        type="date"
+                        value={eta}
+                        onChange={e => setEta(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
+                        style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
+                      {t('trackingMemo')}
+                    </label>
+                    <textarea
+                      value={memo}
+                      onChange={e => setMemo(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none border resize-none"
+                      style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => void handleSave()}
+                    disabled={!input.trim() || saving}
+                    className="w-full py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                    style={{ background: saveSuccess ? '#22C55E' : 'var(--brand)' }}
                   >
-                    <span className="text-[11px] font-semibold" style={{ color: 'var(--ink-3)' }}>
-                      안내문
-                    </span>
-                    <button
-                      onClick={() => void handleCopy()}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
-                      style={{ color: copied ? '#22C55E' : 'var(--ink-3)', background: 'var(--side-row)' }}
-                    >
-                      {copied ? <Check size={11} /> : <Copy size={11} />}
-                      {copied ? t('copySuccess') : t('copy')}
-                    </button>
-                  </div>
-                  <div className="px-4 py-3">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ink)' }}>
-                      {notice}
-                    </p>
-                  </div>
+                    {saving
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : saveSuccess
+                        ? <><Check size={14} /> {t('trackingSaved')}</>
+                        : t('trackingSave')}
+                  </button>
                 </div>
               )}
             </div>
@@ -539,6 +442,7 @@ export function TrackingPage({ onBack }: Props) {
                           </span>
                         </div>
                       </div>
+                      {isExpanded ? <ChevronUp size={14} style={{ color: 'var(--ink-4)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--ink-4)', flexShrink: 0 }} />}
                     </button>
 
                     {isExpanded && (
@@ -567,17 +471,6 @@ export function TrackingPage({ onBack }: Props) {
                             <ExternalLink size={12} />
                             {t('trackingOpenLink')}
                           </a>
-                        )}
-                        {rec.customer_message && (
-                          <div
-                            className="rounded-lg p-3 mt-1"
-                            style={{ background: 'var(--chat-bg)' }}
-                          >
-                            <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--ink-4)' }}>안내문</p>
-                            <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--ink)' }}>
-                              {rec.customer_message}
-                            </p>
-                          </div>
                         )}
                       </div>
                     )}
