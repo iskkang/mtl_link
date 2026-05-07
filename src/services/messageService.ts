@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { useMessageStore } from '../stores/messageStore'
 import { useRoomStore } from '../stores/roomStore'
 import { validateFiles } from '../lib/fileValidation'
+import { compressImage } from '../lib/compressImage'
 import { detectLanguage } from '../utils/detectLanguage'
 import type { ReplyRef } from '../types/chat'
 
@@ -167,14 +168,20 @@ export async function sendFileMessage(
     // 2. 파일 병렬 업로드 → chat-attachments (public bucket)
     const results = await Promise.allSettled(
       files.map(async (file, idx) => {
-        const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+        // 이미지는 업로드 전 WebP 압축 (GIF·SVG·300KB 미만·비이미지는 원본 유지)
+        const { file: fileToUpload } = await compressImage(file)
+
+        // 압축 후 실제 타입 기준으로 Storage 경로 확장자 결정
+        const ext = fileToUpload.type === 'image/webp'
+          ? 'webp'
+          : file.name.split('.').pop()?.toLowerCase() ?? 'bin'
         const path = `${roomId}/${msg.id}/${Date.now()}_${idx}.${ext}`
         // file.type이 빈 문자열인 경우(예: .md, .csv on Windows) 폴백
-        const contentType = file.type || 'application/octet-stream'
+        const contentType = fileToUpload.type || 'application/octet-stream'
 
         const { error: upErr } = await supabase.storage
           .from('chat-attachments')
-          .upload(path, file, { contentType })
+          .upload(path, fileToUpload, { contentType })
         if (upErr) {
           console.error('[sendFileMessage] storage upload error:', upErr)
           throw new Error(upErr.message)
@@ -187,10 +194,10 @@ export async function sendFileMessage(
             message_id:      msg.id,
             room_id:         roomId,
             uploaded_by:     user.id,
-            file_name:       file.name,
+            file_name:       file.name,       // 표시용 원본 파일명 유지
             file_path:       path,
-            file_size:       file.size,
-            mime_type:       file.type,
+            file_size:       fileToUpload.size, // 실제 업로드 크기
+            mime_type:       fileToUpload.type, // 압축 후 실제 타입 (webp 등)
             attachment_type: kind,
           })
         if (attErr) {
