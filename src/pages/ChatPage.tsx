@@ -47,10 +47,7 @@ export default function ChatPage() {
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
-  const handleAiNavigate = (view: 'quotation' | 'message') => {
-    console.log('handleAiNavigate called:', view)
-    setActiveAiView(view)
-  }
+  const handleAiNavigate = (view: 'quotation' | 'message') => setActiveAiView(view)
   const handleAiBack     = () => setActiveAiView('chat')
 
   usePollingRefresh(selectedRoomId)
@@ -81,7 +78,15 @@ export default function ChatPage() {
       const roomId = await createDirectRoom(userId)
       const updatedRooms = await fetchRooms()
       useRoomStore.getState().setRooms(updatedRooms)
-      handleSelectRoom(roomId)
+      if (userId === BOT_USER_ID) {
+        useRoomStore.getState().resetUnread(roomId)
+        setSelectedRoomId(roomId)
+        setShowChat(true)
+        setActiveAiView('chat')
+        // activeSection은 'ai' 그대로 유지
+      } else {
+        handleSelectRoom(roomId)
+      }
     } catch (err) {
       console.error('DM 방 생성 실패:', err)
     }
@@ -195,9 +200,9 @@ export default function ChatPage() {
             onNextMonth={handleCalNextMonth}
             onSectionChange={handleSectionChange}
           />
-        ) : activeAiView === 'quotation' ? (
+        ) : activeSection === 'ai' && activeAiView === 'quotation' ? (
           <QuotationPage onBack={handleAiBack} />
-        ) : activeAiView === 'message' ? (
+        ) : activeSection === 'ai' && activeAiView === 'message' ? (
           <MessageWriterPage onBack={handleAiBack} />
         ) : selectedRoomId ? (
           <ChatWindow

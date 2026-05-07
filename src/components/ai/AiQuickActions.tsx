@@ -73,10 +73,7 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
           <button
             key={labelKey}
             type="button"
-            onClick={() => {
-              console.log('QuickAction clicked:', navigate, 'onNavigate:', onNavigate)
-              navigate ? onNavigate?.(navigate) : onSelect(prompt)
-            }}
+            onClick={() => navigate ? onNavigate?.(navigate) : onSelect(prompt)}
             className="flex flex-col items-start gap-1.5 p-3.5 rounded-2xl text-left
                        transition-all duration-100 border"
             style={{
