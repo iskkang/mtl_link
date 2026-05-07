@@ -7,10 +7,7 @@ function getTime(r: RoomListItem): number {
 }
 
 export function sortByRecency(rooms: RoomListItem[]): RoomListItem[] {
-  const sorted = [...rooms].sort((a, b) => getTime(b) - getTime(a)) // DESC
-  console.log('[sort input]',  rooms.map(r => ({ name: r.name, t: r.last_message_at })))
-  console.log('[sort output]', sorted.map(r => ({ name: r.name, t: r.last_message_at })))
-  return sorted
+  return [...rooms].sort((a, b) => getTime(b) - getTime(a)) // DESC
 }
 
 interface RoomStore {
