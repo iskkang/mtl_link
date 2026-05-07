@@ -101,6 +101,14 @@ export function useMessages(roomId: string | null) {
             userLanguage: profile?.preferred_language ?? 'ko',
           },
         })
+        // Save Q&A record (fire-and-forget)
+        if (profile?.id) {
+          void supabase.from('ai_conversations').insert({
+            user_id:  profile.id,
+            question: content,
+            category: 'qa',
+          })
+        }
       } finally {
         setIsBotTyping(false)
       }

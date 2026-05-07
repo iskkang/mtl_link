@@ -11,7 +11,7 @@ import { ProfileMenu } from './ProfileMenu'
 
 export type Section =
   | 'chat' | 'members' | 'tasks' | 'requests'
-  | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots'
+  | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots' | 'ai'
   | 'settings' | 'profile'
 
 export const MOBILE_SECTIONS = new Set<Section>(['chat', 'members', 'tasks', 'requests'])
@@ -82,8 +82,8 @@ export function MenuRail({
           <RailBtn
             Icon={Bot}
             label={t('menuRailBots')}
-            active={false}
-            onClick={() => onSectionChange('bots')}
+            active={activeSection === 'ai'}
+            onClick={() => onSectionChange('ai')}
           />
         </div>
 

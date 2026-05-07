@@ -551,6 +551,49 @@ export type Database = {
           },
         ]
       }
+
+      // ─── ai_conversations ────────────────────────────────────────────────────
+      ai_conversations: {
+        Row: {
+          id:                 string
+          user_id:            string
+          question:           string | null
+          answer:             string | null
+          category:           string
+          confidence_label:   string
+          saved_to_knowledge: boolean
+          created_at:         string
+        }
+        Insert: {
+          id?:                 string
+          user_id:             string
+          question?:           string | null
+          answer?:             string | null
+          category?:           string
+          confidence_label?:   string
+          saved_to_knowledge?: boolean
+          created_at?:         string
+        }
+        Update: {
+          id?:                 string
+          user_id?:            string
+          question?:           string | null
+          answer?:             string | null
+          category?:           string
+          confidence_label?:   string
+          saved_to_knowledge?: boolean
+          created_at?:         string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'ai_conversations_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
 
     Views: {

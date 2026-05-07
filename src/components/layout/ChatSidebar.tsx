@@ -7,7 +7,9 @@ import { RoomList } from '../chat/RoomList'
 import { FriendsList } from '../chat/FriendsList'
 import { ActionItemList } from '../actionitems/ActionItemList'
 import { RequestList } from '../requests/RequestList'
+import { AiSidebar } from '../ai/AiSidebar'
 import { Button } from '../ui/Button'
+import { BOT_USER_ID } from '../../constants/bot'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -46,6 +48,7 @@ export function ChatSidebar({
     files:         t('menuRailFiles'),
     channels:      t('menuRailChannels'),
     bots:          t('menuRailBots'),
+    ai:            'MTL AI',
     settings:      t('menuRailSettings'),
   }
 
@@ -132,6 +135,11 @@ export function ChatSidebar({
         <div className="flex flex-col flex-1 min-h-0">
           <RequestList onSelectRequest={onSelectRequest} />
         </div>
+      )}
+
+      {/* ── AI section ── */}
+      {activeSection === 'ai' && (
+        <AiSidebar onNewChat={() => onSelectFriend(BOT_USER_ID)} />
       )}
 
       {/* ── Placeholder sections ── */}
