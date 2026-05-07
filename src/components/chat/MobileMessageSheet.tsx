@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare } from 'lucide-react'
+import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 import { QuickEmojiPicker } from './QuickEmojiPicker'
@@ -14,7 +14,7 @@ export function MobileMessageSheet({
   isOwn, canEdit, needsResponse, responseReceived,
   onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
-  onEdit, onDelete, onReact,
+  onEdit, onDelete, onReact, onReply,
 }: Props) {
   const { t } = useTranslation()
 
@@ -64,6 +64,9 @@ export function MobileMessageSheet({
           )}
 
           {/* 항상 표시 */}
+          {onReply && (
+            <SheetRow icon={CornerUpLeft} label={t('msgReply')} onClick={act(onReply)} />
+          )}
           <SheetRow icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />
           <SheetRow icon={CheckSquare} label={t('msgCreateTask')} onClick={act(onCreateTask)} />
           {onOpenThread && (

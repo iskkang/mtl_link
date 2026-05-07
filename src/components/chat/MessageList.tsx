@@ -16,13 +16,14 @@ interface Props {
   onLoadMore:        () => void
   onOpenThread?:     (messageId: string) => void
   onScrollToMessage: (messageId: string) => void
+  onReply?:          (msg: MessageWithSender) => void
   searchQuery?:      string
   currentResultId?:  string | null
   roomId?:           string
   isBotTyping?:      boolean
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, searchQuery = '', currentResultId = null, roomId, isBotTyping = false }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, onReply, searchQuery = '', currentResultId = null, roomId, isBotTyping = false }: Props) {
   const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -128,6 +129,7 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 isOwn={msg.sender_id === currentUserId}
                 showSenderInfo={isGroupRoom}
                 prevMessage={prev}
+                onReply={onReply ? () => onReply(msg) : undefined}
                 onOpenThread={onOpenThread ? () => onOpenThread(msg.id) : undefined}
                 onScrollToMessage={onScrollToMessage}
                 members={members}

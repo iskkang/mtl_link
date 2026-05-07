@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
+import { useLongPress } from '../../hooks/useLongPress'
 import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
@@ -57,7 +58,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage, setReactions } = useMessageStore()
@@ -95,24 +96,13 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
     }
   }, [message, currentUserId, setReactions])
 
-  // 롱프레스 감지 (모바일 touch 전용)
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleTouchStart = useCallback(() => {
-    // sending/failed 메시지는 롱프레스 무시
+  // 롱프레스 감지 (모바일 포인터 전용, 마우스는 무시)
+  const openSheetOnLongPress = useCallback(() => {
     if (message._status === 'failed' || message._status === 'sending') return
-    longPressTimer.current = setTimeout(() => {
-      setSheetOpen(true)
-      try { navigator.vibrate(10) } catch { /* 진동 미지원 무시 */ }
-    }, 500)
+    setSheetOpen(true)
   }, [message._status])
 
-  const handleCancelLongPress = useCallback(() => {
-    if (longPressTimer.current !== null) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }, [])
+  const longPress = useLongPress({ onLongPress: openSheetOnLongPress })
 
   const handleCopy = useCallback(() => {
     if (message.content) {
@@ -225,10 +215,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
       className={`flex items-end gap-2 px-2 md:px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'} ${isOwn ? 'flex-row-reverse' : 'flex-row'} message-bubble-row`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleCancelLongPress}
-      onTouchEnd={handleCancelLongPress}
-      onTouchCancel={handleCancelLongPress}
+      {...longPress}
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* 아바타 (수신 메시지만) */}
@@ -453,6 +440,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
                 onEdit={isOwn ? () => setEditing(true) : undefined}
                 onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
                 onReact={handleReact}
+                onReply={onReply}
               />
             </>
           )}
@@ -605,6 +593,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
         onEdit={isOwn ? () => setEditing(true) : undefined}
         onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
         onReact={handleReact}
+        onReply={onReply}
       />
     </div>
   )

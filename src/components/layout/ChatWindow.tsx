@@ -27,7 +27,9 @@ import { GlobalSearchPanel } from '../chat/GlobalSearchPanel'
 import { AnnouncementBanner } from '../chat/AnnouncementBanner'
 import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
+import { ReplyPreview } from '../chat/ReplyPreview'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
+import type { MessageWithSender } from '../../types/chat'
 
 interface Props {
   roomId:              string | null
@@ -58,6 +60,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [pendingFiles,    setPendingFiles]    = useState<File[]>([])
   const [fileUploading,   setFileUploading]  = useState(false)
   const [isRequest,       setIsRequest]       = useState(false)
+  const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
 
   // 스레드
   const [threadRootId, setThreadRootId] = useState<string | null>(null)
@@ -91,6 +94,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     setTargetLanguage(null)
     setPendingFiles([])
     setIsRequest(false)
+    setReplyTo(null)
     setSearchOpen(false)
     setSearchQuery('')
     setGlobalOpen(false)
@@ -158,11 +162,20 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     setPendingFiles(prev => prev.filter((_, i) => i !== index))
   }, [])
 
+  const handleReply = useCallback((msg: MessageWithSender) => {
+    setReplyTo(msg)
+  }, [])
+
   // 전송: 파일이 있으면 sendFileMessage, 없으면 텍스트 전송
   const handleSend = useCallback(async (content: string, mentions: string[]) => {
     if (!roomId) return
-    const reqFlag = isRequest
+    const reqFlag   = isRequest
+    const replyId   = replyTo?.id ?? null
+    const replyRef  = replyTo
+      ? { id: replyTo.id, content: replyTo.content, message_type: replyTo.message_type, deleted_at: replyTo.deleted_at, sender: replyTo.sender }
+      : null
     setIsRequest(false)
+    setReplyTo(null)
 
     if (pendingFiles.length > 0) {
       const files = [...pendingFiles]
@@ -176,9 +189,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         setFileUploading(false)
       }
     } else {
-      await send(content, null, null, reqFlag, mentions)
+      await send(content, replyId, replyRef, reqFlag, mentions)
     }
-  }, [isRequest, send, pendingFiles, roomId])
+  }, [isRequest, replyTo, send, pendingFiles, roomId])
 
   const scrollToMessage = useCallback((messageId: string) => {
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
@@ -327,6 +340,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               onLoadMore={loadMore}
               onOpenThread={setThreadRootId}
               onScrollToMessage={scrollToMessage}
+              onReply={handleReply}
               searchQuery={searchOpen ? searchQuery : ''}
               currentResultId={searchCurrent?.id ?? null}
               roomId={roomId ?? ''}
@@ -387,6 +401,11 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           {/* 전송 전 파일 미리보기 */}
           {pendingFiles.length > 0 && (
             <PendingFilesPreview files={pendingFiles} onRemove={handleRemoveFile} />
+          )}
+
+          {/* 답장 미리보기 */}
+          {replyTo && (
+            <ReplyPreview replyTo={replyTo} onCancel={() => setReplyTo(null)} />
           )}
 
           <MessageInput

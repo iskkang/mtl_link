@@ -9,6 +9,7 @@ export interface MessageActions {
   onEdit?:          () => void
   onDelete?:        () => void
   onReact?:         (emoji: string) => void
+  onReply?:         () => void
 }
 
 /** Shared context for conditional action visibility */
