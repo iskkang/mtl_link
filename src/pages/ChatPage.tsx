@@ -47,7 +47,10 @@ export default function ChatPage() {
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
-  const handleAiNavigate = (view: 'quotation' | 'message') => setActiveAiView(view)
+  const handleAiNavigate = (view: 'quotation' | 'message') => {
+    console.log('handleAiNavigate called:', view)
+    setActiveAiView(view)
+  }
   const handleAiBack     = () => setActiveAiView('chat')
 
   usePollingRefresh(selectedRoomId)
