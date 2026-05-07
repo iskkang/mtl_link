@@ -2,21 +2,21 @@ import { useTranslation } from 'react-i18next'
 
 interface Props {
   onSelect:    (prompt: string) => void
-  onNavigate?: (view: 'quotation' | 'message') => void
+  onNavigate?: (view: 'quotation' | 'message' | 'transport' | 'customs') => void
 }
 
 interface Action {
   labelKey:  string
   icon:      string
   promptKey: string
-  navigate?: 'quotation' | 'message'
+  navigate?: 'quotation' | 'message' | 'transport' | 'customs'
 }
 
 const ACTIONS: Action[] = [
   { labelKey: 'aiQuickQuotation', icon: '📋', promptKey: 'aiPromptQuotation', navigate: 'quotation' },
   { labelKey: 'aiQuickMessage',   icon: '✉️', promptKey: 'aiPromptMessage',   navigate: 'message'   },
-  { labelKey: 'aiQuickTransport', icon: '🚢', promptKey: 'aiPromptTransport' },
-  { labelKey: 'aiQuickCustoms',   icon: '🌍', promptKey: 'aiPromptCustoms'   },
+  { labelKey: 'aiQuickTransport', icon: '🚢', promptKey: 'aiPromptTransport', navigate: 'transport' as const },
+  { labelKey: 'aiQuickCustoms',   icon: '🌍', promptKey: 'aiPromptCustoms',   navigate: 'customs'   as const },
   { labelKey: 'aiQuickHsCode',    icon: '📦', promptKey: 'aiPromptHsCode'    },
   { labelKey: 'aiQuickTracking',  icon: '🔍', promptKey: 'aiPromptTracking'  },
 ]
