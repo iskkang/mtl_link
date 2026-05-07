@@ -108,6 +108,9 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
 
   // ─── Realtime/Optimistic dedupe ─────────────────────────────
   upsertMessage: (roomId, incoming) => set(s => {
+    // Thread replies are managed by useThreadMessages — never render in main chat
+    if (incoming.thread_root_id) return {}
+
     const list = s.messagesByRoom[roomId] ?? []
 
     // 1) DB id 일치 → merge (attachment, sender, reply_message 유지)
