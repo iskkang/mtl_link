@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
 import { RoomList } from '../chat/RoomList'
+import { NotificationPermissionCard } from '../notifications/NotificationPermissionCard'
 import { FriendsList } from '../chat/FriendsList'
 import { ActionItemList } from '../actionitems/ActionItemList'
 import { RequestList } from '../requests/RequestList'
@@ -111,6 +112,7 @@ export function ChatSidebar({
             </div>
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-thin">
+            <NotificationPermissionCard />
             {rooms.length === 0 && !loading
               ? <EmptyRoomList onNewChat={onNewChat} t={t} />
               : (
