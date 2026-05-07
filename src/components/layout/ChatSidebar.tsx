@@ -8,6 +8,7 @@ import { FriendsList } from '../chat/FriendsList'
 import { ActionItemList } from '../actionitems/ActionItemList'
 import { RequestList } from '../requests/RequestList'
 import { AiSidebar } from '../ai/AiSidebar'
+import { CalendarHolidayList } from '../calendar/CalendarHolidayList'
 import { Button } from '../ui/Button'
 import { BOT_USER_ID } from '../../constants/bot'
 import type { Section } from './MenuRail'
@@ -26,6 +27,11 @@ interface Props {
   created:  ActionItem[]
   done:     ActionItem[]
   onReload: () => void
+  // Calendar month sync
+  calendarYear:   number
+  calendarMonth:  number
+  onCalPrevMonth: () => void
+  onCalNextMonth: () => void
 }
 
 export function ChatSidebar({
@@ -33,6 +39,7 @@ export function ChatSidebar({
   selectedRoomId, onSelectRoom,
   onNewChat, onSelectFriend, onSelectRequest,
   received, created, done, onReload,
+  calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -44,7 +51,7 @@ export function ChatSidebar({
     tasks:         t('tabTasks'),
     requests:      t('tabRequests'),
     announcements: t('menuRailAnnouncements'),
-    calendar:      t('menuRailCalendar'),
+    calendar:      t('calendarSidebarTitle'),
     files:         t('menuRailFiles'),
     channels:      t('menuRailChannels'),
     bots:          t('menuRailBots'),
@@ -134,6 +141,18 @@ export function ChatSidebar({
       {activeSection === 'requests' && (
         <div className="flex flex-col flex-1 min-h-0">
           <RequestList onSelectRequest={onSelectRequest} />
+        </div>
+      )}
+
+      {/* ── Calendar section ── */}
+      {activeSection === 'calendar' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <CalendarHolidayList
+            year={calendarYear}
+            month={calendarMonth}
+            onPrevMonth={onCalPrevMonth}
+            onNextMonth={onCalNextMonth}
+          />
         </div>
       )}
 

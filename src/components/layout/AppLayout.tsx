@@ -11,20 +11,24 @@ import type { Section } from './MenuRail'
 import type { SidebarTab } from '../chat/SidebarTabs'
 
 interface Props {
-  children:        ReactNode
-  showChat?:       boolean
-  activeSection:   Section
-  onSectionChange: (s: Section) => void
-  selectedRoomId:  string | null
-  onSelectRoom:    (id: string) => void
-  onNewChat:       () => void
-  onSelectFriend:  (userId: string) => void
-  onSelectRequest: (roomId: string, messageId: string) => void
-  totalUnread:     number
-  requestCount:    number
-  notifEnabled:    boolean
-  onToggleNotif:   () => void
-  onLogoClick?:    () => void
+  children:          ReactNode
+  showChat?:         boolean
+  activeSection:     Section
+  onSectionChange:   (s: Section) => void
+  selectedRoomId:    string | null
+  onSelectRoom:      (id: string) => void
+  onNewChat:         () => void
+  onSelectFriend:    (userId: string) => void
+  onSelectRequest:   (roomId: string, messageId: string) => void
+  totalUnread:       number
+  requestCount:      number
+  notifEnabled:      boolean
+  onToggleNotif:     () => void
+  onLogoClick?:      () => void
+  calendarYear:      number
+  calendarMonth:     number
+  onCalPrevMonth:    () => void
+  onCalNextMonth:    () => void
 }
 
 /** Reads window.matchMedia once + listens for changes — runs client-side only */
@@ -53,6 +57,7 @@ export function AppLayout({
   totalUnread, requestCount,
   notifEnabled, onToggleNotif,
   onLogoClick,
+  calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
 }: Props) {
   const isDesktop = useIsDesktop()
   const [moreOpen,        setMoreOpen]        = useState(false)
@@ -83,6 +88,10 @@ export function AppLayout({
           onToggleNotif={onToggleNotif}
           onLogoClick={onLogoClick}
           onEditProfile={openProfileEdit}
+          calendarYear={calendarYear}
+          calendarMonth={calendarMonth}
+          onCalPrevMonth={onCalPrevMonth}
+          onCalNextMonth={onCalNextMonth}
         />
       ) : (
         /* ── Mobile: full-width Sidebar + MoreSheet ── */
@@ -147,6 +156,10 @@ interface DesktopColumnsProps {
   onToggleNotif:   () => void
   onLogoClick?:    () => void
   onEditProfile:   () => void
+  calendarYear:    number
+  calendarMonth:   number
+  onCalPrevMonth:  () => void
+  onCalNextMonth:  () => void
 }
 
 function DesktopColumns({
@@ -156,6 +169,7 @@ function DesktopColumns({
   totalUnread, requestCount,
   notifEnabled, onToggleNotif,
   onLogoClick, onEditProfile,
+  calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
 }: DesktopColumnsProps) {
   const { received, created, done, reload } = useActionItems()
   const taskCount = received.length + created.length
@@ -202,6 +216,10 @@ function DesktopColumns({
           created={created}
           done={done}
           onReload={reload}
+          calendarYear={calendarYear}
+          calendarMonth={calendarMonth}
+          onCalPrevMonth={onCalPrevMonth}
+          onCalNextMonth={onCalNextMonth}
         />
       </div>
     </>

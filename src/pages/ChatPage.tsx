@@ -26,6 +26,18 @@ export default function ChatPage() {
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [calYear,  setCalYear]  = useState(() => new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth())
+
+  const handleCalPrevMonth = () => {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
+    else setCalMonth(m => m - 1)
+  }
+  const handleCalNextMonth = () => {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
+    else setCalMonth(m => m + 1)
+  }
+
   usePollingRefresh(selectedRoomId)
 
   // Request count for MenuRail badge (Zustand — no duplicate subscription risk)
@@ -155,9 +167,19 @@ export default function ChatPage() {
         notifEnabled={notifEnabled}
         onToggleNotif={toggleNotif}
         onLogoClick={handleLogoClick}
+        calendarYear={calYear}
+        calendarMonth={calMonth}
+        onCalPrevMonth={handleCalPrevMonth}
+        onCalNextMonth={handleCalNextMonth}
       >
         {activeSection === 'calendar' ? (
-          <CalendarPage onSectionChange={handleSectionChange} />
+          <CalendarPage
+            currentYear={calYear}
+            currentMonth={calMonth}
+            onPrevMonth={handleCalPrevMonth}
+            onNextMonth={handleCalNextMonth}
+            onSectionChange={handleSectionChange}
+          />
         ) : selectedRoomId ? (
           <ChatWindow
             roomId={selectedRoomId}
