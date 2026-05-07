@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 interface Props {
   onSelect:    (prompt: string) => void
-  onNavigate?: (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => void
+  onNavigate?: (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => void
 }
 
 export function AiQuickActions({ onSelect, onNavigate }: Props) {
@@ -45,10 +45,11 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
       navigate:  'hscode' as const,
     },
     {
-      labelKey: 'aiQuickTracking',
-      subKey:   'aiQuickTrackingSub',
-      icon:     '🔍',
-      prompt:   t('aiPromptTracking'),
+      labelKey:  'aiQuickTracking',
+      subKey:    'aiQuickTrackingSub',
+      icon:      '🔍',
+      prompt:    t('aiPromptTracking'),
+      navigate:  'tracking' as const,
     },
   ]
 

@@ -10,6 +10,7 @@ import { CustomsPage }         from '../components/ai/CustomsPage'
 import { HsCodePage }          from '../components/ai/HsCodePage'
 import { KnowledgePage }       from '../components/ai/KnowledgePage'
 import { AdminApprovalPage }   from '../components/ai/AdminApprovalPage'
+import { TrackingPage }        from '../components/ai/TrackingPage'
 import { AiChatWindow }       from '../components/ai/AiChatWindow'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
@@ -23,7 +24,7 @@ import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh } from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
 
-type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval'
+type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking'
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -56,7 +57,7 @@ export default function ChatPage() {
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
-  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => setActiveAiView(view)
+  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => setActiveAiView(view)
   const handleAiBack     = () => setActiveAiView('chat')
 
   const handleAiSessionDelete      = () => { setActiveSessionId(null); setAiSidebarVersion(v => v + 1) }
@@ -243,6 +244,8 @@ export default function ChatPage() {
           <KnowledgePage onBack={handleAiBack} />
         ) : activeSection === 'ai' && activeAiView === 'approval' ? (
           <AdminApprovalPage onBack={handleAiBack} />
+        ) : activeSection === 'ai' && activeAiView === 'tracking' ? (
+          <TrackingPage onBack={handleAiBack} />
         ) : activeSection === 'ai' ? (
           <AiChatWindow
             sessionId={activeSessionId}

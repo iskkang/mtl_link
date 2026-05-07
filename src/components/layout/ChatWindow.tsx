@@ -41,7 +41,7 @@ interface Props {
   highlightMessageId?: string | null
   notifEnabled:        boolean
   onToggleNotif:       () => void
-  onAiNavigate?:       (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => void
+  onAiNavigate?:       (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => void
 }
 
 export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId, notifEnabled, onToggleNotif, onAiNavigate }: Props) {

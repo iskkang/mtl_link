@@ -2,14 +2,14 @@ import { useTranslation } from 'react-i18next'
 
 interface Props {
   onSelect:    (prompt: string) => void
-  onNavigate?: (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => void
+  onNavigate?: (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => void
 }
 
 interface Action {
   labelKey:  string
   icon:      string
   promptKey: string
-  navigate?: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode'
+  navigate?: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking'
 }
 
 const ACTIONS: Action[] = [
@@ -18,7 +18,7 @@ const ACTIONS: Action[] = [
   { labelKey: 'aiQuickTransport', icon: '🚢', promptKey: 'aiPromptTransport', navigate: 'transport' as const },
   { labelKey: 'aiQuickCustoms',   icon: '🌍', promptKey: 'aiPromptCustoms',   navigate: 'customs'   as const },
   { labelKey: 'aiQuickHsCode',    icon: '📦', promptKey: 'aiPromptHsCode',    navigate: 'hscode' as const },
-  { labelKey: 'aiQuickTracking',  icon: '🔍', promptKey: 'aiPromptTracking'  },
+  { labelKey: 'aiQuickTracking',  icon: '🔍', promptKey: 'aiPromptTracking',  navigate: 'tracking' as const },
 ]
 
 export function AiQuickBar({ onSelect, onNavigate }: Props) {

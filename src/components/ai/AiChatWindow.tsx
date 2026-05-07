@@ -16,7 +16,7 @@ interface AiMessage {
 interface Props {
   sessionId:      string | null
   onNewSession:   (id: string) => void
-  onNavigate?:    (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => void
+  onNavigate?:    (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => void
   onDelete?:      () => void
   onTitleChange?: () => void
 }
