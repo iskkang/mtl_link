@@ -47,12 +47,15 @@ export async function sendTextMessage(
     created_at:           now,
     edited_at:            null,
     deleted_at:           null,
-    needs_response:       needsResponse ?? false,
-    response_received:    false,
-    followup_reminded_at: null,
-    sender:               null,
-    attachments:          [],
-    reply_message:        replyMessage ?? null,
+    needs_response:             needsResponse ?? false,
+    response_received:          false,
+    followup_reminded_at:       null,
+    forwarded_from_user_id:     null,
+    forwarded_from_user_name:   null,
+    forwarded_from_message_id:  null,
+    sender:                     null,
+    attachments:                [],
+    reply_message:              replyMessage ?? null,
   })
   if (!threadRootId) {
     useRoomStore.getState().updateLastMessage(roomId, trimmed, now)
