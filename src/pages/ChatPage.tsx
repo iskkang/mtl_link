@@ -99,6 +99,24 @@ export default function ChatPage() {
     }
   }, [rooms, selectedRoomId])
 
+  // PWA 뒤로가기: 채팅방 진입 시 히스토리 항목 push
+  useEffect(() => {
+    if (!selectedRoomId) return
+    window.history.pushState({ roomId: selectedRoomId }, '')
+  }, [selectedRoomId])
+
+  // PWA 뒤로가기: popstate → 방 리스트로
+  useEffect(() => {
+    const handlePopState = () => {
+      if (selectedRoomId) {
+        setSelectedRoomId(null)
+        setShowChat(false)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [selectedRoomId])
+
   // Global notifications + unread increment
   const { notifEnabled, toggleNotif, showPrompt, requestPermission, dismissPrompt } =
     useGlobalMessageMonitor({
