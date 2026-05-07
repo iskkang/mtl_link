@@ -141,7 +141,7 @@ export function TransportPage({ onBack }: Props) {
               onChange={e => setItemName(e.target.value)}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
               style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-              placeholder="e.g. Auto parts / Electronics"
+              placeholder={t('transportItemPlaceholder')}
             />
           </div>
 
@@ -156,7 +156,7 @@ export function TransportPage({ onBack }: Props) {
                 onChange={e => setOrigin(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
                 style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                placeholder="Korea / Busan"
+                placeholder={t('transportOriginPlaceholder')}
               />
             </div>
             <div>
@@ -168,7 +168,7 @@ export function TransportPage({ onBack }: Props) {
                 onChange={e => setDestination(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
                 style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                placeholder="Uzbekistan / Tashkent"
+                placeholder={t('transportDestPlaceholder')}
               />
             </div>
           </div>
