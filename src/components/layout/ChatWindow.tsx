@@ -40,9 +40,10 @@ interface Props {
   highlightMessageId?: string | null
   notifEnabled:        boolean
   onToggleNotif:       () => void
+  onAiNavigate?:       (view: 'quotation' | 'message') => void
 }
 
-export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId, notifEnabled, onToggleNotif }: Props) {
+export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId, notifEnabled, onToggleNotif, onAiNavigate }: Props) {
   const { t } = useTranslation()
   const { mode } = useTheme()
   const { user } = useAuth()
@@ -336,7 +337,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
               </div>
             )}
             {isBotRoom && !loading && messages.length === 0 ? (
-              <AiQuickActions onSelect={handleQuickAction} />
+              <AiQuickActions onSelect={handleQuickAction} onNavigate={onAiNavigate} />
             ) : (
               <MessageList
                 messages={messages}

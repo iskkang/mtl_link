@@ -3,6 +3,8 @@ import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
 import { Dashboard }          from './Dashboard'
 import { CalendarPage }       from '../components/calendar/CalendarPage'
+import { QuotationPage }      from '../components/ai/QuotationPage'
+import { MessageWriterPage }  from '../components/ai/MessageWriterPage'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
@@ -13,6 +15,8 @@ import { useRequestStore }    from '../stores/requestStore'
 import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh } from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
+
+type AiView = 'chat' | 'quotation' | 'message'
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -37,6 +41,14 @@ export default function ChatPage() {
     if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
     else setCalMonth(m => m + 1)
   }
+
+  const [activeAiView, setActiveAiView] = useState<AiView>('chat')
+
+  // Reset AI view when the selected room changes
+  useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
+
+  const handleAiNavigate = (view: 'quotation' | 'message') => setActiveAiView(view)
+  const handleAiBack     = () => setActiveAiView('chat')
 
   usePollingRefresh(selectedRoomId)
 
@@ -154,7 +166,7 @@ export default function ChatPage() {
   return (
     <>
       <AppLayout
-        showChat={showChat || activeSection === 'calendar'}
+        showChat={showChat || activeSection === 'calendar' || activeAiView !== 'chat'}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
@@ -180,6 +192,10 @@ export default function ChatPage() {
             onNextMonth={handleCalNextMonth}
             onSectionChange={handleSectionChange}
           />
+        ) : activeAiView === 'quotation' ? (
+          <QuotationPage onBack={handleAiBack} />
+        ) : activeAiView === 'message' ? (
+          <MessageWriterPage onBack={handleAiBack} />
         ) : selectedRoomId ? (
           <ChatWindow
             roomId={selectedRoomId}
@@ -188,6 +204,7 @@ export default function ChatPage() {
             highlightMessageId={highlightMessageId}
             notifEnabled={notifEnabled}
             onToggleNotif={toggleNotif}
+            onAiNavigate={handleAiNavigate}
           />
         ) : (
           <Dashboard onSectionChange={setActiveSection} />

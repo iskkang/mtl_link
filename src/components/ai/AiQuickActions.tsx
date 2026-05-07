@@ -1,24 +1,27 @@
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  onSelect: (prompt: string) => void
+  onSelect:    (prompt: string) => void
+  onNavigate?: (view: 'quotation' | 'message') => void
 }
 
-export function AiQuickActions({ onSelect }: Props) {
+export function AiQuickActions({ onSelect, onNavigate }: Props) {
   const { t } = useTranslation()
 
   const ACTIONS = [
     {
-      labelKey: 'aiQuickQuotation',
-      sub:      '누락 정보 자동분석',
-      icon:     '📋',
-      prompt:   t('aiPromptQuotation'),
+      labelKey:  'aiQuickQuotation',
+      sub:       '누락 정보 자동분석',
+      icon:      '📋',
+      prompt:    t('aiPromptQuotation'),
+      navigate:  'quotation' as const,
     },
     {
-      labelKey: 'aiQuickMessage',
-      sub:      '다국어/톤별 생성',
-      icon:     '✉️',
-      prompt:   t('aiPromptMessage'),
+      labelKey:  'aiQuickMessage',
+      sub:       '다국어/톤별 생성',
+      icon:      '✉️',
+      prompt:    t('aiPromptMessage'),
+      navigate:  'message' as const,
     },
     {
       labelKey: 'aiQuickTransport',
@@ -66,11 +69,11 @@ export function AiQuickActions({ onSelect }: Props) {
 
       {/* Action grid */}
       <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-        {ACTIONS.map(({ labelKey, sub, icon, prompt }) => (
+        {ACTIONS.map(({ labelKey, sub, icon, prompt, navigate }) => (
           <button
             key={labelKey}
             type="button"
-            onClick={() => onSelect(prompt)}
+            onClick={() => navigate ? onNavigate?.(navigate) : onSelect(prompt)}
             className="flex flex-col items-start gap-1.5 p-3.5 rounded-2xl text-left
                        transition-all duration-100 border"
             style={{
