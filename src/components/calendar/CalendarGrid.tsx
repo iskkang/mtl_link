@@ -7,13 +7,13 @@ import { ko, enUS, ru, zhCN, ja } from 'date-fns/locale'
 import type { Locale } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { Holiday } from '../../hooks/useHolidays'
+import type { CountryCode, Holiday } from '../../hooks/useHolidays'
+import { COUNTRY_COLORS } from '../../constants/calendarColors'
 
 const LOCALES: Record<string, Locale> = {
   ko, en: enUS, ru, uz: ru, zh: zhCN, ja,
 }
 
-// 7 narrow weekday labels starting from Monday
 function weekdayLabels(locale: Locale): string[] {
   // 2024-01-01 is a known Monday
   const monday = new Date(2024, 0, 1)
@@ -27,13 +27,13 @@ function weekdayLabels(locale: Locale): string[] {
 interface Props {
   year:        number
   month:       number  // 0-indexed
-  holidays:    Holiday[]
+  allHolidays: Record<string, Holiday[]>
   lang:        string
   onPrevMonth: () => void
   onNextMonth: () => void
 }
 
-export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextMonth }: Props) {
+export function CalendarGrid({ year, month, allHolidays, lang, onPrevMonth, onNextMonth }: Props) {
   const { t } = useTranslation()
   const locale = LOCALES[lang] ?? LOCALES.ko
 
@@ -44,7 +44,6 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
     [monthStart],
   )
 
-  // Mon-start offset: Sun(0)→6, Mon(1)→0, …
   const leadingEmpty = useMemo(() => {
     const d = getDay(startOfMonth(monthStart))
     return d === 0 ? 6 : d - 1
@@ -52,15 +51,17 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
 
   const labels = useMemo(() => weekdayLabels(locale), [locale])
 
-  // date string → holidays on that day
+  // date string → list of { country, holiday } across all countries
   const holidayMap = useMemo(() => {
-    const map = new Map<string, Holiday[]>()
-    for (const h of holidays) {
-      const list = map.get(h.date) ?? []
-      map.set(h.date, [...list, h])
+    const map = new Map<string, { country: string; holiday: Holiday }[]>()
+    for (const [country, holidays] of Object.entries(allHolidays)) {
+      for (const h of holidays) {
+        const list = map.get(h.date) ?? []
+        map.set(h.date, [...list, { country, holiday: h }])
+      }
     }
     return map
-  }, [holidays])
+  }, [allHolidays])
 
   const headerText = useMemo(() => {
     if (lang === 'ko') return format(monthStart, 'yyyy년 M월', { locale })
@@ -68,8 +69,13 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
     return format(monthStart, 'MMMM yyyy', { locale })
   }, [monthStart, lang, locale])
 
+  const totalHolidays = useMemo(
+    () => Object.values(allHolidays).reduce((sum, arr) => sum + arr.length, 0),
+    [allHolidays],
+  )
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-4">
         <button
@@ -117,7 +123,7 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
         {Array.from({ length: leadingEmpty }, (_, i) => (
           <div
             key={`empty-${i}`}
-            className="min-h-[44px] md:min-h-[56px]"
+            className="min-h-[80px] md:min-h-[100px]"
             style={{ background: 'var(--chat-bg)' }}
           />
         ))}
@@ -126,21 +132,24 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
         {days.map(day => {
           const key    = format(day, 'yyyy-MM-dd')
           const hols   = holidayMap.get(key)
-          const today  = isToday(day)
+          const todayCell = isToday(day)
           const dayNum = day.getDate()
+          const uniqueCountries = hols
+            ? [...new Set(hols.map(({ country }) => country))]
+            : null
 
           return (
             <div
               key={key}
-              className="group relative min-h-[44px] md:min-h-[56px] flex flex-col
-                         items-center justify-start pt-1.5 pb-1 cursor-default select-none"
+              className="group relative min-h-[80px] md:min-h-[100px] flex flex-col
+                         items-center pt-2 pb-1 cursor-default select-none"
               style={{ background: 'var(--card)' }}
             >
               {/* Day number */}
               <span
-                className="w-7 h-7 flex items-center justify-center rounded-full text-[13px] font-medium"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-base font-medium"
                 style={
-                  today
+                  todayCell
                     ? { background: 'var(--brand)', color: 'white' }
                     : { color: 'var(--ink-1)' }
                 }
@@ -148,12 +157,17 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
                 {dayNum}
               </span>
 
-              {/* Holiday dot */}
-              {hols && (
-                <div
-                  className="mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: 'var(--brand)' }}
-                />
+              {/* Country color dots */}
+              {uniqueCountries && (
+                <div className="mt-1 flex flex-wrap justify-center gap-0.5 px-1">
+                  {uniqueCountries.map(country => (
+                    <div
+                      key={country}
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background: COUNTRY_COLORS[country as CountryCode] ?? 'var(--brand)' }}
+                    />
+                  ))}
+                </div>
               )}
 
               {/* Tooltip on hover */}
@@ -165,13 +179,15 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
                   style={{
                     background: 'rgba(0,0,0,0.82)',
                     color:      '#ffffff',
-                    maxWidth:   180,
+                    maxWidth:   200,
                     whiteSpace: 'pre-line',
                     textAlign:  'center',
                     lineHeight: '1.5',
                   }}
                 >
-                  {hols.map(h => h.localName || h.name).join('\n')}
+                  {hols.map(({ country, holiday }) =>
+                    `${country}: ${holiday.localName || holiday.name}`
+                  ).join('\n')}
                 </div>
               )}
             </div>
@@ -180,7 +196,7 @@ export function CalendarGrid({ year, month, holidays, lang, onPrevMonth, onNextM
       </div>
 
       {/* No holidays note */}
-      {holidays.length === 0 && (
+      {totalHolidays === 0 && (
         <p className="text-center text-xs mt-6" style={{ color: 'var(--ink-4)' }}>
           {t('calendarNoHolidays')}
         </p>
