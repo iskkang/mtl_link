@@ -169,7 +169,7 @@ export default function ChatPage() {
   const { notifEnabled, toggleNotif, showPrompt, requestPermission, dismissPrompt } =
     useGlobalMessageMonitor({
       userId:        user?.id,
-      currentRoomId: selectedRoomId,
+      currentRoomId: activeSection === 'chat' && showChat ? selectedRoomId : null,
       onSelectRoom:  handleSelectRoom,
     })
 
