@@ -28,6 +28,7 @@ import { AnnouncementBanner } from '../chat/AnnouncementBanner'
 import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
 import { ReplyPreview } from '../chat/ReplyPreview'
+import { ForwardSheet } from '../chat/ForwardSheet'
 import { AiQuickActions } from '../ai/AiQuickActions'
 import { AiQuickBar }     from '../ai/AiQuickBar'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
@@ -64,6 +65,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [fileUploading,   setFileUploading]  = useState(false)
   const [isRequest,       setIsRequest]       = useState(false)
   const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
+  const [forwardTarget,   setForwardTarget]   = useState<MessageWithSender | null>(null)
+  const [forwardToast,    setForwardToast]    = useState<string | null>(null)
+  const forwardToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 스레드
   const [threadRootId, setThreadRootId] = useState<string | null>(null)
@@ -351,6 +355,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 onOpenThread={setThreadRootId}
                 onScrollToMessage={scrollToMessage}
                 onReply={handleReply}
+                onForward={setForwardTarget}
                 searchQuery={searchOpen ? searchQuery : ''}
                 currentResultId={searchCurrent?.id ?? null}
                 roomId={roomId ?? ''}
@@ -465,6 +470,29 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           onConfirm={handleDelete}
           onClose={() => setDeleteOpen(false)}
         />
+      )}
+
+      {forwardTarget && (
+        <ForwardSheet
+          message={forwardTarget}
+          currentRoomId={roomId ?? undefined}
+          onClose={() => setForwardTarget(null)}
+          onSuccess={(count) => {
+            setForwardTarget(null)
+            if (forwardToastTimer.current) clearTimeout(forwardToastTimer.current)
+            setForwardToast(t('forwardSuccess', { count }))
+            forwardToastTimer.current = setTimeout(() => setForwardToast(null), 3000)
+          }}
+        />
+      )}
+
+      {forwardToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]
+                        px-5 py-3 rounded-xl shadow-lg
+                        bg-gray-800 dark:bg-surface-panel
+                        text-white text-sm font-medium pointer-events-none">
+          {forwardToast}
+        </div>
       )}
 
       </div>{/* ── 채팅 메인 영역 끝 ── */}

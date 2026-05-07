@@ -4,7 +4,7 @@ import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
-import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare, Smile } from 'lucide-react'
+import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare, Smile, Share2 } from 'lucide-react'
 import { getLangName } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -33,6 +33,7 @@ interface Props {
   showSenderInfo:     boolean
   prevMessage?:       MessageWithSender | null
   onReply?:           () => void
+  onForward?:         () => void
   onOpenThread?:      () => void
   onScrollToMessage?: (messageId: string) => void
   members:            RoomListItem['members']
@@ -58,7 +59,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onForward, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage, setReactions } = useMessageStore()
@@ -275,6 +276,14 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           }}
         >
 
+          {/* 전달됨 라벨 */}
+          {message.forwarded_from_user_name && (
+            <div className="flex items-center gap-1 mb-1.5" style={{ fontSize: '10px', color: 'var(--ink-3)' }}>
+              <Share2 size={10} style={{ flexShrink: 0 }} />
+              <span>{t('forwardedFrom', { name: message.forwarded_from_user_name })}</span>
+            </div>
+          )}
+
           {/* 요청 표시 (수신 메시지에만 노출 — 발신은 meta 행의 FollowupBadge로 표시) */}
           {!isOwn && isRequestPending && (
             <div className="flex items-center gap-1 mb-1.5" style={{ fontSize: '10px', color: '#CA8A04' }}>
@@ -442,6 +451,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                 onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
                 onReact={handleReact}
                 onReply={onReply}
+                onForward={onForward}
               />
             </>
           )}
@@ -595,6 +605,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
         onReact={handleReact}
         onReply={onReply}
+        onForward={onForward}
       />
     </div>
   )
