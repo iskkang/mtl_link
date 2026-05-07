@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar'
 import { MenuRail } from './MenuRail'
 import { ChatSidebar } from './ChatSidebar'
 import { MoreSheet } from './MoreSheet'
+import { ProfileEditPage } from '../profile/ProfileEditPage'
 import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { useRequestStore } from '../../stores/requestStore'
@@ -54,7 +55,10 @@ export function AppLayout({
   onLogoClick,
 }: Props) {
   const isDesktop = useIsDesktop()
-  const [moreOpen, setMoreOpen] = useState(false)
+  const [moreOpen,        setMoreOpen]        = useState(false)
+  const [profileEditOpen, setProfileEditOpen] = useState(false)
+
+  const openProfileEdit = () => { setMoreOpen(false); setProfileEditOpen(true) }
 
   const mobileTab: SidebarTab = MOBILE_SECTION_MAP.has(activeSection)
     ? (activeSection as SidebarTab)
@@ -78,6 +82,7 @@ export function AppLayout({
           notifEnabled={notifEnabled}
           onToggleNotif={onToggleNotif}
           onLogoClick={onLogoClick}
+          onEditProfile={openProfileEdit}
         />
       ) : (
         /* ── Mobile: full-width Sidebar + MoreSheet ── */
@@ -105,6 +110,7 @@ export function AppLayout({
             onSectionChange={onSectionChange}
             notifEnabled={notifEnabled}
             onToggleNotif={onToggleNotif}
+            onEditProfile={openProfileEdit}
           />
         </>
       )}
@@ -116,6 +122,8 @@ export function AppLayout({
       >
         {children}
       </main>
+
+      <ProfileEditPage open={profileEditOpen} onClose={() => setProfileEditOpen(false)} />
     </div>
   )
 }
@@ -138,6 +146,7 @@ interface DesktopColumnsProps {
   notifEnabled:    boolean
   onToggleNotif:   () => void
   onLogoClick?:    () => void
+  onEditProfile:   () => void
 }
 
 function DesktopColumns({
@@ -146,7 +155,7 @@ function DesktopColumns({
   onSelectFriend, onSelectRequest,
   totalUnread, requestCount,
   notifEnabled, onToggleNotif,
-  onLogoClick,
+  onLogoClick, onEditProfile,
 }: DesktopColumnsProps) {
   const { received, created, done, reload } = useActionItems()
   const taskCount = received.length + created.length
@@ -172,6 +181,7 @@ function DesktopColumns({
           notifEnabled={notifEnabled}
           onToggleNotif={onToggleNotif}
           onLogoClick={onLogoClick}
+          onEditProfile={onEditProfile}
         />
       </div>
 

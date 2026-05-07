@@ -25,13 +25,14 @@ interface Props {
   notifEnabled:    boolean
   onToggleNotif:   () => void
   onLogoClick?:    () => void
+  onEditProfile:   () => void
 }
 
 export function MenuRail({
   activeSection, onSectionChange,
   totalUnread, taskCount, requestCount,
   notifEnabled, onToggleNotif,
-  onLogoClick,
+  onLogoClick, onEditProfile,
 }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
@@ -139,6 +140,7 @@ export function MenuRail({
               notifEnabled={notifEnabled}
               onToggleNotif={onToggleNotif}
               onClose={() => setProfileMenuOpen(false)}
+              onEditProfile={() => { setProfileMenuOpen(false); onEditProfile() }}
             />
           )}
         </div>

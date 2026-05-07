@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { LogOut, Sun, Moon, Bell, BellOff, KeyRound } from 'lucide-react'
+import { LogOut, Sun, Moon, Bell, BellOff, KeyRound, UserRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,9 +12,10 @@ interface Props {
   notifEnabled:  boolean
   onToggleNotif: () => void
   onClose:       () => void
+  onEditProfile: () => void
 }
 
-export function ProfileMenu({ notifEnabled, onToggleNotif, onClose }: Props) {
+export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfile }: Props) {
   const { t, i18n } = useTranslation()
   const { profile, user, signOut } = useAuth()
   const { mode, toggle: toggleTheme } = useTheme()
@@ -78,6 +79,13 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose }: Props) {
       </div>
 
       <div className="py-1">
+        {/* Profile edit */}
+        <MenuRow
+          icon={<UserRound size={15} />}
+          label={t('profileEdit')}
+          onClick={onEditProfile}
+        />
+
         {/* Theme toggle */}
         <MenuRow
           icon={mode === 'dark' ? <Sun size={15} /> : <Moon size={15} />}

@@ -19,6 +19,7 @@ interface Props {
   onSectionChange: (s: Section) => void
   notifEnabled:    boolean
   onToggleNotif:   () => void
+  onEditProfile:   () => void
 }
 
 const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] = [
@@ -29,7 +30,7 @@ const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] =
   { id: 'bots',          Icon: Bot,        labelKey: 'menuRailBots'          },
 ]
 
-export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onToggleNotif }: Props) {
+export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onToggleNotif, onEditProfile }: Props) {
   const { t, i18n } = useTranslation()
   const { mode, toggle: toggleTheme } = useTheme()
   const { profile, signOut } = useAuth()
@@ -79,26 +80,34 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
           <div className="w-9 h-1 rounded-full" style={{ background: 'var(--line)' }} />
         </div>
 
-        {/* Profile header */}
+        {/* Profile card — tap to edit */}
         <div
-          className="flex items-center gap-3 px-4 py-3 flex-shrink-0 border-b"
+          className="flex items-center flex-shrink-0 border-b"
           style={{ borderColor: 'var(--line)' }}
         >
-          {profile && <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="md" />}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
-              {profile?.name ?? ''}
-            </p>
-            {(profile?.department || profile?.position) && (
-              <p className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>
-                {[profile?.department, profile?.position].filter(Boolean).join(' · ')}
+          <button
+            type="button"
+            onClick={() => { onClose(); onEditProfile() }}
+            className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0 text-left transition-colors"
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            {profile && <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="md" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
+                {profile?.name ?? ''}
               </p>
-            )}
-          </div>
+              <p className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>
+                {[profile?.department, currentLang ? `${currentLang.flag} ${currentLang.label}` : null]
+                  .filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <ChevronRight size={16} style={{ color: 'var(--ink-4)', flexShrink: 0 }} />
+          </button>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg flex-shrink-0 transition-colors"
+            className="px-4 py-3 flex-shrink-0 transition-colors"
             style={{ color: 'var(--ink-3)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

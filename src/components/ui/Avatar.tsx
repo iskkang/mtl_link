@@ -3,7 +3,7 @@ import { Bot } from 'lucide-react'
 interface Props {
   name: string
   avatarUrl?: string | null
-  size?: 'xs' | 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   is_bot?: boolean
 }
@@ -13,6 +13,7 @@ const SIZES = {
   sm: 'w-8 h-8 text-xs',
   md: 'w-10 h-10 text-sm',
   lg: 'w-12 h-12 text-base',
+  xl: 'w-20 h-20 text-xl',
 }
 
 // Deterministic color from name
