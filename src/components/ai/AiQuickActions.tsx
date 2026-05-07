@@ -11,41 +11,41 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
   const ACTIONS = [
     {
       labelKey:  'aiQuickQuotation',
-      sub:       '누락 정보 자동분석',
+      subKey:    'aiQuickQuotationSub',
       icon:      '📋',
       prompt:    t('aiPromptQuotation'),
       navigate:  'quotation' as const,
     },
     {
       labelKey:  'aiQuickMessage',
-      sub:       '다국어/톤별 생성',
+      subKey:    'aiQuickMessageSub',
       icon:      '✉️',
       prompt:    t('aiPromptMessage'),
       navigate:  'message' as const,
     },
     {
       labelKey:  'aiQuickTransport',
-      sub:       '항공/해상/철도',
+      subKey:    'aiQuickTransportSub',
       icon:      '🚢',
       prompt:    t('aiPromptTransport'),
       navigate:  'transport' as const,
     },
     {
       labelKey:  'aiQuickCustoms',
-      sub:       '국가별 확인사항',
+      subKey:    'aiQuickCustomsSub',
       icon:      '🌍',
       prompt:    t('aiPromptCustoms'),
       navigate:  'customs' as const,
     },
     {
       labelKey: 'aiQuickHsCode',
-      sub:      '품목별 후보 저장',
+      subKey:   'aiQuickHsCodeSub',
       icon:     '📦',
       prompt:   t('aiPromptHsCode'),
     },
     {
       labelKey: 'aiQuickTracking',
-      sub:      '번호 검증+링크',
+      subKey:   'aiQuickTrackingSub',
       icon:     '🔍',
       prompt:   t('aiPromptTracking'),
     },
@@ -71,7 +71,7 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
 
       {/* Action grid */}
       <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-        {ACTIONS.map(({ labelKey, sub, icon, prompt, navigate }) => (
+        {ACTIONS.map(({ labelKey, subKey, icon, prompt, navigate }) => (
           <button
             key={labelKey}
             type="button"
@@ -96,7 +96,7 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
               {t(labelKey)}
             </span>
             <span className="text-[11px] leading-snug" style={{ color: 'var(--ink-4)' }}>
-              {sub}
+              {t(subKey)}
             </span>
           </button>
         ))}
