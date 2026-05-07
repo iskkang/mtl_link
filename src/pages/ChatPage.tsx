@@ -5,6 +5,7 @@ import { Dashboard }          from './Dashboard'
 import { CalendarPage }       from '../components/calendar/CalendarPage'
 import { QuotationPage }      from '../components/ai/QuotationPage'
 import { MessageWriterPage }  from '../components/ai/MessageWriterPage'
+import { AiChatWindow }       from '../components/ai/AiChatWindow'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
@@ -42,7 +43,8 @@ export default function ChatPage() {
     else setCalMonth(m => m + 1)
   }
 
-  const [activeAiView, setActiveAiView] = useState<AiView>('chat')
+  const [activeAiView,    setActiveAiView]    = useState<AiView>('chat')
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
@@ -174,7 +176,7 @@ export default function ChatPage() {
   return (
     <>
       <AppLayout
-        showChat={showChat || activeSection === 'calendar' || activeAiView !== 'chat'}
+        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai'}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
@@ -191,6 +193,8 @@ export default function ChatPage() {
         calendarMonth={calMonth}
         onCalPrevMonth={handleCalPrevMonth}
         onCalNextMonth={handleCalNextMonth}
+        activeSessionId={activeSessionId}
+        onSelectSession={setActiveSessionId}
       >
         {activeSection === 'calendar' ? (
           <CalendarPage
@@ -204,6 +208,12 @@ export default function ChatPage() {
           <QuotationPage onBack={handleAiBack} />
         ) : activeSection === 'ai' && activeAiView === 'message' ? (
           <MessageWriterPage onBack={handleAiBack} />
+        ) : activeSection === 'ai' ? (
+          <AiChatWindow
+            sessionId={activeSessionId}
+            onNewSession={setActiveSessionId}
+            onNavigate={handleAiNavigate}
+          />
         ) : selectedRoomId ? (
           <ChatWindow
             roomId={selectedRoomId}

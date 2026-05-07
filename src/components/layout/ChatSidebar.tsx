@@ -10,7 +10,6 @@ import { RequestList } from '../requests/RequestList'
 import { AiSidebar } from '../ai/AiSidebar'
 import { CalendarHolidayList } from '../calendar/CalendarHolidayList'
 import { Button } from '../ui/Button'
-import { BOT_USER_ID } from '../../constants/bot'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -32,6 +31,9 @@ interface Props {
   calendarMonth:  number
   onCalPrevMonth: () => void
   onCalNextMonth: () => void
+  // AI session
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
 }
 
 export function ChatSidebar({
@@ -40,6 +42,7 @@ export function ChatSidebar({
   onNewChat, onSelectFriend, onSelectRequest,
   received, created, done, onReload,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
+  activeSessionId, onSelectSession,
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -158,7 +161,7 @@ export function ChatSidebar({
 
       {/* ── AI section ── */}
       {activeSection === 'ai' && (
-        <AiSidebar onNewChat={() => onSelectFriend(BOT_USER_ID)} />
+        <AiSidebar activeSessionId={activeSessionId} onSelectSession={onSelectSession} />
       )}
 
       {/* ── Placeholder sections ── */}

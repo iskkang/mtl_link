@@ -1,23 +1,24 @@
 import { Plus, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useAiConversations } from '../../hooks/useAiConversations'
+import { useAiSessions } from '../../hooks/useAiSessions'
 
 interface Props {
-  onNewChat: () => void
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
 }
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 }
 
-export function AiSidebar({ onNewChat }: Props) {
+export function AiSidebar({ activeSessionId, onSelectSession }: Props) {
   const { t } = useTranslation()
-  const { conversations, loading } = useAiConversations()
+  const { sessions, loading } = useAiSessions()
 
-  const todayMs      = startOfDay(new Date())
-  const yesterdayMs  = todayMs - 86_400_000
-  const prev7Ms      = todayMs - 7  * 86_400_000
-  const prev30Ms     = todayMs - 30 * 86_400_000
+  const todayMs     = startOfDay(new Date())
+  const yesterdayMs = todayMs - 86_400_000
+  const prev7Ms     = todayMs - 7  * 86_400_000
+  const prev30Ms    = todayMs - 30 * 86_400_000
 
   function groupKey(created_at: string): string | null {
     const ms = startOfDay(new Date(created_at))
@@ -35,10 +36,10 @@ export function AiSidebar({ onNewChat }: Props) {
     { key: 'prev30',    label: t('aiPrev30Days') },
   ]
 
-  const byGroup = conversations.reduce<Record<string, typeof conversations>>((acc, c) => {
-    const k = groupKey(c.created_at)
+  const byGroup = sessions.reduce<Record<string, typeof sessions>>((acc, s) => {
+    const k = groupKey(s.createdAt)
     if (!k) return acc
-    ;(acc[k] ??= []).push(c)
+    ;(acc[k] ??= []).push(s)
     return acc
   }, {})
 
@@ -48,7 +49,7 @@ export function AiSidebar({ onNewChat }: Props) {
       <div className="px-3 py-2 flex-shrink-0">
         <button
           type="button"
-          onClick={onNewChat}
+          onClick={() => onSelectSession(crypto.randomUUID())}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg
                      text-sm font-semibold text-white transition-colors"
           style={{ background: 'var(--brand)' }}
@@ -60,7 +61,7 @@ export function AiSidebar({ onNewChat }: Props) {
         </button>
       </div>
 
-      {/* Recent conversations */}
+      {/* Session list */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex flex-col gap-2 px-3 py-2">
@@ -72,7 +73,7 @@ export function AiSidebar({ onNewChat }: Props) {
               />
             ))}
           </div>
-        ) : conversations.length === 0 ? (
+        ) : sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center gap-3">
             <MessageSquare size={28} style={{ color: 'var(--side-mute)' }} />
             <p className="text-xs" style={{ color: 'var(--side-mute)' }}>
@@ -91,20 +92,26 @@ export function AiSidebar({ onNewChat }: Props) {
                 >
                   {label}
                 </p>
-                {items.map(conv => (
-                  <button
-                    key={conv.id}
-                    type="button"
-                    onClick={onNewChat}
-                    className="w-full px-4 py-2 text-left text-sm truncate transition-colors"
-                    style={{ color: 'var(--side-text)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    title={conv.question ?? ''}
-                  >
-                    {(conv.question ?? '').slice(0, 32) || '…'}
-                  </button>
-                ))}
+                {items.map(session => {
+                  const isActive = activeSessionId === session.sessionId
+                  return (
+                    <button
+                      key={session.sessionId}
+                      type="button"
+                      onClick={() => onSelectSession(session.sessionId)}
+                      className="w-full px-4 py-2 text-left text-sm truncate transition-colors"
+                      style={{
+                        color:      'var(--side-text)',
+                        background: isActive ? 'var(--side-row)' : 'transparent',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = isActive ? 'var(--side-row)' : 'transparent')}
+                      title={session.title}
+                    >
+                      {session.title.slice(0, 32) || '…'}
+                    </button>
+                  )
+                })}
               </div>
             )
           })

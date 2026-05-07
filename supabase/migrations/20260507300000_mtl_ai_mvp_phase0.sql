@@ -30,9 +30,11 @@ CREATE TABLE IF NOT EXISTS public.quotation_requests (
 );
 
 ALTER TABLE public.quotation_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "members can manage own requests"
-  ON public.quotation_requests FOR ALL
-  USING (auth.uid() = created_by);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='quotation_requests' AND policyname='members can manage own requests') THEN
+    CREATE POLICY "members can manage own requests" ON public.quotation_requests FOR ALL USING (auth.uid() = created_by);
+  END IF;
+END $$;
 
 -- =============================================
 -- 3. hs_code_notes
@@ -59,17 +61,17 @@ CREATE TABLE IF NOT EXISTS public.hs_code_notes (
 );
 
 ALTER TABLE public.hs_code_notes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "members can view hs_code_notes"
-  ON public.hs_code_notes FOR SELECT
-  USING (auth.uid() IS NOT NULL);
-CREATE POLICY "members can insert hs_code_notes"
-  ON public.hs_code_notes FOR INSERT
-  WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "admins can update hs_code_notes"
-  ON public.hs_code_notes FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hs_code_notes' AND policyname='members can view hs_code_notes') THEN
+    CREATE POLICY "members can view hs_code_notes" ON public.hs_code_notes FOR SELECT USING (auth.uid() IS NOT NULL);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hs_code_notes' AND policyname='members can insert hs_code_notes') THEN
+    CREATE POLICY "members can insert hs_code_notes" ON public.hs_code_notes FOR INSERT WITH CHECK (auth.uid() = created_by);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='hs_code_notes' AND policyname='admins can update hs_code_notes') THEN
+    CREATE POLICY "admins can update hs_code_notes" ON public.hs_code_notes FOR UPDATE USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
 
 -- =============================================
 -- 4. knowledge_base
@@ -92,17 +94,17 @@ CREATE TABLE IF NOT EXISTS public.knowledge_base (
 );
 
 ALTER TABLE public.knowledge_base ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "members can view verified knowledge"
-  ON public.knowledge_base FOR SELECT
-  USING (auth.uid() IS NOT NULL);
-CREATE POLICY "members can insert knowledge"
-  ON public.knowledge_base FOR INSERT
-  WITH CHECK (auth.uid() = created_by);
-CREATE POLICY "admins can update knowledge"
-  ON public.knowledge_base FOR UPDATE
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='knowledge_base' AND policyname='members can view verified knowledge') THEN
+    CREATE POLICY "members can view verified knowledge" ON public.knowledge_base FOR SELECT USING (auth.uid() IS NOT NULL);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='knowledge_base' AND policyname='members can insert knowledge') THEN
+    CREATE POLICY "members can insert knowledge" ON public.knowledge_base FOR INSERT WITH CHECK (auth.uid() = created_by);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='knowledge_base' AND policyname='admins can update knowledge') THEN
+    CREATE POLICY "admins can update knowledge" ON public.knowledge_base FOR UPDATE USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
 
 -- =============================================
 -- 5. tracking_helpers
@@ -125,9 +127,11 @@ CREATE TABLE IF NOT EXISTS public.tracking_helpers (
 );
 
 ALTER TABLE public.tracking_helpers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "members can manage own tracking"
-  ON public.tracking_helpers FOR ALL
-  USING (auth.uid() = created_by);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tracking_helpers' AND policyname='members can manage own tracking') THEN
+    CREATE POLICY "members can manage own tracking" ON public.tracking_helpers FOR ALL USING (auth.uid() = created_by);
+  END IF;
+END $$;
 
 -- =============================================
 -- 6. audit_logs
@@ -144,11 +148,11 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 );
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "admins can view audit_logs"
-  ON public.audit_logs FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
-CREATE POLICY "system can insert audit_logs"
-  ON public.audit_logs FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='audit_logs' AND policyname='admins can view audit_logs') THEN
+    CREATE POLICY "admins can view audit_logs" ON public.audit_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='audit_logs' AND policyname='system can insert audit_logs') THEN
+    CREATE POLICY "system can insert audit_logs" ON public.audit_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;

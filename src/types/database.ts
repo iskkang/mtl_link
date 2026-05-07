@@ -568,6 +568,8 @@ export type Database = {
           category:           string
           confidence_label:   string
           saved_to_knowledge: boolean
+          session_id:         string | null
+          session_title:      string | null
           created_at:         string
         }
         Insert: {
@@ -578,6 +580,8 @@ export type Database = {
           category?:           string
           confidence_label?:   string
           saved_to_knowledge?: boolean
+          session_id?:         string | null
+          session_title?:      string | null
           created_at?:         string
         }
         Update: {
@@ -588,6 +592,8 @@ export type Database = {
           category?:           string
           confidence_label?:   string
           saved_to_knowledge?: boolean
+          session_id?:         string | null
+          session_title?:      string | null
           created_at?:         string
         }
         Relationships: [

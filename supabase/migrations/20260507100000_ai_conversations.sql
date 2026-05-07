@@ -11,10 +11,22 @@ CREATE TABLE IF NOT EXISTS public.ai_conversations (
 
 ALTER TABLE public.ai_conversations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "users can view own conversations"
-  ON public.ai_conversations FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'ai_conversations' AND policyname = 'users can view own conversations'
+  ) THEN
+    CREATE POLICY "users can view own conversations"
+      ON public.ai_conversations FOR SELECT
+      USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY "users can insert own conversations"
-  ON public.ai_conversations FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'ai_conversations' AND policyname = 'users can insert own conversations'
+  ) THEN
+    CREATE POLICY "users can insert own conversations"
+      ON public.ai_conversations FOR INSERT
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;

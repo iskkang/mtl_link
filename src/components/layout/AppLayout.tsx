@@ -29,6 +29,8 @@ interface Props {
   calendarMonth:     number
   onCalPrevMonth:    () => void
   onCalNextMonth:    () => void
+  activeSessionId:   string | null
+  onSelectSession:   (id: string) => void
 }
 
 /** Reads window.matchMedia once + listens for changes — runs client-side only */
@@ -58,6 +60,7 @@ export function AppLayout({
   notifEnabled, onToggleNotif,
   onLogoClick,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
+  activeSessionId, onSelectSession,
 }: Props) {
   const isDesktop = useIsDesktop()
   const [moreOpen,        setMoreOpen]        = useState(false)
@@ -92,6 +95,8 @@ export function AppLayout({
           calendarMonth={calendarMonth}
           onCalPrevMonth={onCalPrevMonth}
           onCalNextMonth={onCalNextMonth}
+          activeSessionId={activeSessionId}
+          onSelectSession={onSelectSession}
         />
       ) : (
         /* ── Mobile: full-width Sidebar + MoreSheet ── */
@@ -160,6 +165,8 @@ interface DesktopColumnsProps {
   calendarMonth:   number
   onCalPrevMonth:  () => void
   onCalNextMonth:  () => void
+  activeSessionId: string | null
+  onSelectSession: (id: string) => void
 }
 
 function DesktopColumns({
@@ -170,6 +177,7 @@ function DesktopColumns({
   notifEnabled, onToggleNotif,
   onLogoClick, onEditProfile,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
+  activeSessionId, onSelectSession,
 }: DesktopColumnsProps) {
   const { received, created, done, reload } = useActionItems()
   const taskCount = received.length + created.length
@@ -220,6 +228,8 @@ function DesktopColumns({
           calendarMonth={calendarMonth}
           onCalPrevMonth={onCalPrevMonth}
           onCalNextMonth={onCalNextMonth}
+          activeSessionId={activeSessionId}
+          onSelectSession={onSelectSession}
         />
       </div>
     </>

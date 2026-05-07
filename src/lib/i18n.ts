@@ -400,6 +400,8 @@ const resources = {
       msgWhatsappVersion: 'WhatsApp 버전',
       msgInternalVersion: '내부 보고',
       copySuccess:        '복사됐어요',
+      aiWelcomePrompt:    '물류 업무를 도와드릴게요',
+      aiTypeMessage:      '메시지를 입력하세요…',
     },
   },
 
@@ -756,6 +758,8 @@ const resources = {
       msgWhatsappVersion: 'WhatsApp Version',
       msgInternalVersion: 'Internal Report',
       copySuccess:        'Copied',
+      aiWelcomePrompt:    'Here to help with logistics',
+      aiTypeMessage:      'Type a message…',
     },
   },
 
@@ -1112,6 +1116,8 @@ const resources = {
       msgWhatsappVersion: 'WhatsApp версия',
       msgInternalVersion: 'Внутренний отчёт',
       copySuccess:        'Скопировано',
+      aiWelcomePrompt:    'Помогу с логистикой',
+      aiTypeMessage:      'Введите сообщение…',
     },
   },
 
@@ -1468,6 +1474,8 @@ const resources = {
       msgWhatsappVersion: 'WhatsApp versiya',
       msgInternalVersion: 'Ichki hisobot',
       copySuccess:        'Nusxalandi',
+      aiWelcomePrompt:    "Logistika bo'yicha yordam",
+      aiTypeMessage:      'Xabar kiriting…',
     },
   },
 
@@ -1824,6 +1832,8 @@ const resources = {
       msgWhatsappVersion: 'WhatsApp版本',
       msgInternalVersion: '内部报告',
       copySuccess:        '已复制',
+      aiWelcomePrompt:    '为您提供物流支持',
+      aiTypeMessage:      '输入消息…',
     },
   },
 
@@ -2180,6 +2190,8 @@ const resources = {
       msgWhatsappVersion: 'WhatsApp版',
       msgInternalVersion: '社内報告',
       copySuccess:        'コピーしました',
+      aiWelcomePrompt:    '物流業務をサポート',
+      aiTypeMessage:      'メッセージを入力…',
     },
   },
 }
