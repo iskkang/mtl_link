@@ -33,5 +33,5 @@ INSERT INTO public.profiles (
 ) VALUES (
   '00000000-0000-0000-0000-000000000001',
   'bot@mtl.internal', 'MTL 도우미',
-  true, 'active', 'ko', false
+  true, 'active', 'en', false
 ) ON CONFLICT (id) DO NOTHING;

@@ -31,7 +31,7 @@ begin
     coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
     nullif(new.raw_user_meta_data->>'department', ''),
     nullif(new.raw_user_meta_data->>'position',   ''),
-    coalesce(nullif(new.raw_user_meta_data->>'preferred_language', ''), 'ko'),
+    coalesce(nullif(new.raw_user_meta_data->>'preferred_language', ''), 'en'),
     v_admin_invite,
     case when v_admin_invite then 'active' else 'pending' end
   )

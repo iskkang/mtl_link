@@ -392,7 +392,7 @@ function AddUserModal({
   onClose:   () => void
 }) {
   const [form, setForm] = useState<CreateUserInput>({
-    email: '', name: '', department: '', position: '', preferred_language: 'ko',
+    email: '', name: '', department: '', position: '', preferred_language: '',
   })
   const [submitting, setSubmitting]  = useState(false)
   const [error,      setError]       = useState<string | null>(null)
@@ -402,6 +402,10 @@ function AddUserModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.email.trim() || !form.name.trim()) return
+    if (!form.preferred_language) {
+      setError('언어를 선택해 주세요.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -410,7 +414,7 @@ function AddUserModal({
         name:               form.name.trim(),
         department:         form.department?.trim()         || undefined,
         position:           form.position?.trim()           || undefined,
-        preferred_language: form.preferred_language?.trim() || 'ko',
+        preferred_language: form.preferred_language?.trim() || 'en',
       })
       setResult(res)
     } catch (err) {
@@ -560,12 +564,13 @@ function AddUserModal({
               </Field>
             </div>
 
-            <Field label="선호 언어 · 메시지를 받고 싶은 언어">
+            <Field label="선호 언어 · 메시지를 받고 싶은 언어 *">
               <select
                 value={form.preferred_language}
                 onChange={set('preferred_language')}
                 className={inputCls}
               >
+                <option value="">언어를 선택하세요</option>
                 {SUPPORTED_LANGS.map(l => (
                   <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
                 ))}
