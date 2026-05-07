@@ -58,19 +58,19 @@ export function MessageActionBar({
   const handleMicClick = async () => {
     if (isProcessing) return
     if (!canVoice) {
-      onError('번역 언어를 먼저 헤더에서 설정해 주세요')
+      onError(t('voiceNoTargetLang'))
       return
     }
     if (micState === 'denied') {
-      onError('마이크 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요.')
+      onError(t('voiceMicDenied'))
       return
     }
     if (micState !== 'granted') {
       const ok = await requestMic()
-      if (!ok) { onError('마이크 권한이 필요합니다.'); return }
+      if (!ok) { onError(t('voiceMicRequired')); return }
     }
     const ok = await start()
-    if (!ok) onError('녹음을 시작할 수 없습니다.')
+    if (!ok) onError(t('voiceRecordFailed'))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,7 +175,7 @@ export function MessageActionBar({
 
       {/* 마이크 */}
       <ActionBtn
-        label={canVoice ? '음성 번역 (클릭하여 녹음)' : '번역 언어를 먼저 설정해 주세요'}
+        label={canVoice ? t('voiceMicTitle') : t('voiceNoTargetLang')}
         disabled={isProcessing || disabled}
         onClick={handleMicClick}
       >
