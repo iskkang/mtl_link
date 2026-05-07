@@ -18,7 +18,7 @@ interface MessageStore {
 
 export const MSG_SELECT = `
   *,
-  sender:profiles!sender_id(id, name, avatar_url, is_bot),
+  sender:profiles!sender_id(id, name, avatar_url, avatar_color, is_bot),
   attachments:message_attachments(*),
   reply_message:reply_to_id(
     id,

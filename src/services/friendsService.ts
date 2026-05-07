@@ -4,6 +4,7 @@ export interface FriendProfile {
   id:                 string
   name:               string
   avatar_url:         string | null
+  avatar_color:       string | null
   department:         string | null
   position:           string | null
   email:              string
@@ -16,7 +17,7 @@ export async function fetchFriends(): Promise<FriendProfile[]> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, avatar_url, department, position, email, preferred_language')
+    .select('id, name, avatar_url, avatar_color, department, position, email, preferred_language')
     .eq('status', 'active')
     .neq('id', user.id)
     .order('name')

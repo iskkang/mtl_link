@@ -133,7 +133,7 @@ export function ActionItemCard({ item, onReload, view }: Props) {
         {/* assignee / creator avatar */}
         {view === 'created' && item.assignee && (
           <div className="flex items-center gap-1">
-            <Avatar name={item.assignee.name} avatarUrl={item.assignee.avatar_url} size="xs" />
+            <Avatar name={item.assignee.name} avatarUrl={item.assignee.avatar_url} avatarColor={item.assignee.avatar_color} size="xs" />
             <span className="text-[11px]" style={{ color: 'var(--ink-4)' }}>{item.assignee.name}</span>
           </div>
         )}
@@ -142,7 +142,7 @@ export function ActionItemCard({ item, onReload, view }: Props) {
             <span className="text-[11px]" style={{ color: 'var(--ink-4)' }}>
               {t('taskFrom')}
             </span>
-            <Avatar name={item.creator.name} avatarUrl={item.creator.avatar_url} size="xs" />
+            <Avatar name={item.creator.name} avatarUrl={item.creator.avatar_url} avatarColor={item.creator.avatar_color} size="xs" />
             <span className="text-[11px]" style={{ color: 'var(--ink-4)' }}>{item.creator.name}</span>
           </div>
         )}

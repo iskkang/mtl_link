@@ -3,6 +3,7 @@ import { Bot } from 'lucide-react'
 interface Props {
   name: string
   avatarUrl?: string | null
+  avatarColor?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   is_bot?: boolean
@@ -16,17 +17,16 @@ const SIZES = {
   xl: 'w-20 h-20 text-xl',
 }
 
-// Deterministic color from name
-const COLORS = [
-  'bg-sky-500',     'bg-blue-500',  'bg-indigo-500',
-  'bg-violet-500',  'bg-emerald-500', 'bg-teal-500',
-  'bg-amber-500',   'bg-orange-500',
+const FALLBACK_COLORS = [
+  '#0ea5e9', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#10b981', '#14b8a6',
+  '#f59e0b', '#f97316',
 ]
 
-function colorFor(name: string) {
+function colorFor(name: string): string {
   let h = 0
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return COLORS[h % COLORS.length]
+  return FALLBACK_COLORS[h % FALLBACK_COLORS.length]
 }
 
 function initials(name: string) {
@@ -35,9 +35,9 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export function Avatar({ name, avatarUrl, size = 'md', className = '', is_bot = false }: Props) {
+export function Avatar({ name, avatarUrl, avatarColor, size = 'md', className = '', is_bot = false }: Props) {
   const sizeClass = SIZES[size]
-  const colorClass = colorFor(name)
+  const bg = avatarColor ?? colorFor(name)
 
   if (is_bot) {
     return (
@@ -62,8 +62,9 @@ export function Avatar({ name, avatarUrl, size = 'md', className = '', is_bot = 
 
   return (
     <div
-      className={`${sizeClass} ${colorClass} rounded-full flex items-center justify-center
+      className={`${sizeClass} rounded-full flex items-center justify-center
                   font-semibold text-white flex-shrink-0 select-none ${className}`}
+      style={{ background: bg }}
     >
       {initials(name)}
     </div>

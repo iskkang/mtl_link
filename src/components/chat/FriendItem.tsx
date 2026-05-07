@@ -11,7 +11,7 @@ interface Props {
 export function FriendItem({ friend, isOnline, onViewProfile }: Props) {
   const leading = (
     <div className="relative">
-      <Avatar name={friend.name} avatarUrl={friend.avatar_url} size="sm" />
+      <Avatar name={friend.name} avatarUrl={friend.avatar_url} avatarColor={friend.avatar_color} size="sm" />
       <span
         className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
         style={{

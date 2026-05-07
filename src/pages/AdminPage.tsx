@@ -122,7 +122,7 @@ export default function AdminPage() {
           </button>
           {myProfile && (
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-[#374045]">
-              <Avatar name={myProfile.name} avatarUrl={myProfile.avatar_url} size="xs" />
+              <Avatar name={myProfile.name} avatarUrl={myProfile.avatar_url} avatarColor={myProfile.avatar_color} size="xs" />
               <span className="text-xs text-gray-600 dark:text-[#aebac1]">{myProfile.name}</span>
             </div>
           )}
@@ -283,7 +283,7 @@ function EmployeeRow({
       {/* 직원 */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <Avatar name={p.name} avatarUrl={p.avatar_url} size="sm" />
+          <Avatar name={p.name} avatarUrl={p.avatar_url} avatarColor={p.avatar_color} size="sm" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-[#e9edef] truncate flex items-center gap-1.5">
               {p.name}

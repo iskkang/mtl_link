@@ -54,7 +54,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
             {(room.name ?? '그룹').slice(0, 2)}
           </div>
         ) : (
-          <Avatar name={avatar.name} avatarUrl={avatar.avatarUrl} size="md" />
+          <Avatar name={avatar.name} avatarUrl={avatar.avatarUrl} avatarColor={avatar.avatarColor} size="md" />
         )}
       </div>
 

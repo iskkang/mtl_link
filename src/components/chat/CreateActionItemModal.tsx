@@ -130,7 +130,7 @@ export function CreateActionItemModal({
                     onChange={() => setAssigneeId(m.id)}
                     className="sr-only"
                   />
-                  <Avatar name={m.name} avatarUrl={m.avatar_url} size="xs" />
+                  <Avatar name={m.name} avatarUrl={m.avatar_url} avatarColor={m.avatar_color} size="xs" />
                   <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
                     {m.name}
                     {m.id === currentUserId && (

@@ -118,7 +118,7 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
                 }}
               >
                 <div className="relative flex-shrink-0">
-                  <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
+                  <Avatar name={profile.name} avatarUrl={profile.avatar_url} avatarColor={profile.avatar_color} size="sm" />
                   {isLoading && (
                     <div className="absolute inset-0 rounded-full bg-black/20 flex items-center justify-center">
                       <Loader2 size={14} className="animate-spin text-white" />

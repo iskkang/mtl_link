@@ -18,7 +18,7 @@ export interface ReplyRef {
 
 /** 메시지 + 발신자 프로필 + 첨부파일 (UI 렌더링용) */
 export interface MessageWithSender extends Message {
-  sender:        Pick<Profile, 'id' | 'name' | 'avatar_url' | 'is_bot'> | null
+  sender:        Pick<Profile, 'id' | 'name' | 'avatar_url' | 'avatar_color' | 'is_bot'> | null
   attachments:   Attachment[]
   reply_message: ReplyRef | null
   /** DB에서 join된 번역 캐시 (message_translations 테이블) */
@@ -35,7 +35,7 @@ export interface MessageWithSender extends Message {
 
 /** 방 목록 아이템 (사이드바용) */
 export interface RoomListItem extends Room {
-  members:      (Pick<Profile, 'id' | 'name' | 'avatar_url' | 'preferred_language' | 'is_bot'> & { last_read_at: string | null })[]
+  members:      (Pick<Profile, 'id' | 'name' | 'avatar_url' | 'avatar_color' | 'preferred_language' | 'is_bot'> & { last_read_at: string | null })[]
   unread_count: number
   is_pinned:    boolean
   is_muted:     boolean

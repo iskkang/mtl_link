@@ -260,7 +260,7 @@ function SelectedChips({
   onRemove:    (id: string) => void
   excludeId?:  string
 }) {
-  const [profiles, setProfiles] = useState<{ id: string; name: string; avatar_url: string | null }[]>([])
+  const [profiles, setProfiles] = useState<{ id: string; name: string; avatar_url: string | null; avatar_color: string | null }[]>([])
 
   useEffect(() => {
     fetchActiveProfiles(excludeId).then(ps =>
@@ -282,7 +282,7 @@ function SelectedChips({
             borderColor: 'rgba(51,144,236,0.25)',
           }}
         >
-          <Avatar name={p.name} avatarUrl={p.avatar_url} size="xs" />
+          <Avatar name={p.name} avatarUrl={p.avatar_url} avatarColor={p.avatar_color} size="xs" />
           {p.name}
           <button
             onClick={() => onRemove(p.id)}

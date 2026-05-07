@@ -130,7 +130,7 @@ export function MenuRail({
             aria-label="프로필 메뉴"
           >
             {profile
-              ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
+              ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} avatarColor={profile.avatar_color} size="sm" />
               : <div className="w-8 h-8 rounded-full" style={{ background: 'var(--side-row)' }} />
             }
           </button>

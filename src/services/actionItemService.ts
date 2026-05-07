@@ -2,14 +2,14 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type ActionItem = Database['public']['Tables']['action_items']['Row'] & {
-  creator?:  { id: string; name: string; avatar_url: string | null } | null
-  assignee?: { id: string; name: string; avatar_url: string | null } | null
+  creator?:  { id: string; name: string; avatar_url: string | null; avatar_color: string | null } | null
+  assignee?: { id: string; name: string; avatar_url: string | null; avatar_color: string | null } | null
 }
 
 const ACTION_ITEM_SELECT = `
   *,
-  creator:profiles!action_items_created_by_fkey(id, name, avatar_url),
-  assignee:profiles!action_items_assigned_to_fkey(id, name, avatar_url)
+  creator:profiles!action_items_created_by_fkey(id, name, avatar_url, avatar_color),
+  assignee:profiles!action_items_assigned_to_fkey(id, name, avatar_url, avatar_color)
 `
 
 export async function createActionItem(params: {

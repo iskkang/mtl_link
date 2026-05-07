@@ -65,7 +65,7 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
         className="flex items-center gap-3 px-4 py-3 border-b"
         style={{ borderColor: 'var(--line)', background: 'var(--bg)' }}
       >
-        <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="md" />
+        <Avatar name={profile.name} avatarUrl={profile.avatar_url} avatarColor={profile.avatar_color} size="md" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
             {profile.name}

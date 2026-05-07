@@ -7,7 +7,7 @@ import { getLangName } from '../../lib/langFlags'
 interface Props {
   hasRoom:       boolean
   displayName:   string | null
-  avatarInfo:    { name: string; avatarUrl: string | null } | null
+  avatarInfo:    { name: string; avatarUrl: string | null; avatarColor?: string | null } | null
   isGroup:       boolean
   isDirect:      boolean
   isOwner:       boolean
@@ -71,7 +71,7 @@ export function ChatHeader({
               </div>
             ) : (
               <div className="relative flex-shrink-0">
-                <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} size="sm" />
+                <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} avatarColor={avatarInfo.avatarColor} size="sm" />
                 <span
                   className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
                   style={{ background: 'var(--green)', borderColor: 'var(--card)' }}

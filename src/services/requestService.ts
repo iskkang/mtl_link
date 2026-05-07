@@ -9,9 +9,10 @@ export interface RequestItem {
   hours_since:     number
   translations:    { language: string; translated_text: string }[]
   sender: {
-    id:         string
-    name:       string
-    avatar_url: string | null
+    id:           string
+    name:         string
+    avatar_url:   string | null
+    avatar_color: string | null
   }
   room: {
     id:        string
@@ -26,7 +27,7 @@ const SELECT = `
   content,
   source_language,
   created_at,
-  sender:profiles!sender_id(id, name, avatar_url),
+  sender:profiles!sender_id(id, name, avatar_url, avatar_color),
   room:rooms(id, name, room_type),
   translations:message_translations(language, translated_text)
 ` as const

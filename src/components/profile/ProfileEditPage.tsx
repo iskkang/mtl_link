@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Camera } from 'lucide-react'
+import { ArrowLeft, Camera, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { Avatar } from '../ui/Avatar'
 import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../../lib/i18n'
+import { AVATAR_COLORS } from '../../constants/avatarColors'
 import { supabase } from '../../lib/supabase'
 
 interface Props {
@@ -16,18 +17,20 @@ export function ProfileEditPage({ open, onClose }: Props) {
   const { t, i18n } = useTranslation()
   const { profile, user, refreshProfile } = useAuth()
 
-  const [name,       setName]       = useState('')
-  const [department, setDepartment] = useState('')
-  const [lang,       setLang]       = useState<LangCode>('en')
-  const [saving,     setSaving]     = useState(false)
-  const [error,      setError]      = useState<string | null>(null)
-  const [toast,      setToast]      = useState<string | null>(null)
+  const [name,        setName]        = useState('')
+  const [department,  setDepartment]  = useState('')
+  const [lang,        setLang]        = useState<LangCode>('en')
+  const [avatarColor, setAvatarColor] = useState<string | null>(null)
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
+  const [toast,       setToast]       = useState<string | null>(null)
 
   useEffect(() => {
     if (profile && open) {
       setName(profile.name ?? '')
       setDepartment(profile.department ?? '')
       setLang((profile.preferred_language as LangCode) ?? 'en')
+      setAvatarColor(profile.avatar_color ?? null)
       setError(null)
     }
   }, [profile, open])
@@ -54,6 +57,7 @@ export function ProfileEditPage({ open, onClose }: Props) {
           name:               name.trim(),
           department:         department.trim() || null,
           preferred_language: lang,
+          avatar_color:       avatarColor,
         })
         .eq('id', user.id)
 
@@ -117,11 +121,11 @@ export function ProfileEditPage({ open, onClose }: Props) {
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
 
-        {/* Avatar */}
-        <div className="flex flex-col items-center gap-2 pt-8 pb-6">
+        {/* Avatar preview + color picker */}
+        <div className="flex flex-col items-center gap-4 pt-8 pb-6 px-4">
           <div className="relative">
             {profile
-              ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} size="xl" />
+              ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} avatarColor={avatarColor} size="xl" />
               : <div className="w-20 h-20 rounded-full" style={{ background: 'var(--line)' }} />
             }
             <button
@@ -134,6 +138,37 @@ export function ProfileEditPage({ open, onClose }: Props) {
             >
               <Camera size={13} />
             </button>
+          </div>
+
+          {/* Color palette */}
+          <div className="w-full max-w-xs">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wider mb-2 text-center"
+              style={{ color: 'var(--ink-4)' }}
+            >
+              {t('profileAvatarColor')}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {AVATAR_COLORS.map(color => {
+                const isSelected = (avatarColor ?? null) === color
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setAvatarColor(color)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center
+                               transition-transform hover:scale-110 focus:outline-none"
+                    style={{
+                      background:  color,
+                      boxShadow:   isSelected ? `0 0 0 3px var(--card), 0 0 0 5px ${color}` : 'none',
+                    }}
+                    aria-label={color}
+                  >
+                    {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 

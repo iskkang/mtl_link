@@ -27,6 +27,7 @@ export type Database = {
           department:           string | null
           position:             string | null
           avatar_url:           string | null
+          avatar_color:         string | null
           status:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin:             boolean
           is_bot:               boolean
@@ -42,6 +43,7 @@ export type Database = {
           department?:           string | null
           position?:             string | null
           avatar_url?:           string | null
+          avatar_color?:         string | null
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
           is_bot?:               boolean
@@ -57,6 +59,7 @@ export type Database = {
           department?:           string | null
           position?:             string | null
           avatar_url?:           string | null
+          avatar_color?:         string | null
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
           is_bot?:               boolean

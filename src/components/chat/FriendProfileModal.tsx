@@ -46,7 +46,7 @@ export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Pro
         {/* 아바타 (헤더와 겹침) */}
         <div className="flex justify-center -mt-8 mb-3 relative z-10">
           <div className="ring-4 ring-white dark:ring-surface-elevated rounded-full">
-            <Avatar name={friend.name} avatarUrl={friend.avatar_url} size="lg" />
+            <Avatar name={friend.name} avatarUrl={friend.avatar_url} avatarColor={friend.avatar_color} size="lg" />
           </div>
         </div>
 

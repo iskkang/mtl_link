@@ -2,9 +2,10 @@ import { useEffect, useRef } from 'react'
 import { Avatar } from '../ui/Avatar'
 
 interface MentionMember {
-  id:   string
-  name: string
-  avatar_url?: string | null
+  id:           string
+  name:         string
+  avatar_url?:  string | null
+  avatar_color?: string | null
 }
 
 interface Props {
@@ -56,7 +57,7 @@ export function MentionPopup({ query, members, selectedIndex, onSelect }: Props)
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = idx === selectedIndex ? 'var(--bg-hover)' : 'transparent')}
             >
-              <Avatar name={member.name} avatarUrl={member.avatar_url} size="xs" />
+              <Avatar name={member.name} avatarUrl={member.avatar_url} avatarColor={member.avatar_color} size="xs" />
               <span className="text-sm font-medium truncate">{member.name}</span>
               <span className="text-xs ml-auto flex-shrink-0" style={{ color: 'var(--brand)' }}>@</span>
             </button>

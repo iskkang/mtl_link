@@ -225,6 +225,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
             <Avatar
               name={message.sender.name}
               avatarUrl={message.sender.avatar_url}
+              avatarColor={message.sender.avatar_color}
               is_bot={message.sender?.is_bot ?? false}
               size="sm"
             />
