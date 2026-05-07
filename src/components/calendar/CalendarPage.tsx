@@ -70,7 +70,7 @@ export function CalendarPage({ onSectionChange }: Props) {
           <ChevronLeft size={18} />
         </button>
         <h1 className="text-sm font-bold" style={{ color: 'var(--ink-1)' }}>
-          {t('calendarTitle')}
+          {t('calendarSidebarTitle')}
         </h1>
       </div>
 
@@ -94,8 +94,16 @@ export function CalendarPage({ onSectionChange }: Props) {
         ))}
       </div>
 
-      {/* Body: calendar + sidebar */}
+      {/* Body: sidebar + calendar */}
       <div className="flex flex-1 min-h-0">
+
+        {/* Desktop: holiday sidebar (left) */}
+        <div
+          className="hidden md:flex flex-col w-56 flex-shrink-0 border-r overflow-y-auto"
+          style={{ borderColor: 'var(--line)', background: 'var(--card)' }}
+        >
+          <HolidaySidebar year={year} month={month} lang={i18n.language} t={t} />
+        </div>
 
         {/* Main calendar area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
@@ -125,14 +133,6 @@ export function CalendarPage({ onSectionChange }: Props) {
           <div className="md:hidden mt-6">
             <HolidaySidebar year={year} month={month} lang={i18n.language} t={t} />
           </div>
-        </div>
-
-        {/* Desktop: holiday sidebar */}
-        <div
-          className="hidden md:flex flex-col w-56 flex-shrink-0 border-l overflow-y-auto"
-          style={{ borderColor: 'var(--line)', background: 'var(--card)' }}
-        >
-          <HolidaySidebar year={year} month={month} lang={i18n.language} t={t} />
         </div>
       </div>
     </div>
