@@ -719,6 +719,33 @@ export type Database = {
         Relationships: []
       }
 
+      // ─── hs_code_reference ───────────────────────────────────────────────────
+      hs_code_reference: {
+        Row: {
+          id:          number
+          level:       number | null
+          code:        string
+          description: string
+          parent_code: string | null
+          created_at:  string
+        }
+        Insert: {
+          id?:         number
+          level?:      number | null
+          code:        string
+          description: string
+          parent_code?: string | null
+          created_at?: string
+        }
+        Update: {
+          level?:      number | null
+          code?:       string
+          description?: string
+          parent_code?: string | null
+        }
+        Relationships: []
+      }
+
       // ─── knowledge_base ──────────────────────────────────────────────────────
       knowledge_base: {
         Row: {

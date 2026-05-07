@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { ChevronLeft, Plus, Search, Loader2, X } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ChevronLeft, Plus, Search, Loader2, X, BookOpen, StickyNote } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -17,6 +17,14 @@ interface HsNote {
   approval_status:    'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
   created_at:         string
   created_by:         string
+}
+
+interface HsRef {
+  id:          number
+  level:       number
+  code:        string
+  description: string
+  parent_code: string | null
 }
 
 interface Props {
@@ -40,10 +48,13 @@ export function HsCodePage({ onBack }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
 
-  const [notes,    setNotes]    = useState<HsNote[]>([])
-  const [search,   setSearch]   = useState('')
-  const [loading,  setLoading]  = useState(true)
-  const [showForm, setShowForm] = useState(false)
+  const [notes,      setNotes]      = useState<HsNote[]>([])
+  const [refResults, setRefResults] = useState<HsRef[]>([])
+  const [search,     setSearch]     = useState('')
+  const [loading,    setLoading]    = useState(true)
+  const [refLoading, setRefLoading] = useState(false)
+  const [showForm,   setShowForm]   = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Form fields
   const [itemName,      setItemName]      = useState('')
@@ -56,7 +67,7 @@ export function HsCodePage({ onBack }: Props) {
   const [confidence,    setConfidence]    = useState<'High' | 'Medium' | 'Low'>('Medium')
   const [saving,        setSaving]        = useState(false)
 
-  const load = async () => {
+  const loadNotes = async () => {
     if (!user) return
     setLoading(true)
     const { data } = await supabase
@@ -68,9 +79,30 @@ export function HsCodePage({ onBack }: Props) {
     setLoading(false)
   }
 
-  useEffect(() => { void load() }, [user])
+  useEffect(() => { void loadNotes() }, [user])
 
-  const filtered = notes.filter(n =>
+  // Debounced reference search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!search.trim()) {
+      setRefResults([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setRefLoading(true)
+      const q = search.trim()
+      const { data } = await supabase
+        .from('hs_code_reference')
+        .select('id, level, code, description, parent_code')
+        .or(`code.ilike.%${q}%,description.ilike.%${q}%`)
+        .order('level')
+        .limit(20)
+      setRefResults((data as HsRef[]) ?? [])
+      setRefLoading(false)
+    }, 300)
+  }, [search])
+
+  const filteredNotes = notes.filter(n =>
     !search ||
     n.item_name.toLowerCase().includes(search.toLowerCase()) ||
     (n.hs_code_candidate ?? '').includes(search)
@@ -80,6 +112,12 @@ export function HsCodePage({ onBack }: Props) {
     setItemName(''); setItemDesc(''); setCountry(''); setHsCode('')
     setCustomsNotes(''); setRiskNotes(''); setSource(''); setConfidence('Medium')
     setShowForm(false)
+  }
+
+  const handleRefClick = (ref: HsRef) => {
+    setHsCode(ref.code)
+    setItemDesc(ref.description)
+    setShowForm(true)
   }
 
   const handleSave = async () => {
@@ -99,7 +137,7 @@ export function HsCodePage({ onBack }: Props) {
     })
     setSaving(false)
     resetForm()
-    void load()
+    void loadNotes()
   }
 
   const statusLabel = (s: string) => {
@@ -107,6 +145,11 @@ export function HsCodePage({ onBack }: Props) {
     if (s === 'pending_review') return t('statusPending')
     if (s === 'rejected')       return t('statusRejected')
     return t('statusDraft')
+  }
+
+  const levelBadge = (level: number) => {
+    const colors: Record<number, string> = { 2: '#6366F1', 4: '#0EA5E9', 6: '#10B981' }
+    return colors[level] ?? '#9CA3AF'
   }
 
   return (
@@ -150,11 +193,9 @@ export function HsCodePage({ onBack }: Props) {
 
           {/* Search */}
           <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--ink-4)' }}
-            />
+            {refLoading
+              ? <Loader2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 animate-spin" style={{ color: 'var(--ink-4)' }} />
+              : <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ink-4)' }} />}
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -275,69 +316,126 @@ export function HsCodePage({ onBack }: Props) {
             </div>
           )}
 
-          {/* List */}
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ink-4)' }} />
+          {/* ── 표준 HS 코드 검색 결과 ── */}
+          {search.trim() && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <BookOpen size={12} style={{ color: 'var(--ink-4)' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-4)' }}>
+                  표준 HS 코드
+                </span>
+              </div>
+              {refLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 size={16} className="animate-spin" style={{ color: 'var(--ink-4)' }} />
+                </div>
+              ) : refResults.length === 0 ? (
+                <p className="text-xs text-center py-3" style={{ color: 'var(--ink-4)' }}>결과 없음</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {refResults.map(ref => (
+                    <button
+                      key={ref.id}
+                      type="button"
+                      onClick={() => handleRefClick(ref)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left border transition-all"
+                      style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.background = 'var(--blue-soft)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'var(--card)' }}
+                    >
+                      <span
+                        className="text-xs font-bold font-mono flex-shrink-0 w-14 text-center py-0.5 rounded"
+                        style={{ background: levelBadge(ref.level) + '20', color: levelBadge(ref.level) }}
+                      >
+                        {ref.code}
+                      </span>
+                      <span className="text-xs flex-1 leading-snug" style={{ color: 'var(--ink)' }}>
+                        {ref.description}
+                      </span>
+                      <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--ink-4)' }}>
+                        Lv.{ref.level}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <p className="text-sm" style={{ color: 'var(--ink-4)' }}>
-                {t('hsCodeEmpty')}
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {filtered.map(note => (
-                <div
-                  key={note.id}
-                  className="rounded-2xl border p-4"
-                  style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <span className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-                      {note.item_name}
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {note.confidence_label && (
+          )}
+
+          {/* ── 내부 메모 ── */}
+          <div>
+            {search.trim() && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <StickyNote size={12} style={{ color: 'var(--ink-4)' }} />
+                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-4)' }}>
+                  내부 메모
+                </span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ink-4)' }} />
+              </div>
+            ) : filteredNotes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <p className="text-sm" style={{ color: 'var(--ink-4)' }}>
+                  {search ? '검색 결과 없음' : t('hsCodeEmpty')}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filteredNotes.map(note => (
+                  <div
+                    key={note.id}
+                    className="rounded-2xl border p-4"
+                    style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <span className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+                        {note.item_name}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {note.confidence_label && (
+                          <span
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: confidenceColor(note.confidence_label) + '20',
+                              color:      confidenceColor(note.confidence_label),
+                            }}
+                          >
+                            {note.confidence_label}
+                          </span>
+                        )}
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                           style={{
-                            background: confidenceColor(note.confidence_label) + '20',
-                            color:      confidenceColor(note.confidence_label),
+                            background: statusColor(note.approval_status) + '20',
+                            color:      statusColor(note.approval_status),
                           }}
                         >
-                          {note.confidence_label}
+                          {statusLabel(note.approval_status)}
                         </span>
-                      )}
-                      <span
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{
-                          background: statusColor(note.approval_status) + '20',
-                          color:      statusColor(note.approval_status),
-                        }}
-                      >
-                        {statusLabel(note.approval_status)}
-                      </span>
+                      </div>
                     </div>
+                    <p className="text-xs mb-1" style={{ color: 'var(--ink-3)' }}>
+                      {note.country}
+                    </p>
+                    {note.hs_code_candidate && (
+                      <p className="text-xs font-mono mb-1" style={{ color: 'var(--brand)' }}>
+                        HS: {note.hs_code_candidate}
+                      </p>
+                    )}
+                    {note.customs_notes && (
+                      <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--ink-3)' }}>
+                        {note.customs_notes}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xs mb-1" style={{ color: 'var(--ink-3)' }}>
-                    {note.country}
-                  </p>
-                  {note.hs_code_candidate && (
-                    <p className="text-xs font-mono mb-1" style={{ color: 'var(--brand)' }}>
-                      HS: {note.hs_code_candidate}
-                    </p>
-                  )}
-                  {note.customs_notes && (
-                    <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--ink-3)' }}>
-                      {note.customs_notes}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
