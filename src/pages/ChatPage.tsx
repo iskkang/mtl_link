@@ -58,11 +58,7 @@ export default function ChatPage() {
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
-  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => {
-    console.log('[AI Navigate] view:', view, 'activeSection:', activeSection, 'before activeAiView:', activeAiView)
-    setActiveAiView(view)
-    console.log('[AI Navigate] setActiveAiView called')
-  }
+  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => setActiveAiView(view)
   const handleAiBack     = () => setActiveAiView('chat')
 
   const handleAiSessionDelete      = () => { setActiveSessionId(null); setAiSidebarVersion(v => v + 1) }
