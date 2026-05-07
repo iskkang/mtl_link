@@ -59,43 +59,81 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+/* === 백업: v2.10 Phase A 시점의 push 핸들러 (롤백 대비) ===
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push received');
-
   let data = { title: 'MTL Link', body: '새 메시지가 도착했습니다', roomId: null, url: '/' };
   if (event.data) {
-    try {
-      data = { ...data, ...event.data.json() };
-    } catch (e) {
-      console.error('[SW] Push data parse error:', e);
-    }
+    try { data = { ...data, ...event.data.json() }; } catch (e) { console.error('[SW] Push data parse error:', e); }
   }
-
   event.waitUntil((async () => {
-    // 포커스된 탭이 있으면(사용자가 앱을 적극적으로 보는 중) OS 알림 스킵.
-    // in-app Realtime이 이미 메시지를 표시하므로 이중 알림 방지.
     const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const hasFocusedClient = allClients.some(c => c.focused === true);
-
-    if (hasFocusedClient) {
-      console.log('[SW] App is focused — skipping OS notification');
-      return;
-    }
-
+    if (hasFocusedClient) { return; }
     return self.registration.showNotification(data.title, {
-      body:               data.body,
-      icon:               '/icons/icon-192x192.png',
-      badge:              '/icons/icon-96x96.png',
-      tag:                data.roomId || 'default',
-      renotify:           true,
-      requireInteraction: false,
-      data: {
-        roomId: data.roomId,
-        url:    data.url || '/',
-      },
+      body: data.body, icon: '/icons/icon-192x192.png', badge: '/icons/icon-96x96.png',
+      tag: data.roomId || 'default', renotify: true, requireInteraction: false,
+      data: { roomId: data.roomId, url: data.url || '/' },
     });
   })());
 });
+=== 백업 끝 === */
+
+self.addEventListener('push', (event) => {
+  event.waitUntil(handlePush(event));
+});
+
+async function handlePush(event) {
+  // 1. payload 파싱 — 실패해도 기본값으로 알림 표시
+  let data = {
+    title:  'MTL Link',
+    body:   '새 메시지가 도착했어요',
+    roomId: undefined,
+    url:    '/',
+  };
+
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (err) {
+    console.warn('[SW push] payload 파싱 실패, 기본값 사용:', err);
+  }
+
+  // 2. 포커스된 클라이언트 체크 — 실패하면 알림 표시 (안전 fallback)
+  let hasFocusedClient = false;
+  try {
+    const allClients = await self.clients.matchAll({
+      type:               'window',
+      includeUncontrolled: true,
+    });
+    hasFocusedClient = allClients.some(c =>
+      c.focused === true && c.visibilityState === 'visible'
+    );
+  } catch (err) {
+    console.warn('[SW push] clients 조회 실패, 알림 표시로 진행:', err);
+    hasFocusedClient = false;
+  }
+
+  if (hasFocusedClient) {
+    // 사용자가 앱을 직접 보고 있음 → OS 알림 스킵
+    return;
+  }
+
+  // 3. 알림 표시
+  return self.registration.showNotification(data.title, {
+    body:               data.body,
+    icon:               '/icons/icon-192x192.png',
+    badge:              '/icons/icon-96x96.png',
+    tag:                data.roomId || 'default',
+    renotify:           true,
+    requireInteraction: false,
+    data: {
+      url:    data.url || '/',
+      roomId: data.roomId,
+    },
+  });
+}
 
 self.addEventListener('notificationclick', (event) => {
   console.log('[SW] Notification clicked');
