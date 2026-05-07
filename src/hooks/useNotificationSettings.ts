@@ -3,17 +3,21 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
 export interface NotificationSettings {
+  push_enabled: boolean
   dnd_enabled:  boolean
   dnd_start:    string   // "HH:MM"
   dnd_end:      string   // "HH:MM"
+  timezone:     string
   keywords:     string[]
 }
 
 const DEFAULTS: NotificationSettings = {
-  dnd_enabled: false,
-  dnd_start:   '22:00',
-  dnd_end:     '07:00',
-  keywords:    [],
+  push_enabled: true,
+  dnd_enabled:  false,
+  dnd_start:    '22:00',
+  dnd_end:      '08:00',
+  timezone:     'Asia/Seoul',
+  keywords:     [],
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,43 +31,59 @@ export function useNotificationSettings() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
+    let alive = true
     db
       .from('user_notification_settings')
-      .select('dnd_enabled, dnd_start, dnd_end, keywords')
+      .select('push_enabled, dnd_enabled, dnd_start, dnd_end, timezone, keywords')
       .eq('user_id', user.id)
       .maybeSingle()
-      .then(({ data }: { data: NotificationSettings | null }) => {
-        if (data) {
+      .then(({ data }: { data: Partial<NotificationSettings> | null }) => {
+        if (alive && data) {
           setSettings({
-            dnd_enabled: data.dnd_enabled ?? false,
-            dnd_start:   data.dnd_start   ?? DEFAULTS.dnd_start,
-            dnd_end:     data.dnd_end     ?? DEFAULTS.dnd_end,
-            keywords:    data.keywords    ?? [],
+            push_enabled: data.push_enabled ?? DEFAULTS.push_enabled,
+            dnd_enabled:  data.dnd_enabled  ?? DEFAULTS.dnd_enabled,
+            dnd_start:    (data.dnd_start   ?? DEFAULTS.dnd_start).slice(0, 5),
+            dnd_end:      (data.dnd_end     ?? DEFAULTS.dnd_end).slice(0, 5),
+            timezone:     data.timezone     ?? DEFAULTS.timezone,
+            keywords:     data.keywords     ?? [],
           })
         }
-        setLoading(false)
+        if (alive) setLoading(false)
       })
+    return () => { alive = false }
   }, [user])
 
-  const save = useCallback(async (next: NotificationSettings): Promise<void> => {
-    if (!user) throw new Error('unauthenticated')
+  // Patch-save: 부분 업데이트 + 즉시 낙관적 반영
+  const save = useCallback(async (patch: Partial<NotificationSettings>): Promise<boolean> => {
+    if (!user) return false
+    const next = { ...settings, ...patch }
+    setSettings(next)   // 낙관적 업데이트
     setSaving(true)
     try {
       const { error } = await db
         .from('user_notification_settings')
         .upsert({
-          user_id:     user.id,
-          dnd_enabled: next.dnd_enabled,
-          dnd_start:   next.dnd_start,
-          dnd_end:     next.dnd_end,
-          keywords:    next.keywords,
+          user_id:      user.id,
+          push_enabled: next.push_enabled,
+          dnd_enabled:  next.dnd_enabled,
+          dnd_start:    next.dnd_start,
+          dnd_end:      next.dnd_end,
+          timezone:     next.timezone,
+          keywords:     next.keywords,
+          updated_at:   new Date().toISOString(),
         }, { onConflict: 'user_id' })
       if (error) throw error
-      setSettings(next)
+      return true
+    } catch (err) {
+      console.error('[useNotificationSettings] save failed:', err)
+      setSettings(settings)   // 롤백
+      return false
     } finally {
       setSaving(false)
     }
-  }, [user])
+  // settings를 deps에서 제외: 호출 시점의 최신 settings는 next 계산 시 이미 캡처됨
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, settings])
 
   return { settings, loading, saving, save }
 }

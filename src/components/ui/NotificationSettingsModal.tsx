@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNotificationSettings } from '../../hooks/useNotificationSettings'
-import type { NotificationSettings } from '../../hooks/useNotificationSettings'
 
-const MAX_KEYWORDS = 10
+const MAX_KEYWORDS = 20
 
 interface Props {
   onClose: () => void
@@ -15,18 +14,12 @@ export function NotificationSettingsModal({ onClose }: Props) {
   const { t } = useTranslation()
   const { settings, loading, saving, save } = useNotificationSettings()
 
-  const [draft, setDraft]         = useState<NotificationSettings | null>(null)
-  const [kwInput, setKwInput]     = useState('')
-  const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null)
-  const toastRef                  = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const inputRef                  = useRef<HTMLInputElement>(null)
-  const onCloseRef                = useRef(onClose)
+  const [kwInput, setKwInput]   = useState('')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const errorTimer              = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inputRef                = useRef<HTMLInputElement>(null)
+  const onCloseRef              = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
-
-  // Initialise draft once settings load
-  useEffect(() => {
-    if (!loading && draft === null) setDraft(settings)
-  }, [loading, settings, draft])
 
   // PWA back-button
   useEffect(() => {
@@ -43,42 +36,38 @@ export function NotificationSettingsModal({ onClose }: Props) {
     return () => document.removeEventListener('keydown', handler)
   }, [])
 
-  function showToast(msg: string, ok: boolean) {
-    if (toastRef.current) clearTimeout(toastRef.current)
-    setToast({ msg, ok })
-    toastRef.current = setTimeout(() => setToast(null), 2500)
+  function showError(msg: string) {
+    if (errorTimer.current) clearTimeout(errorTimer.current)
+    setErrorMsg(msg)
+    errorTimer.current = setTimeout(() => setErrorMsg(null), 2500)
   }
 
-  async function handleSave() {
-    if (!draft) return
-    try {
-      await save(draft)
-      showToast(t('notifSaved'), true)
-    } catch {
-      showToast(t('notifSaveFailed'), false)
-    }
-  }
+  function addKeywords() {
+    const input = kwInput.trim()
+    if (!input) return
 
-  function addKeyword() {
-    const kw = kwInput.trim()
-    if (!kw || !draft) return
-    if (draft.keywords.length >= MAX_KEYWORDS) {
-      showToast(t('notifKeywordsLimit'), false)
+    // 쉼표 구분 입력 지원
+    const incoming = input
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+
+    const merged = Array.from(new Set([...settings.keywords, ...incoming]))
+    if (merged.length > MAX_KEYWORDS) {
+      showError(t('notifKeywordsLimit'))
       return
     }
-    if (!draft.keywords.includes(kw)) {
-      setDraft({ ...draft, keywords: [...draft.keywords, kw] })
-    }
+
+    save({ keywords: merged })
     setKwInput('')
     inputRef.current?.focus()
   }
 
   function removeKeyword(kw: string) {
-    if (!draft) return
-    setDraft({ ...draft, keywords: draft.keywords.filter(k => k !== kw) })
+    save({ keywords: settings.keywords.filter(k => k !== kw) })
   }
 
-  if (loading || !draft) return null
+  if (loading) return null
 
   return createPortal(
     <>
@@ -94,9 +83,9 @@ export function NotificationSettingsModal({ onClose }: Props) {
                    md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:top-1/2 md:-translate-y-1/2
                    md:w-[440px] md:bottom-auto"
         style={{
-          background:  'var(--card)',
-          boxShadow:   'var(--shadow-lg)',
-          maxHeight:   '85dvh',
+          background: 'var(--card)',
+          boxShadow:  'var(--shadow-lg)',
+          maxHeight:  '85dvh',
         }}
       >
         {/* Header */}
@@ -125,27 +114,32 @@ export function NotificationSettingsModal({ onClose }: Props) {
           {/* DND section */}
           <section>
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>{t('notifDnd')}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--ink-3)' }}>{t('notifDndDesc')}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
+                  {t('notifDnd')}
+                </p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--ink-3)' }}>
+                  {t('notifDndDesc')}
+                </p>
               </div>
-              {/* Toggle */}
+              {/* Toggle — auto-saves on click */}
               <button
                 type="button"
                 role="switch"
-                aria-checked={draft.dnd_enabled}
-                onClick={() => setDraft({ ...draft, dnd_enabled: !draft.dnd_enabled })}
+                aria-checked={settings.dnd_enabled}
+                onClick={() => save({ dnd_enabled: !settings.dnd_enabled })}
+                disabled={saving}
                 className="flex-shrink-0 w-10 h-6 rounded-full transition-colors relative mt-0.5"
-                style={{ background: draft.dnd_enabled ? 'var(--brand)' : 'var(--line)' }}
+                style={{ background: settings.dnd_enabled ? 'var(--brand)' : 'var(--line)' }}
               >
                 <span
                   className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
-                  style={{ transform: draft.dnd_enabled ? 'translateX(16px)' : 'translateX(0)' }}
+                  style={{ transform: settings.dnd_enabled ? 'translateX(16px)' : 'translateX(0)' }}
                 />
               </button>
             </div>
 
-            {draft.dnd_enabled && (
+            {settings.dnd_enabled && (
               <div className="mt-3 flex items-center gap-3">
                 <div className="flex-1">
                   <label className="block text-xs mb-1" style={{ color: 'var(--ink-3)' }}>
@@ -153,13 +147,13 @@ export function NotificationSettingsModal({ onClose }: Props) {
                   </label>
                   <input
                     type="time"
-                    value={draft.dnd_start}
-                    onChange={e => setDraft({ ...draft, dnd_start: e.target.value })}
+                    value={settings.dnd_start}
+                    onChange={e => save({ dnd_start: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg border text-sm"
                     style={{
-                      background:   'var(--bg)',
-                      borderColor:  'var(--line)',
-                      color:        'var(--ink)',
+                      background:  'var(--bg)',
+                      borderColor: 'var(--line)',
+                      color:       'var(--ink)',
                     }}
                   />
                 </div>
@@ -170,13 +164,13 @@ export function NotificationSettingsModal({ onClose }: Props) {
                   </label>
                   <input
                     type="time"
-                    value={draft.dnd_end}
-                    onChange={e => setDraft({ ...draft, dnd_end: e.target.value })}
+                    value={settings.dnd_end}
+                    onChange={e => save({ dnd_end: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg border text-sm"
                     style={{
-                      background:   'var(--bg)',
-                      borderColor:  'var(--line)',
-                      color:        'var(--ink)',
+                      background:  'var(--bg)',
+                      borderColor: 'var(--line)',
+                      color:       'var(--ink)',
                     }}
                   />
                 </div>
@@ -188,8 +182,17 @@ export function NotificationSettingsModal({ onClose }: Props) {
 
           {/* Keywords section */}
           <section>
-            <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>{t('notifKeywords')}</p>
-            <p className="text-xs mt-0.5 mb-3" style={{ color: 'var(--ink-3)' }}>{t('notifKeywordsDesc')}</p>
+            <div className="flex items-baseline justify-between mb-1">
+              <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
+                {t('notifKeywords')}
+              </p>
+              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+                {settings.keywords.length} / {MAX_KEYWORDS}
+              </span>
+            </div>
+            <p className="text-xs mb-3 leading-relaxed" style={{ color: 'var(--ink-3)' }}>
+              {t('notifKeywordsDesc')}
+            </p>
 
             {/* Input row */}
             <div className="flex gap-2">
@@ -198,9 +201,10 @@ export function NotificationSettingsModal({ onClose }: Props) {
                 type="text"
                 value={kwInput}
                 onChange={e => setKwInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addKeyword() } }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addKeywords() } }}
                 placeholder={t('notifKeywordsPlaceholder')}
-                maxLength={30}
+                maxLength={100}
+                disabled={settings.keywords.length >= MAX_KEYWORDS}
                 className="flex-1 px-3 py-2 rounded-lg border text-sm"
                 style={{
                   background:  'var(--bg)',
@@ -210,75 +214,60 @@ export function NotificationSettingsModal({ onClose }: Props) {
               />
               <button
                 type="button"
-                onClick={addKeyword}
-                disabled={!kwInput.trim() || draft.keywords.length >= MAX_KEYWORDS}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                onClick={addKeywords}
+                disabled={saving || !kwInput.trim() || settings.keywords.length >= MAX_KEYWORDS}
+                className="px-3 py-2 rounded-lg text-sm font-medium transition-colors
                            disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--brand)', color: '#fff' }}
               >
-                <Plus size={14} />
                 {t('notifKeywordsAdd')}
               </button>
             </div>
 
+            {/* Error message */}
+            {errorMsg && (
+              <p className="mt-1.5 text-xs" style={{ color: 'var(--red)' }}>
+                {errorMsg}
+              </p>
+            )}
+
             {/* Chips */}
-            {draft.keywords.length > 0 && (
+            {settings.keywords.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {draft.keywords.map(kw => (
+                {settings.keywords.map(kw => (
                   <span
                     key={kw}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                    className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium"
                     style={{ background: 'var(--blue-soft)', color: 'var(--ink)' }}
                   >
-                    {kw}
+                    <span>{kw}</span>
                     <button
                       type="button"
                       onClick={() => removeKeyword(kw)}
-                      className="flex items-center"
+                      disabled={saving}
+                      aria-label={t('notifKeywordsRemove')}
+                      className="flex items-center p-0.5 rounded-full transition-colors
+                                 disabled:opacity-40"
                       style={{ color: 'var(--ink-3)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.1)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <Trash2 size={11} />
+                      <X size={11} />
                     </button>
                   </span>
                 ))}
               </div>
             )}
-
-            {draft.keywords.length >= MAX_KEYWORDS && (
-              <p className="text-xs mt-2" style={{ color: 'var(--ink-3)' }}>
-                {t('notifKeywordsLimit')}
-              </p>
-            )}
           </section>
         </div>
 
-        {/* Footer */}
-        <div
-          className="flex-shrink-0 px-4 py-3 border-t"
-          style={{ borderColor: 'var(--line)', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-        >
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-60"
-            style={{ background: 'var(--brand)', color: '#fff' }}
-          >
-            {saving ? '…' : t('msgEditSave')}
-          </button>
-        </div>
-
-        {/* In-modal toast */}
-        {toast && (
+        {/* Saving indicator */}
+        {saving && (
           <div
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap"
-            style={{
-              background: toast.ok ? '#22c55e' : 'var(--red)',
-              color:      '#fff',
-              boxShadow:  'var(--shadow-lg)',
-            }}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-xs"
+            style={{ background: 'var(--card)', boxShadow: 'var(--shadow-lg)', color: 'var(--ink-3)' }}
           >
-            {toast.msg}
+            {t('notifSaved')}…
           </div>
         )}
       </div>
