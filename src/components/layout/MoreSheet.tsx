@@ -27,7 +27,7 @@ const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] =
   { id: 'calendar',      Icon: Calendar,   labelKey: 'menuRailCalendar'      },
   { id: 'files',         Icon: FolderOpen, labelKey: 'menuRailFiles'         },
   { id: 'channels',      Icon: Hash,       labelKey: 'menuRailChannels'      },
-  { id: 'bots',          Icon: Bot,        labelKey: 'menuRailBots'          },
+  { id: 'ai',            Icon: Bot,        labelKey: 'menuRailBots'          },
 ]
 
 export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onToggleNotif, onEditProfile }: Props) {
