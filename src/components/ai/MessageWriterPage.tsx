@@ -22,13 +22,6 @@ const LANG_TO_NAME: Record<string, string> = {
   ko: 'Korean', en: 'English', ru: 'Russian', uz: 'Uzbek', zh: 'Chinese', ja: 'Japanese',
 }
 
-const TONE_LABELS: Record<Tone, string> = {
-  formal:   'Formal',
-  friendly: 'Friendly',
-  firm:     'Firm',
-  whatsapp: 'WhatsApp',
-  internal: 'Internal',
-}
 
 function parseMessages(text: string): ParsedMessages {
   const email    = /\[이메일 버전\]([\s\S]*?)(?=\[WhatsApp 버전\]|\[내부 보고|$)/i.exec(text)?.[1]?.trim() ?? ''
@@ -200,7 +193,7 @@ export function MessageWriterPage({ onBack }: Props) {
                     borderColor: tone === tn ? 'var(--brand)' : 'var(--line)',
                   }}
                 >
-                  {TONE_LABELS[tn]}
+                  {t(`msgTone_${tn}`)}
                 </button>
               ))}
             </div>
@@ -216,7 +209,7 @@ export function MessageWriterPage({ onBack }: Props) {
               onChange={e => setKeyPoints(e.target.value)}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none border resize-none"
               style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-              placeholder="예: 보상 없음, 다음 출항은 5/20"
+              placeholder={t('msgKeyPointsPlaceholder')}
               rows={2}
             />
           </div>
