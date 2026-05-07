@@ -66,10 +66,13 @@ function PendingItem({ file, onRemove }: { file: File; onRemove: () => void }) {
 
       {/* 파일명 툴팁 (이미지는 hover 시) */}
       {isImage && (
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2
-                        opacity-0 group-hover:opacity-100 transition-opacity
-                        bg-gray-800 text-white text-[9px] px-1.5 py-0.5
-                        rounded whitespace-nowrap max-w-[80px] truncate pointer-events-none z-10">
+        <div
+          className="absolute -bottom-6 left-1/2 -translate-x-1/2
+                     opacity-0 group-hover:opacity-100 transition-opacity
+                     text-[9px] px-1.5 py-0.5
+                     rounded whitespace-nowrap max-w-[80px] truncate pointer-events-none z-10"
+          style={{ background: 'var(--ink)', color: 'var(--bg)' }}
+        >
           {file.name}
         </div>
       )}

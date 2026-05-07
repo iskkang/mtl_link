@@ -116,8 +116,8 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
             {msg.message_type === 'system' ? (
               <div className="flex justify-center my-2 px-3">
                 <span
-                  className="text-[11px] px-3 py-0.5"
-                  style={{ color: 'var(--ink-4)' }}
+                  className="text-[11px] px-3 py-0.5 rounded-full"
+                  style={{ color: 'var(--ink-4)', background: 'var(--card)' }}
                 >
                   {msg.content}
                 </span>

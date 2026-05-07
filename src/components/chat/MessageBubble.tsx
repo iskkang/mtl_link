@@ -507,7 +507,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
               </span>
             )}
             {isSending && (
-              <Clock size={11} className="text-gray-300 dark:text-[#556e78]" />
+              <Clock size={11} className="flex-shrink-0" style={{ color: 'var(--ink-4)' }} />
             )}
 
             {/* 읽음 표시 (본인 메시지, 전송 완료 후) */}
@@ -558,7 +558,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onO
 
             <time
               title={formatFullDateTime(message.created_at)}
-              className="text-[10px]" style={{ color: 'var(--ink-4)' }}
+              className="text-[10px] flex-shrink-0" style={{ color: 'var(--ink-4)' }}
             >
               {formatMessageTime(message.created_at)}
             </time>
