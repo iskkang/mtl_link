@@ -10,6 +10,7 @@ export interface MessageActions {
   onDelete?:        () => void
   onReact?:         (emoji: string) => void
   onReply?:         () => void
+  onForward?:       () => void
 }
 
 /** Shared context for conditional action visibility */

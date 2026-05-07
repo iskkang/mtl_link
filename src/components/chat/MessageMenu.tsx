@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft } from 'lucide-react'
+import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 import { QuickEmojiPicker } from './QuickEmojiPicker'
@@ -18,7 +18,7 @@ export function MessageMenu({
   isOwn, canEdit, needsResponse, responseReceived,
   onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
-  onEdit, onDelete, onReact, onReply,
+  onEdit, onDelete, onReact, onReply, onForward,
 }: Props) {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
@@ -81,6 +81,9 @@ export function MessageMenu({
         <MenuItem icon={CornerUpLeft} label={t('msgReply')} onClick={act(onReply)} />
       )}
       <MenuItem icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />
+      {onForward && (
+        <MenuItem icon={Share2} label={t('msgForward')} onClick={act(onForward)} />
+      )}
       <MenuItem icon={CheckSquare} label={t('msgCreateTask')} onClick={act(onCreateTask)} />
       {onOpenThread && (
         <MenuItem icon={MessageSquare} label={t('threadOpenThread')} onClick={act(onOpenThread)} />
