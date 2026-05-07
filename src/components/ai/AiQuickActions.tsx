@@ -79,19 +79,10 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
             type="button"
             onClick={() => navigate ? onNavigate?.(navigate) : onSelect(prompt)}
             className="flex flex-col items-start gap-1.5 p-3.5 rounded-2xl text-left
-                       transition-all duration-100 border"
-            style={{
-              background:  'var(--card)',
-              borderColor: 'var(--line)',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--brand)'
-              e.currentTarget.style.background  = 'var(--blue-soft)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--line)'
-              e.currentTarget.style.background  = 'var(--card)'
-            }}
+                       transition-all duration-100 border
+                       bg-[var(--card)] border-[var(--line)]
+                       hover:border-[var(--brand)] hover:bg-[var(--blue-soft)]
+                       active:border-[var(--brand)] active:bg-[var(--blue-soft)]"
           >
             <span className="text-xl leading-none">{icon}</span>
             <span className="text-[13px] font-semibold leading-snug" style={{ color: 'var(--ink)' }}>

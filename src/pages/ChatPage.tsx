@@ -1,28 +1,29 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
 import { Dashboard }          from './Dashboard'
 import { CalendarPage }       from '../components/calendar/CalendarPage'
-import { QuotationPage }       from '../components/ai/QuotationPage'
-import { MessageWriterPage }   from '../components/ai/MessageWriterPage'
-import { TransportPage }       from '../components/ai/TransportPage'
-import { CustomsPage }         from '../components/ai/CustomsPage'
-import { HsCodePage }          from '../components/ai/HsCodePage'
-import { KnowledgePage }       from '../components/ai/KnowledgePage'
-import { AdminApprovalPage }   from '../components/ai/AdminApprovalPage'
-import { TrackingPage }        from '../components/ai/TrackingPage'
-import { AiChatWindow }       from '../components/ai/AiChatWindow'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
-import { BOT_USER_ID } from '../constants/bot'
-import { aiEvents } from '../lib/aiEvents'
+import { BOT_USER_ID }        from '../constants/bot'
+import { aiEvents }           from '../lib/aiEvents'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
 import { useRequestStore }    from '../stores/requestStore'
 import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
-import { usePollingRefresh } from '../hooks/usePollingRefresh'
+import { usePollingRefresh }  from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
+
+const QuotationPage     = lazy(() => import('../components/ai/QuotationPage').then(m => ({ default: m.QuotationPage })))
+const MessageWriterPage = lazy(() => import('../components/ai/MessageWriterPage').then(m => ({ default: m.MessageWriterPage })))
+const TransportPage     = lazy(() => import('../components/ai/TransportPage').then(m => ({ default: m.TransportPage })))
+const CustomsPage       = lazy(() => import('../components/ai/CustomsPage').then(m => ({ default: m.CustomsPage })))
+const HsCodePage        = lazy(() => import('../components/ai/HsCodePage').then(m => ({ default: m.HsCodePage })))
+const KnowledgePage     = lazy(() => import('../components/ai/KnowledgePage').then(m => ({ default: m.KnowledgePage })))
+const AdminApprovalPage = lazy(() => import('../components/ai/AdminApprovalPage').then(m => ({ default: m.AdminApprovalPage })))
+const TrackingPage      = lazy(() => import('../components/ai/TrackingPage').then(m => ({ default: m.TrackingPage })))
+const AiChatWindow      = lazy(() => import('../components/ai/AiChatWindow').then(m => ({ default: m.AiChatWindow })))
 
 type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking'
 
@@ -222,51 +223,60 @@ export default function ChatPage() {
         onSelectSession={setActiveSessionId}
         aiSidebarVersion={aiSidebarVersion}
       >
-        {activeSection === 'calendar' ? (
-          <CalendarPage
-            currentYear={calYear}
-            currentMonth={calMonth}
-            onPrevMonth={handleCalPrevMonth}
-            onNextMonth={handleCalNextMonth}
-            onSectionChange={handleSectionChange}
-          />
-        ) : activeSection === 'ai' && activeAiView === 'quotation' ? (
-          <QuotationPage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'message' ? (
-          <MessageWriterPage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'transport' ? (
-          <TransportPage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'customs' ? (
-          <CustomsPage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'hscode' ? (
-          <HsCodePage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'knowledge' ? (
-          <KnowledgePage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'approval' ? (
-          <AdminApprovalPage onBack={handleAiBack} />
-        ) : activeSection === 'ai' && activeAiView === 'tracking' ? (
-          <TrackingPage onBack={handleAiBack} />
-        ) : activeSection === 'ai' ? (
-          <AiChatWindow
-            sessionId={activeSessionId}
-            onNewSession={setActiveSessionId}
-            onNavigate={handleAiNavigate}
-            onDelete={handleAiSessionDelete}
-            onTitleChange={handleAiSessionTitleChange}
-          />
-        ) : selectedRoomId ? (
-          <ChatWindow
-            roomId={selectedRoomId}
-            onBack={() => setShowChat(false)}
-            onLeaveOrDelete={handleLeaveOrDelete}
-            highlightMessageId={highlightMessageId}
-            notifEnabled={notifEnabled}
-            onToggleNotif={toggleNotif}
-            onAiNavigate={handleAiNavigate}
-          />
-        ) : (
-          <Dashboard onSectionChange={setActiveSection} />
-        )}
+        <Suspense fallback={
+          <div className="flex-1 flex items-center justify-center">
+            <div
+              className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }}
+            />
+          </div>
+        }>
+          {activeSection === 'calendar' ? (
+            <CalendarPage
+              currentYear={calYear}
+              currentMonth={calMonth}
+              onPrevMonth={handleCalPrevMonth}
+              onNextMonth={handleCalNextMonth}
+              onSectionChange={handleSectionChange}
+            />
+          ) : activeSection === 'ai' && activeAiView === 'quotation' ? (
+            <QuotationPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'message' ? (
+            <MessageWriterPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'transport' ? (
+            <TransportPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'customs' ? (
+            <CustomsPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'hscode' ? (
+            <HsCodePage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'knowledge' ? (
+            <KnowledgePage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'approval' ? (
+            <AdminApprovalPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'tracking' ? (
+            <TrackingPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' ? (
+            <AiChatWindow
+              sessionId={activeSessionId}
+              onNewSession={setActiveSessionId}
+              onNavigate={handleAiNavigate}
+              onDelete={handleAiSessionDelete}
+              onTitleChange={handleAiSessionTitleChange}
+            />
+          ) : selectedRoomId ? (
+            <ChatWindow
+              roomId={selectedRoomId}
+              onBack={() => setShowChat(false)}
+              onLeaveOrDelete={handleLeaveOrDelete}
+              highlightMessageId={highlightMessageId}
+              notifEnabled={notifEnabled}
+              onToggleNotif={toggleNotif}
+              onAiNavigate={handleAiNavigate}
+            />
+          ) : (
+            <Dashboard onSectionChange={setActiveSection} />
+          )}
+        </Suspense>
       </AppLayout>
 
       <NewRoomModal
