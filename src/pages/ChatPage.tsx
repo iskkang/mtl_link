@@ -3,10 +3,13 @@ import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
 import { Dashboard }          from './Dashboard'
 import { CalendarPage }       from '../components/calendar/CalendarPage'
-import { QuotationPage }      from '../components/ai/QuotationPage'
-import { MessageWriterPage }  from '../components/ai/MessageWriterPage'
-import { TransportPage }      from '../components/ai/TransportPage'
-import { CustomsPage }        from '../components/ai/CustomsPage'
+import { QuotationPage }       from '../components/ai/QuotationPage'
+import { MessageWriterPage }   from '../components/ai/MessageWriterPage'
+import { TransportPage }       from '../components/ai/TransportPage'
+import { CustomsPage }         from '../components/ai/CustomsPage'
+import { HsCodePage }          from '../components/ai/HsCodePage'
+import { KnowledgePage }       from '../components/ai/KnowledgePage'
+import { AdminApprovalPage }   from '../components/ai/AdminApprovalPage'
 import { AiChatWindow }       from '../components/ai/AiChatWindow'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
@@ -20,7 +23,7 @@ import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh } from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
 
-type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs'
+type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval'
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -53,7 +56,7 @@ export default function ChatPage() {
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
-  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs') => setActiveAiView(view)
+  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => setActiveAiView(view)
   const handleAiBack     = () => setActiveAiView('chat')
 
   const handleAiSessionDelete      = () => { setActiveSessionId(null); setAiSidebarVersion(v => v + 1) }
@@ -65,6 +68,13 @@ export default function ChatPage() {
       setActiveSessionId(prev => (prev === sid ? null : prev))
     })
   }, [])
+
+  // Sidebar nav (knowledge / approval pages)
+  useEffect(() => {
+    return aiEvents.onNavigate(view => {
+      if (activeSection === 'ai') setActiveAiView(view as AiView)
+    })
+  }, [activeSection])
 
   usePollingRefresh(selectedRoomId)
 
@@ -227,6 +237,12 @@ export default function ChatPage() {
           <TransportPage onBack={handleAiBack} />
         ) : activeSection === 'ai' && activeAiView === 'customs' ? (
           <CustomsPage onBack={handleAiBack} />
+        ) : activeSection === 'ai' && activeAiView === 'hscode' ? (
+          <HsCodePage onBack={handleAiBack} />
+        ) : activeSection === 'ai' && activeAiView === 'knowledge' ? (
+          <KnowledgePage onBack={handleAiBack} />
+        ) : activeSection === 'ai' && activeAiView === 'approval' ? (
+          <AdminApprovalPage onBack={handleAiBack} />
         ) : activeSection === 'ai' ? (
           <AiChatWindow
             sessionId={activeSessionId}

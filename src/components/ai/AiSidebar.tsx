@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, MessageSquare, MoreHorizontal, Star, Pencil, Trash2 } from 'lucide-react'
+import { Plus, MessageSquare, MoreHorizontal, Star, Pencil, Trash2, Bell, BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -23,8 +23,22 @@ function startOfDay(d: Date) {
 
 export function AiSidebar({ activeSessionId, onSelectSession }: Props) {
   const { t } = useTranslation()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { sessions: fetched, loading } = useAiSessions()
+  const isAdmin = profile?.role === 'admin'
+
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    if (!isAdmin) return
+    void (async () => {
+      const [hsRes, kbRes] = await Promise.all([
+        supabase.from('hs_code_notes').select('id', { count: 'exact', head: true }).in('approval_status', ['pending_review', 'draft']),
+        supabase.from('knowledge_base').select('id', { count: 'exact', head: true }).in('status', ['pending_review', 'draft']),
+      ])
+      setPendingCount((hsRes.count ?? 0) + (kbRes.count ?? 0))
+    })()
+  }, [isAdmin])
 
   // Local copy for optimistic updates
   const [sessions, setSessions] = useState<AiSession[]>([])
@@ -250,6 +264,42 @@ export function AiSidebar({ activeSessionId, onSelectSession }: Props) {
               )
             })}
           </>
+        )}
+      </div>
+
+      {/* Bottom nav: Knowledge + Admin */}
+      <div className="flex-shrink-0 border-t px-2 py-2 flex flex-col gap-1" style={{ borderColor: 'var(--side-line)' }}>
+        <button
+          type="button"
+          onClick={() => aiEvents.emitNavigate('knowledge')}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+          style={{ color: 'var(--side-text)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          <BookOpen size={13} />
+          {t('knowledgeTitle')}
+        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => aiEvents.emitNavigate('approval')}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+            style={{ color: 'var(--side-text)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Bell size={13} />
+            {t('aiAdminApproval')}
+            {pendingCount > 0 && (
+              <span
+                className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: 'var(--brand)', color: 'white' }}
+              >
+                {pendingCount}
+              </span>
+            )}
+          </button>
         )}
       </div>
 

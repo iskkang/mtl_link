@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Send, Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Send, Loader2, MoreHorizontal, Pencil, Trash2, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -16,7 +16,7 @@ interface AiMessage {
 interface Props {
   sessionId:      string | null
   onNewSession:   (id: string) => void
-  onNavigate?:    (view: 'quotation' | 'message' | 'transport' | 'customs') => void
+  onNavigate?:    (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode') => void
   onDelete?:      () => void
   onTitleChange?: () => void
 }
@@ -32,6 +32,11 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
   const [menuOpen,      setMenuOpen]      = useState(false)
   const [editing,       setEditing]       = useState(false)
   const [editValue,     setEditValue]     = useState('')
+  const [saveFormId,    setSaveFormId]    = useState<string | null>(null)
+  const [saveTitle,     setSaveTitle]     = useState('')
+  const [saveCategory,  setSaveCategory]  = useState('general')
+  const [savingKb,      setSavingKb]      = useState(false)
+  const [kbToast,       setKbToast]       = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const menuRef   = useRef<HTMLDivElement>(null)
 
@@ -118,6 +123,24 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSaveToKnowledge = async (content: string) => {
+    if (!saveTitle.trim() || !user) return
+    setSavingKb(true)
+    await supabase.from('knowledge_base').insert({
+      title:      saveTitle.trim(),
+      category:   saveCategory as 'hs' | 'customs' | 'message' | 'quotation' | 'tracking' | 'claim' | 'general',
+      content,
+      status:     'draft' as const,
+      created_by: user.id,
+    })
+    setSavingKb(false)
+    setSaveFormId(null)
+    setSaveTitle('')
+    setSaveCategory('general')
+    setKbToast(true)
+    setTimeout(() => setKbToast(false), 3000)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -245,28 +268,92 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
             {messages.map(msg => (
               <div
                 key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
               >
-                {msg.role === 'assistant' && (
+                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
+                  {msg.role === 'assistant' && (
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 text-sm"
+                      style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
+                    >
+                      🤖
+                    </div>
+                  )}
                   <div
-                    className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 text-sm"
-                    style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
+                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                    }`}
+                    style={{
+                      background: msg.role === 'user' ? 'var(--brand)' : 'var(--card)',
+                      color:      msg.role === 'user' ? 'white'        : 'var(--ink)',
+                      border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
+                    }}
                   >
-                    🤖
+                    {msg.content}
+                  </div>
+                </div>
+
+                {/* Save to Knowledge button — AI messages only */}
+                {msg.role === 'assistant' && (
+                  <div className="ml-9 mt-1">
+                    {saveFormId === msg.id ? (
+                      <div
+                        className="rounded-xl border p-3 flex flex-col gap-2 max-w-xs"
+                        style={{ background: 'var(--card)', borderColor: 'var(--brand)' }}
+                      >
+                        <input
+                          autoFocus
+                          value={saveTitle}
+                          onChange={e => setSaveTitle(e.target.value)}
+                          placeholder="제목 입력…"
+                          className="px-2 py-1.5 rounded-lg text-xs outline-none border"
+                          style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                        />
+                        <select
+                          value={saveCategory}
+                          onChange={e => setSaveCategory(e.target.value)}
+                          className="px-2 py-1.5 rounded-lg text-xs outline-none border"
+                          style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                        >
+                          {(['general', 'hs', 'customs', 'message', 'quotation', 'tracking', 'claim'] as const).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveToKnowledge(msg.content)}
+                            disabled={!saveTitle.trim() || savingKb}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                            style={{ background: 'var(--brand)' }}
+                          >
+                            {savingKb ? <Loader2 size={11} className="animate-spin mx-auto" /> : '저장'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSaveFormId(null); setSaveTitle('') }}
+                            className="p-1.5 rounded-lg"
+                            style={{ color: 'var(--ink-3)' }}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setSaveFormId(msg.id); setSaveTitle('') }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                        style={{ color: 'var(--ink-4)' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand)'; e.currentTarget.style.background = 'var(--blue-soft)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-4)'; e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <BookmarkPlus size={11} />
+                        {t('knowledgeSave')}
+                      </button>
+                    )}
                   </div>
                 )}
-                <div
-                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                    msg.role === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'
-                  }`}
-                  style={{
-                    background: msg.role === 'user' ? 'var(--brand)' : 'var(--card)',
-                    color:      msg.role === 'user' ? 'white'        : 'var(--ink)',
-                    border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
-                  }}
-                >
-                  {msg.content}
-                </div>
               </div>
             ))}
 
@@ -304,6 +391,16 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
       {/* Quick bar — only when messages exist */}
       {hasMessages && (
         <AiQuickBar onSelect={text => void handleSend(text)} onNavigate={onNavigate} />
+      )}
+
+      {/* KB saved toast */}
+      {kbToast && (
+        <div
+          className="mx-3 mb-2 flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-medium text-center"
+          style={{ background: '#22C55E20', color: '#22C55E' }}
+        >
+          {t('knowledgeSaved')}
+        </div>
       )}
 
       {/* Input */}
