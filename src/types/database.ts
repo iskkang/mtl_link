@@ -28,6 +28,7 @@ export type Database = {
           position:             string | null
           avatar_url:           string | null
           avatar_color:         string | null
+          role:                 'admin' | 'member' | 'read_only'
           status:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin:             boolean
           is_bot:               boolean
@@ -44,6 +45,7 @@ export type Database = {
           position?:             string | null
           avatar_url?:           string | null
           avatar_color?:         string | null
+          role?:                 'admin' | 'member' | 'read_only'
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
           is_bot?:               boolean
@@ -60,6 +62,7 @@ export type Database = {
           position?:             string | null
           avatar_url?:           string | null
           avatar_color?:         string | null
+          role?:                 'admin' | 'member' | 'read_only'
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
           is_admin?:             boolean
           is_bot?:               boolean
@@ -596,6 +599,232 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+
+      // ─── quotation_requests ──────────────────────────────────────────────────
+      quotation_requests: {
+        Row: {
+          id:               string
+          created_by:       string
+          customer_name:    string | null
+          raw_inquiry:      string | null
+          item_name:        string | null
+          origin:           string | null
+          destination:      string | null
+          gross_weight:     number | null
+          cbm:              number | null
+          incoterms:        string | null
+          missing_info:     Json | null
+          checklist:        Json | null
+          customer_message: string | null
+          status:           'draft' | 'waiting_info' | 'quoted' | 'closed'
+          created_at:       string
+        }
+        Insert: {
+          id?:              string
+          created_by:       string
+          customer_name?:   string | null
+          raw_inquiry?:     string | null
+          item_name?:       string | null
+          origin?:          string | null
+          destination?:     string | null
+          gross_weight?:    number | null
+          cbm?:             number | null
+          incoterms?:       string | null
+          missing_info?:    Json | null
+          checklist?:       Json | null
+          customer_message?: string | null
+          status?:          'draft' | 'waiting_info' | 'quoted' | 'closed'
+          created_at?:      string
+        }
+        Update: {
+          customer_name?:   string | null
+          raw_inquiry?:     string | null
+          item_name?:       string | null
+          origin?:          string | null
+          destination?:     string | null
+          gross_weight?:    number | null
+          cbm?:             number | null
+          incoterms?:       string | null
+          missing_info?:    Json | null
+          checklist?:       Json | null
+          customer_message?: string | null
+          status?:          'draft' | 'waiting_info' | 'quoted' | 'closed'
+        }
+        Relationships: []
+      }
+
+      // ─── hs_code_notes ───────────────────────────────────────────────────────
+      hs_code_notes: {
+        Row: {
+          id:                 string
+          item_name:          string
+          item_description:   string | null
+          country:            string
+          hs_code_candidate:  string | null
+          customs_notes:      string | null
+          required_documents: Json | null
+          risk_notes:         string | null
+          source:             string | null
+          confidence_label:   'High' | 'Medium' | 'Low'
+          approval_status:    'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
+          created_by:         string
+          approved_by:        string | null
+          approved_at:        string | null
+          created_at:         string
+          updated_at:         string
+        }
+        Insert: {
+          id?:                string
+          item_name:          string
+          item_description?:  string | null
+          country:            string
+          hs_code_candidate?: string | null
+          customs_notes?:     string | null
+          required_documents?: Json | null
+          risk_notes?:        string | null
+          source?:            string | null
+          confidence_label?:  'High' | 'Medium' | 'Low'
+          approval_status?:   'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
+          created_by:         string
+          approved_by?:       string | null
+          approved_at?:       string | null
+          created_at?:        string
+          updated_at?:        string
+        }
+        Update: {
+          item_name?:         string
+          item_description?:  string | null
+          country?:           string
+          hs_code_candidate?: string | null
+          customs_notes?:     string | null
+          required_documents?: Json | null
+          risk_notes?:        string | null
+          source?:            string | null
+          confidence_label?:  'High' | 'Medium' | 'Low'
+          approval_status?:   'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
+          approved_by?:       string | null
+          approved_at?:       string | null
+          updated_at?:        string
+        }
+        Relationships: []
+      }
+
+      // ─── knowledge_base ──────────────────────────────────────────────────────
+      knowledge_base: {
+        Row: {
+          id:            string
+          title:         string
+          category:      'hs' | 'customs' | 'message' | 'quotation' | 'tracking' | 'claim' | 'general'
+          content:       string
+          tags:          string[] | null
+          country:       string | null
+          item_category: string | null
+          status:        'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
+          created_by:    string
+          approved_by:   string | null
+          created_at:    string
+          updated_at:    string
+        }
+        Insert: {
+          id?:           string
+          title:         string
+          category?:     'hs' | 'customs' | 'message' | 'quotation' | 'tracking' | 'claim' | 'general'
+          content:       string
+          tags?:         string[] | null
+          country?:      string | null
+          item_category?: string | null
+          status?:       'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
+          created_by:    string
+          approved_by?:  string | null
+          created_at?:   string
+          updated_at?:   string
+        }
+        Update: {
+          title?:        string
+          category?:     'hs' | 'customs' | 'message' | 'quotation' | 'tracking' | 'claim' | 'general'
+          content?:      string
+          tags?:         string[] | null
+          country?:      string | null
+          item_category?: string | null
+          status?:       'draft' | 'pending_review' | 'verified' | 'rejected' | 'expired'
+          approved_by?:  string | null
+          updated_at?:   string
+        }
+        Relationships: []
+      }
+
+      // ─── tracking_helpers ────────────────────────────────────────────────────
+      tracking_helpers: {
+        Row: {
+          id:                    string
+          created_by:            string
+          tracking_type:         'ocean_container' | 'air_awb' | 'bl' | 'booking' | 'unknown'
+          tracking_no:           string
+          carrier_name:          string | null
+          official_tracking_url: string | null
+          current_status:        string | null
+          current_location:      string | null
+          eta:                   string | null
+          memo:                  string | null
+          customer_message:      string | null
+          created_at:            string
+          updated_at:            string
+        }
+        Insert: {
+          id?:                    string
+          created_by:             string
+          tracking_type?:         'ocean_container' | 'air_awb' | 'bl' | 'booking' | 'unknown'
+          tracking_no:            string
+          carrier_name?:          string | null
+          official_tracking_url?: string | null
+          current_status?:        string | null
+          current_location?:      string | null
+          eta?:                   string | null
+          memo?:                  string | null
+          customer_message?:      string | null
+          created_at?:            string
+          updated_at?:            string
+        }
+        Update: {
+          tracking_type?:         'ocean_container' | 'air_awb' | 'bl' | 'booking' | 'unknown'
+          tracking_no?:           string
+          carrier_name?:          string | null
+          official_tracking_url?: string | null
+          current_status?:        string | null
+          current_location?:      string | null
+          eta?:                   string | null
+          memo?:                  string | null
+          customer_message?:      string | null
+          updated_at?:            string
+        }
+        Relationships: []
+      }
+
+      // ─── audit_logs ──────────────────────────────────────────────────────────
+      audit_logs: {
+        Row: {
+          id:           string
+          user_id:      string
+          action_type:  string
+          target_table: string
+          target_id:    string | null
+          before_value: Json | null
+          after_value:  Json | null
+          created_at:   string
+        }
+        Insert: {
+          id?:          string
+          user_id:      string
+          action_type:  string
+          target_table: string
+          target_id?:   string | null
+          before_value?: Json | null
+          after_value?:  Json | null
+          created_at?:  string
+        }
+        Update: never
+        Relationships: []
       }
     }
 

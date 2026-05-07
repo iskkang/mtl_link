@@ -28,6 +28,7 @@ import { AnnouncementBanner } from '../chat/AnnouncementBanner'
 import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
 import { ReplyPreview } from '../chat/ReplyPreview'
+import { AiQuickActions } from '../ai/AiQuickActions'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender } from '../../types/chat'
 
@@ -48,7 +49,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const isDesktop = useIsDesktop()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
   const { removeRoom } = useRoomStore()
-  const { messages, loading, hasMore, send, loadMore, isBotTyping } = useMessages(roomId)
+  const { messages, loading, hasMore, send, loadMore, isBotTyping, isBotRoom } = useMessages(roomId)
 
   const [draft,           setDraft]           = useState('')
   const [fileError,       setFileError]       = useState<string | null>(null)
@@ -193,6 +194,10 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     }
   }, [isRequest, replyTo, send, pendingFiles, roomId])
 
+  const handleQuickAction = useCallback((prompt: string) => {
+    void handleSend(prompt, [])
+  }, [handleSend])
+
   const scrollToMessage = useCallback((messageId: string) => {
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`)
     if (!el) return
@@ -330,22 +335,26 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 {t('autoTranslateBanner')}
               </div>
             )}
-            <MessageList
-              messages={messages}
-              loading={loading}
-              hasMore={hasMore}
-              currentUserId={currentUserId}
-              isGroupRoom={isGroup}
-              members={room.members}
-              onLoadMore={loadMore}
-              onOpenThread={setThreadRootId}
-              onScrollToMessage={scrollToMessage}
-              onReply={handleReply}
-              searchQuery={searchOpen ? searchQuery : ''}
-              currentResultId={searchCurrent?.id ?? null}
-              roomId={roomId ?? ''}
-              isBotTyping={isBotTyping}
-            />
+            {isBotRoom && !loading && messages.length === 0 ? (
+              <AiQuickActions onSelect={handleQuickAction} />
+            ) : (
+              <MessageList
+                messages={messages}
+                loading={loading}
+                hasMore={hasMore}
+                currentUserId={currentUserId}
+                isGroupRoom={isGroup}
+                members={room.members}
+                onLoadMore={loadMore}
+                onOpenThread={setThreadRootId}
+                onScrollToMessage={scrollToMessage}
+                onReply={handleReply}
+                searchQuery={searchOpen ? searchQuery : ''}
+                currentResultId={searchCurrent?.id ?? null}
+                roomId={roomId ?? ''}
+                isBotTyping={isBotTyping}
+              />
+            )}
             {globalOpen && (
               <GlobalSearchPanel
                 query={searchQuery}
