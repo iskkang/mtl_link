@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ExternalLink, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronLeft, ExternalLink, Loader2, Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -118,10 +118,27 @@ export function TrackingPage({ onBack }: Props) {
 
   const activeCarrier = selectedCarrier ?? guessedCarrier
 
-  const handleOpenTracking = () => {
-    if (!activeCarrier || !input.trim()) return
-    const url = activeCarrier.trackingUrl(input.trim().toUpperCase())
+  const handleOpenTracking = async () => {
+    if (!activeCarrier || !input.trim() || !user) return
+    const no  = input.trim().toUpperCase()
+    const url = activeCarrier.trackingUrl(no)
     window.open(url, '_blank', 'noopener,noreferrer')
+    try {
+      await supabase.from('tracking_helpers').insert({
+        created_by:            user.id,
+        tracking_no:           no,
+        tracking_type:         detectedType,
+        carrier_name:          activeCarrier.name,
+        official_tracking_url: url,
+      })
+      void loadHistory()
+    } catch { /* 저장 실패해도 링크 열기는 유지 */ }
+  }
+
+  const handleDeleteHistory = async (id: string) => {
+    if (!user) return
+    await supabase.from('tracking_helpers').delete().eq('id', id).eq('created_by', user.id)
+    void loadHistory()
   }
 
   const handleSave = async () => {
@@ -411,39 +428,51 @@ export function TrackingPage({ onBack }: Props) {
                     className="rounded-2xl border overflow-hidden"
                     style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
                   >
-                    <button
-                      type="button"
-                      className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left"
-                      onClick={() => setExpandedId(prev => (prev === rec.id ? null : rec.id))}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-sm font-semibold font-mono" style={{ color: 'var(--ink)' }}>
-                            {rec.tracking_no}
-                          </span>
-                          <TypeBadge type={rec.tracking_type} t={t} />
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {rec.carrier_name && (
-                            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{rec.carrier_name}</span>
-                          )}
-                          {rec.current_status && (
-                            <span className="text-xs truncate" style={{ color: 'var(--ink-4)' }}>{rec.current_status}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {rec.eta && (
-                            <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
-                              ETA: {rec.eta}
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        className="flex-1 flex items-start justify-between gap-3 px-4 py-3 text-left min-w-0"
+                        onClick={() => setExpandedId(prev => (prev === rec.id ? null : rec.id))}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-sm font-semibold font-mono" style={{ color: 'var(--ink)' }}>
+                              {rec.tracking_no}
                             </span>
-                          )}
-                          <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
-                            {new Date(rec.created_at).toLocaleDateString()}
-                          </span>
+                            <TypeBadge type={rec.tracking_type} t={t} />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {rec.carrier_name && (
+                              <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{rec.carrier_name}</span>
+                            )}
+                            {rec.current_status && (
+                              <span className="text-xs truncate" style={{ color: 'var(--ink-4)' }}>{rec.current_status}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {rec.eta && (
+                              <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
+                                ETA: {rec.eta}
+                              </span>
+                            )}
+                            <span className="text-[10px]" style={{ color: 'var(--ink-4)' }}>
+                              {new Date(rec.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      {isExpanded ? <ChevronUp size={14} style={{ color: 'var(--ink-4)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--ink-4)', flexShrink: 0 }} />}
-                    </button>
+                        {isExpanded ? <ChevronUp size={14} style={{ color: 'var(--ink-4)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--ink-4)', flexShrink: 0 }} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteHistory(rec.id)}
+                        className="p-2 mr-2 rounded-lg flex-shrink-0 transition-colors"
+                        style={{ color: 'var(--ink-4)' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'var(--side-row)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-4)'; e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
 
                     {isExpanded && (
                       <div
