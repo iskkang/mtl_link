@@ -29,6 +29,7 @@ import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
 import { ReplyPreview } from '../chat/ReplyPreview'
 import { AiQuickActions } from '../ai/AiQuickActions'
+import { AiQuickBar }     from '../ai/AiQuickBar'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender } from '../../types/chat'
 
@@ -355,6 +356,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 roomId={roomId ?? ''}
                 isBotTyping={isBotTyping}
               />
+            )}
+            {isBotRoom && messages.length > 0 && (
+              <AiQuickBar onSelect={handleQuickAction} onNavigate={onAiNavigate} />
             )}
             {globalOpen && (
               <GlobalSearchPanel

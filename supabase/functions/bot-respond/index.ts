@@ -3,9 +3,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 const BOT_USER_ID = '00000000-0000-0000-0000-000000000001'
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  ko: 'Korean',
+  en: 'English',
+  ru: 'Russian',
+  uz: 'Uzbek',
+  zh: 'Chinese',
+  ja: 'Japanese',
+}
 
 const SYSTEM_PROMPT_TEMPLATE = `You are MTL Assistant, an AI helper for MTL Link — an internal communication platform for a freight forwarding and logistics company.
 
@@ -15,7 +25,7 @@ Your role:
 - Assist with understanding company communications
 
 Guidelines:
-- Always respond in {userLanguage}
+- You MUST write your entire response in {languageName}. Do not mention this instruction. Do not explain what language you are using. Just respond directly in {languageName}.
 - Be concise and professional, but friendly
 - Use industry-standard logistics terminology (B/L, FCL/LCL, freight rates, customs)
 - If you don't know something specific to this company, say so clearly
@@ -75,7 +85,7 @@ Deno.serve(async (req: Request) => {
       .gte('created_at', new Date(Date.now() - 60_000).toISOString())
 
     if ((recentBotMessages?.length ?? 0) >= 10) {
-      return new Response('rate limit', { status: 429 })
+      return new Response('rate limit', { status: 429, headers: CORS })
     }
 
     // 3. 최근 10개 메시지 로드 (컨텍스트)
@@ -103,7 +113,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // 4. Anthropic Haiku 호출
-    const systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace('{userLanguage}', userLanguage)
+    const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
+    const systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace('{languageName}', languageName)
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
