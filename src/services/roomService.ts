@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { useRoomStore } from '../stores/roomStore'
 import type { RoomListItem, Profile } from '../types/chat'
 
 function roomMsgPreview(msg: { message_type: string; content: string | null }): string | null {
@@ -98,35 +99,69 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
   }
   const unreadMap = Object.fromEntries(unreadCounts.map(u => [u.roomId, u.count]))
 
+  // 로컬 스토어에 낙관적으로 적용된 last_read_at이 서버보다 최신일 수 있음.
+  // fetchRooms 응답이 stale한 last_read_at을 가져오면 unread가 되살아나므로
+  // 로컬값이 더 최신이면 로컬을 우선한다.
+  const localRooms = useRoomStore.getState().rooms
+  const localMap   = new Map(localRooms.map(r => [r.id, r]))
+
   return rooms.map(room => {
     const lastMsg = lastMsgMap[room.id]
     const lastMessagePreview = lastMsg ? roomMsgPreview(lastMsg) : (room.last_message ?? null)
     const lastMessageAt = lastMsg ? lastMsg.created_at : (room.last_message_at ?? null)
+
+    const serverLastRead = myMemMap[room.id]?.last_read_at ?? null
+    const localLastRead  = localMap.get(room.id)?.last_read_at ?? null
+
+    // 로컬값이 서버값보다 최신이면 로컬을 사용하고 unread를 0으로 고정
+    const useLocal = localLastRead && serverLastRead && localLastRead > serverLastRead
+    const lastReadAt   = useLocal ? localLastRead : serverLastRead
+    const unreadCount  = useLocal ? 0 : (unreadMap[room.id] ?? 0)
+
     return {
       ...room,
       last_message:    lastMessagePreview,
       last_message_at: lastMessageAt,
       members:         membersByRoom[room.id] ?? [],
-      is_pinned:       myMemMap[room.id]?.is_pinned  ?? false,
-      is_muted:        myMemMap[room.id]?.is_muted   ?? false,
-      last_read_at:    myMemMap[room.id]?.last_read_at ?? null,
-      unread_count:    unreadMap[room.id] ?? 0,
+      is_pinned:       myMemMap[room.id]?.is_pinned ?? false,
+      is_muted:        myMemMap[room.id]?.is_muted  ?? false,
+      last_read_at:    lastReadAt,
+      unread_count:    unreadCount,
     }
   })
 }
 
 export async function markAsRead(roomId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  const now = new Date().toISOString()
+  // 1. 즉시 낙관적 업데이트 — DB write 완료 전에도 UI가 unread 0으로 보임
+  const optimisticTime = new Date().toISOString()
+  useRoomStore.getState().applyLocalRead(roomId, optimisticTime)
 
-  const { error: updateError } = await supabase
-    .from('room_members')
-    .update({ last_read_at: now })
-    .eq('room_id', roomId)
-    .eq('user_id', user.id)
-  if (updateError) console.error('[markAsRead]', updateError)
-  // broadcast는 useRealtimeMessages에서 postgres_changes relay로 처리
+  // 2. 서버 RPC 호출 — DB의 NOW()를 timestamp로 사용해 클라이언트 시계 오차 제거
+  //    mark_room_as_read RPC가 없는 경우 fallback으로 직접 UPDATE
+  const { data: serverTime, error } = await (supabase as any)
+    .rpc('mark_room_as_read', { p_room_id: roomId })
+
+  if (error) {
+    // RPC 미존재(PGRST202) 시 직접 UPDATE로 폴백
+    if (error.code === 'PGRST202' || error.message?.includes('Could not find')) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error: updateError } = await supabase
+        .from('room_members')
+        .update({ last_read_at: optimisticTime })
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+      if (updateError) console.error('[markAsRead] fallback UPDATE 실패:', updateError)
+    } else {
+      console.error('[markAsRead] RPC 실패:', error)
+    }
+    return // 낙관적 업데이트는 이미 적용됨
+  }
+
+  // 3. 서버 timestamp로 교체 (정확한 값 확정)
+  if (serverTime) {
+    useRoomStore.getState().applyLocalRead(roomId, serverTime as string)
+  }
 }
 
 // ─── 방 생성 ────────────────────────────────────────────────────

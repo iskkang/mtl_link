@@ -16,6 +16,7 @@ interface RoomStore {
   updateMemberReadAt:   (roomId: string, userId: string, lastReadAt: string) => void
   incrementUnread:      (roomId: string) => void
   resetUnread:          (roomId: string) => void
+  applyLocalRead:       (roomId: string, lastReadAt: string) => void
 }
 
 export const useRoomStore = create<RoomStore>((set, _get) => ({
@@ -87,6 +88,17 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
     if (idx < 0) return {}
     const next = [...s.rooms]
     next[idx] = { ...next[idx], unread_count: 0 }
+    return { rooms: next }
+  }),
+
+  // 낙관적 읽음 처리: last_read_at + unread_count를 즉시 반영.
+  // fetchRooms가 stale한 last_read_at을 들고 오더라도 이 값이 로컬에 이미 적용돼 있으면
+  // fetchRooms 머지 로직이 로컬 값을 우선한다.
+  applyLocalRead: (roomId, lastReadAt) => set(s => {
+    const idx = s.rooms.findIndex(r => r.id === roomId)
+    if (idx < 0) return {}
+    const next = [...s.rooms]
+    next[idx] = { ...next[idx], last_read_at: lastReadAt, unread_count: 0 }
     return { rooms: next }
   }),
 }))
