@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import type { RoomListItem } from '../types/chat'
 
+function sortByRecency(rooms: RoomListItem[]): RoomListItem[] {
+  return [...rooms].sort((a, b) => {
+    const ta = a.last_message_at ?? a.created_at
+    const tb = b.last_message_at ?? b.created_at
+    return tb.localeCompare(ta)
+  })
+}
+
 interface RoomStore {
   rooms:       RoomListItem[]
   loading:     boolean
@@ -25,7 +33,7 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
   error:   null,
 
   reset:      ()      => set({ rooms: [], loading: false, error: null }),
-  setRooms:   (rooms) => set({ rooms }),
+  setRooms:   (rooms) => set({ rooms: sortByRecency(rooms) }),
   setLoading: (v)     => set({ loading: v }),
   setError:   (e)     => set({ error: e }),
 
@@ -36,15 +44,9 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
     if (idx >= 0) {
       const next = [...s.rooms]
       next[idx] = room
-      return { rooms: next }
+      return { rooms: sortByRecency(next) }
     }
-    return {
-      rooms: [room, ...s.rooms].sort((a, b) => {
-        const ta = a.last_message_at ?? a.created_at
-        const tb = b.last_message_at ?? b.created_at
-        return tb.localeCompare(ta)
-      }),
-    }
+    return { rooms: sortByRecency([room, ...s.rooms]) }
   }),
 
   updateLastMessage: (roomId, msg, at) => set(s => {
@@ -52,13 +54,7 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
     if (idx < 0) return {}
     const next = [...s.rooms]
     next[idx] = { ...next[idx], last_message: msg, last_message_at: at }
-    // 최신 메시지 순으로 재정렬
-    next.sort((a, b) => {
-      const ta = a.last_message_at ?? a.created_at
-      const tb = b.last_message_at ?? b.created_at
-      return tb.localeCompare(ta)
-    })
-    return { rooms: next }
+    return { rooms: sortByRecency(next) }
   }),
 
   updateMemberReadAt: (roomId, userId, lastReadAt) => set(s => {

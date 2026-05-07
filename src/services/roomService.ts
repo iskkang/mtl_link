@@ -105,7 +105,7 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
   const localRooms = useRoomStore.getState().rooms
   const localMap   = new Map(localRooms.map(r => [r.id, r]))
 
-  return rooms.map(room => {
+  const mapped = rooms.map(room => {
     const lastMsg = lastMsgMap[room.id]
     const lastMessagePreview = lastMsg ? roomMsgPreview(lastMsg) : (room.last_message ?? null)
     const lastMessageAt = lastMsg ? lastMsg.created_at : (room.last_message_at ?? null)
@@ -129,6 +129,15 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
       unread_count:    unreadCount,
     }
   })
+
+  // DB order는 rooms.last_message_at(denormalized)이지만 각 row의 실제값은
+  // 별도 쿼리에서 가져온 messages.created_at로 교체됐으므로 클라이언트에서 재정렬.
+  mapped.sort((a, b) => {
+    const ta = a.last_message_at ?? a.created_at
+    const tb = b.last_message_at ?? b.created_at
+    return tb.localeCompare(ta)
+  })
+  return mapped
 }
 
 export async function markAsRead(roomId: string): Promise<void> {
