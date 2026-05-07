@@ -101,7 +101,7 @@ export function QuotationPage({ onBack }: Props) {
           <div className="flex flex-col gap-3 mb-4">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--ink-3)' }}>
-                고객명 (선택)
+                {t('quotationCustomerName')}
               </label>
               <input
                 type="text"
@@ -109,7 +109,7 @@ export function QuotationPage({ onBack }: Props) {
                 onChange={e => setCustomerName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none border"
                 style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                placeholder="예: 김철수 / ABC Trading Co."
+                placeholder={t('quotationCustomerNamePlaceholder')}
               />
             </div>
             <div>
@@ -121,7 +121,7 @@ export function QuotationPage({ onBack }: Props) {
                 onChange={e => setRawInquiry(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none border resize-none"
                 style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                placeholder="예: 한국에서 우즈베키스탄으로 자동차 부품 500kg 보내려고 합니다. 빠른 견적 부탁드립니다."
+                placeholder={t('quotationInquiryPlaceholder')}
                 rows={5}
               />
             </div>
@@ -151,13 +151,13 @@ export function QuotationPage({ onBack }: Props) {
           {parsed && (
             <div className="mt-5 flex flex-col gap-3">
               {parsed.confirmed && (
-                <ResultSection title="확인된 정보" copyKey="confirmed" text={parsed.confirmed} onCopy={handleCopy} copyState={copyState} t={t} />
+                <ResultSection title={t('quotationConfirmed')} copyKey="confirmed" text={parsed.confirmed} onCopy={handleCopy} copyState={copyState} t={t} />
               )}
               {parsed.missing && (
-                <ResultSection title="누락된 정보 및 추가 질문" copyKey="missing" text={parsed.missing} onCopy={handleCopy} copyState={copyState} t={t} />
+                <ResultSection title={t('quotationMissing')} copyKey="missing" text={parsed.missing} onCopy={handleCopy} copyState={copyState} t={t} />
               )}
               {parsed.message && (
-                <ResultSection title="고객에게 보낼 메시지" copyKey="message" text={parsed.message} onCopy={handleCopy} copyState={copyState} t={t} highlight />
+                <ResultSection title={t('quotationMessage')} copyKey="message" text={parsed.message} onCopy={handleCopy} copyState={copyState} t={t} highlight />
               )}
               {saved && (
                 <p className="text-xs text-center" style={{ color: 'var(--ink-4)' }}>
@@ -207,7 +207,7 @@ function ResultSection({
           style={{ color: copied ? '#22C55E' : 'var(--ink-3)', background: 'var(--side-row)' }}
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
-          {copied ? t('copySuccess') : 'Copy'}
+          {copied ? t('copySuccess') : t('copy')}
         </button>
       </div>
       <div className="px-4 py-3">

@@ -32,8 +32,9 @@ interface Props {
   onCalPrevMonth: () => void
   onCalNextMonth: () => void
   // AI session
-  activeSessionId: string | null
-  onSelectSession: (id: string) => void
+  activeSessionId:  string | null
+  onSelectSession:  (id: string) => void
+  aiSidebarVersion: number
 }
 
 export function ChatSidebar({
@@ -42,7 +43,7 @@ export function ChatSidebar({
   onNewChat, onSelectFriend, onSelectRequest,
   received, created, done, onReload,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
-  activeSessionId, onSelectSession,
+  activeSessionId, onSelectSession, aiSidebarVersion,
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -161,7 +162,7 @@ export function ChatSidebar({
 
       {/* ── AI section ── */}
       {activeSection === 'ai' && (
-        <AiSidebar activeSessionId={activeSessionId} onSelectSession={onSelectSession} />
+        <AiSidebar key={aiSidebarVersion} activeSessionId={activeSessionId} onSelectSession={onSelectSession} />
       )}
 
       {/* ── Placeholder sections ── */}

@@ -10,6 +10,7 @@ import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
 import { BOT_USER_ID } from '../constants/bot'
+import { aiEvents } from '../lib/aiEvents'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
 import { useRequestStore }    from '../stores/requestStore'
@@ -43,14 +44,25 @@ export default function ChatPage() {
     else setCalMonth(m => m + 1)
   }
 
-  const [activeAiView,    setActiveAiView]    = useState<AiView>('chat')
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [activeAiView,      setActiveAiView]      = useState<AiView>('chat')
+  const [activeSessionId,   setActiveSessionId]   = useState<string | null>(null)
+  const [aiSidebarVersion,  setAiSidebarVersion]  = useState(0)
 
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
   const handleAiNavigate = (view: 'quotation' | 'message') => setActiveAiView(view)
   const handleAiBack     = () => setActiveAiView('chat')
+
+  const handleAiSessionDelete      = () => { setActiveSessionId(null); setAiSidebarVersion(v => v + 1) }
+  const handleAiSessionTitleChange = () => setAiSidebarVersion(v => v + 1)
+
+  // Sidebar delete → clear active session if it was the deleted one
+  useEffect(() => {
+    return aiEvents.onDeleted(sid => {
+      setActiveSessionId(prev => (prev === sid ? null : prev))
+    })
+  }, [])
 
   usePollingRefresh(selectedRoomId)
 
@@ -195,6 +207,7 @@ export default function ChatPage() {
         onCalNextMonth={handleCalNextMonth}
         activeSessionId={activeSessionId}
         onSelectSession={setActiveSessionId}
+        aiSidebarVersion={aiSidebarVersion}
       >
         {activeSection === 'calendar' ? (
           <CalendarPage
@@ -213,6 +226,8 @@ export default function ChatPage() {
             sessionId={activeSessionId}
             onNewSession={setActiveSessionId}
             onNavigate={handleAiNavigate}
+            onDelete={handleAiSessionDelete}
+            onTitleChange={handleAiSessionTitleChange}
           />
         ) : selectedRoomId ? (
           <ChatWindow

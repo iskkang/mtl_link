@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
+import { aiEvents } from '../../lib/aiEvents'
 import { AiQuickActions } from './AiQuickActions'
 import { AiQuickBar } from './AiQuickBar'
 
@@ -13,33 +14,60 @@ interface AiMessage {
 }
 
 interface Props {
-  sessionId:    string | null
-  onNewSession: (id: string) => void
-  onNavigate?:  (view: 'quotation' | 'message') => void
+  sessionId:      string | null
+  onNewSession:   (id: string) => void
+  onNavigate?:    (view: 'quotation' | 'message') => void
+  onDelete?:      () => void
+  onTitleChange?: () => void
 }
 
-export function AiChatWindow({ sessionId, onNewSession, onNavigate }: Props) {
+export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, onTitleChange }: Props) {
   const { t, i18n } = useTranslation()
   const { user, profile } = useAuth()
-  const [messages,  setMessages]  = useState<AiMessage[]>([])
-  const [draft,     setDraft]     = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [fetching,  setFetching]  = useState(false)
+  const [messages,      setMessages]      = useState<AiMessage[]>([])
+  const [sessionTitle,  setSessionTitle]  = useState('')
+  const [draft,         setDraft]         = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [fetching,      setFetching]      = useState(false)
+  const [menuOpen,      setMenuOpen]      = useState(false)
+  const [editing,       setEditing]       = useState(false)
+  const [editValue,     setEditValue]     = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const menuRef   = useRef<HTMLDivElement>(null)
+
+  // Reflect title renames made from the sidebar
+  useEffect(() => {
+    return aiEvents.onTitleChange((sid, newTitle) => {
+      if (sid === sessionId) setSessionTitle(newTitle)
+    })
+  }, [sessionId])
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
 
   // Load session messages when sessionId changes
   useEffect(() => {
-    if (!sessionId || !user) { setMessages([]); return }
+    if (!sessionId || !user) { setMessages([]); setSessionTitle(''); return }
     setFetching(true)
     void supabase
       .from('ai_conversations')
-      .select('id, question, answer, created_at')
+      .select('id, question, answer, session_title, created_at')
       .eq('user_id', user.id)
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
+        const rows = data ?? []
+        const first = rows.find(r => r.session_title)
+        setSessionTitle(first?.session_title ?? (rows[0]?.question ?? '').slice(0, 30))
         const msgs: AiMessage[] = []
-        for (const row of data ?? []) {
+        for (const row of rows) {
           if (row.question) msgs.push({ id: row.id + '-q', role: 'user',      content: row.question })
           if (row.answer)   msgs.push({ id: row.id + '-a', role: 'assistant', content: row.answer   })
         }
@@ -48,7 +76,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate }: Props) {
       })
   }, [sessionId, user])
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages / loading change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
@@ -76,6 +104,11 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate }: Props) {
       if (fnError) throw fnError
       if (data?.error) throw new Error(data.error)
       setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: data.answer }])
+      // Set title from first message
+      if (!sessionTitle) {
+        setSessionTitle(content.slice(0, 30))
+        onTitleChange?.()
+      }
     } catch (err) {
       setMessages(prev => [...prev, {
         id:      crypto.randomUUID(),
@@ -94,10 +127,107 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate }: Props) {
     }
   }
 
+  const handleRenameClick = () => {
+    setEditValue(sessionTitle)
+    setEditing(true)
+    setMenuOpen(false)
+  }
+
+  const handleSaveTitle = async () => {
+    const newTitle = editValue.trim()
+    setEditing(false)
+    if (!newTitle || newTitle === sessionTitle || !sessionId || !user) return
+    setSessionTitle(newTitle)
+    await supabase
+      .from('ai_conversations')
+      .update({ session_title: newTitle })
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id)
+    onTitleChange?.()
+  }
+
+  const handleDelete = async () => {
+    setMenuOpen(false)
+    if (!sessionId || !user) return
+    await supabase
+      .from('ai_conversations')
+      .delete()
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id)
+    onDelete?.()
+  }
+
   const hasMessages = messages.length > 0
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--chat-bg)' }}>
+
+      {/* Header — only when session has messages */}
+      {hasMessages && sessionId && (
+        <div
+          className="flex items-center justify-between px-4 h-14 border-b flex-shrink-0"
+          style={{ borderColor: 'var(--line)', background: 'var(--card)' }}
+        >
+          {editing ? (
+            <input
+              autoFocus
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onBlur={() => void handleSaveTitle()}
+              onKeyDown={e => { if (e.key === 'Enter') void handleSaveTitle() }}
+              className="flex-1 text-sm font-medium outline-none bg-transparent border-b mr-4"
+              style={{ color: 'var(--ink)', borderColor: 'var(--brand)' }}
+            />
+          ) : (
+            <span className="text-sm font-medium truncate flex-1 mr-2" style={{ color: 'var(--ink)' }}>
+              {sessionTitle}
+            </span>
+          )}
+
+          <div className="relative flex-shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(v => !v)}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: 'var(--ink-3)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <MoreHorizontal size={16} />
+            </button>
+
+            {menuOpen && (
+              <div
+                className="absolute right-0 top-full mt-1 w-40 rounded-xl border shadow-lg z-50 overflow-hidden"
+                style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+              >
+                <button
+                  type="button"
+                  onClick={handleRenameClick}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left"
+                  style={{ color: 'var(--ink)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Pencil size={13} />
+                  {t('aiRename')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left"
+                  style={{ color: '#EF4444' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Trash2 size={13} />
+                  {t('aiDelete')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Message area */}
       <div className="flex-1 overflow-y-auto">

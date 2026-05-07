@@ -31,6 +31,7 @@ interface Props {
   onCalNextMonth:    () => void
   activeSessionId:   string | null
   onSelectSession:   (id: string) => void
+  aiSidebarVersion:  number
 }
 
 /** Reads window.matchMedia once + listens for changes — runs client-side only */
@@ -60,7 +61,7 @@ export function AppLayout({
   notifEnabled, onToggleNotif,
   onLogoClick,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
-  activeSessionId, onSelectSession,
+  activeSessionId, onSelectSession, aiSidebarVersion,
 }: Props) {
   const isDesktop = useIsDesktop()
   const [moreOpen,        setMoreOpen]        = useState(false)
@@ -97,6 +98,7 @@ export function AppLayout({
           onCalNextMonth={onCalNextMonth}
           activeSessionId={activeSessionId}
           onSelectSession={onSelectSession}
+          aiSidebarVersion={aiSidebarVersion}
         />
       ) : (
         /* ── Mobile: full-width Sidebar + MoreSheet ── */
@@ -167,6 +169,7 @@ interface DesktopColumnsProps {
   onCalNextMonth:  () => void
   activeSessionId: string | null
   onSelectSession: (id: string) => void
+  aiSidebarVersion: number
 }
 
 function DesktopColumns({
@@ -177,7 +180,7 @@ function DesktopColumns({
   notifEnabled, onToggleNotif,
   onLogoClick, onEditProfile,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
-  activeSessionId, onSelectSession,
+  activeSessionId, onSelectSession, aiSidebarVersion,
 }: DesktopColumnsProps) {
   const { received, created, done, reload } = useActionItems()
   const taskCount = received.length + created.length
@@ -230,6 +233,7 @@ function DesktopColumns({
           onCalNextMonth={onCalNextMonth}
           activeSessionId={activeSessionId}
           onSelectSession={onSelectSession}
+          aiSidebarVersion={aiSidebarVersion}
         />
       </div>
     </>

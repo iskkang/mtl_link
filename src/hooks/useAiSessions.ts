@@ -6,6 +6,7 @@ export interface AiSession {
   sessionId: string
   title:     string
   createdAt: string
+  isStarred: boolean
 }
 
 export function useAiSessions() {
@@ -19,7 +20,7 @@ export function useAiSessions() {
     try {
       const { data } = await supabase
         .from('ai_conversations')
-        .select('session_id, session_title, question, created_at')
+        .select('session_id, session_title, question, is_starred, created_at')
         .eq('user_id', user.id)
         .not('session_id', 'is', null)
         .order('created_at', { ascending: false })
@@ -34,6 +35,7 @@ export function useAiSessions() {
           sessionId: row.session_id,
           title:     row.session_title ?? ((row.question ?? '').slice(0, 30) || '…'),
           createdAt: row.created_at,
+          isStarred: row.is_starred ?? false,
         })
       }
       setSessions(list)

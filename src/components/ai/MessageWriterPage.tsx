@@ -134,7 +134,7 @@ export function MessageWriterPage({ onBack }: Props) {
               onChange={e => setSituation(e.target.value)}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none border resize-none"
               style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-              placeholder="예: FESCO 컨테이너 CRSU1234567 ETA가 5/10에서 5/14로 지연됨. 고객 ABC Co.에 통보 필요"
+              placeholder={t('msgSituationPlaceholder')}
               rows={4}
             />
           </div>
@@ -166,7 +166,7 @@ export function MessageWriterPage({ onBack }: Props) {
           {/* Language */}
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ink-3)' }}>
-              언어
+              {t('msgLanguageLabel')}
             </label>
             <select
               value={language}
@@ -287,7 +287,7 @@ function MsgSection({
           style={{ color: copied ? '#22C55E' : 'var(--ink-3)', background: 'var(--side-row)' }}
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
-          {copied ? t('copySuccess') : 'Copy'}
+          {copied ? t('copySuccess') : t('copy')}
         </button>
       </div>
       <div className="px-4 py-3">

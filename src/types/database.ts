@@ -570,6 +570,7 @@ export type Database = {
           saved_to_knowledge: boolean
           session_id:         string | null
           session_title:      string | null
+          is_starred:         boolean
           created_at:         string
         }
         Insert: {
@@ -582,6 +583,7 @@ export type Database = {
           saved_to_knowledge?: boolean
           session_id?:         string | null
           session_title?:      string | null
+          is_starred?:         boolean
           created_at?:         string
         }
         Update: {
@@ -594,6 +596,7 @@ export type Database = {
           saved_to_knowledge?: boolean
           session_id?:         string | null
           session_title?:      string | null
+          is_starred?:         boolean
           created_at?:         string
         }
         Relationships: [
