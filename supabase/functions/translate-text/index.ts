@@ -1,5 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Module-scope admin client (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY auto-injected)
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  { auth: { persistSession: false } },
+)
+
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -17,6 +24,65 @@ function shouldSkip(text: string): boolean {
   if (/^[\d\s.,+\-()]+$/.test(t)) return true
   return false
 }
+
+// ── Glossary matching helpers ─────────────────────────────────────────────────
+
+function extractTokens(text: string): string[] {
+  const tokens = new Set<string>()
+  // English tokens incl. slash/numbers (B/L, FCL, 20-foot …) — 2 chars+
+  const enMatches = text.match(/[A-Za-z][A-Za-z0-9/]*/g) ?? []
+  for (const m of enMatches) {
+    if (m.length >= 2) tokens.add(m)
+  }
+  // Korean 2 chars+
+  const koMatches = text.match(/[가-힯]{2,}/g) ?? []
+  for (const m of koMatches) tokens.add(m)
+  return [...tokens]
+}
+
+interface GlossaryHit {
+  term_ko: string | null
+  term_en: string | null
+  definition_ko: string | null
+}
+
+async function findGlossaryMatches(text: string): Promise<GlossaryHit[]> {
+  const tokens = extractTokens(text)
+  if (tokens.length === 0) return []
+
+  // Cap tokens to avoid URL-too-long (414) on very long messages
+  const capped = tokens.slice(0, 40)
+  const escaped = capped.map(t => `"${t.replace(/"/g, '""')}"`).join(',')
+
+  const { data, error } = await supabaseAdmin
+    .from('translation_glossary')
+    .select('term_ko, term_en, definition_ko')
+    .or(`term_ko.in.(${escaped}),term_en.in.(${escaped})`)
+    .limit(20)
+
+  if (error) {
+    console.error('[glossary] match error:', error.message)
+    return []
+  }
+  return (data ?? []) as GlossaryHit[]
+}
+
+function buildGlossaryContext(hits: GlossaryHit[]): string {
+  if (hits.length === 0) return ''
+  const lines = hits.slice(0, 15).map(h => {
+    const ko  = h.term_ko ?? ''
+    const en  = h.term_en ?? ''
+    const def = h.definition_ko ? ` — ${h.definition_ko.slice(0, 80)}` : ''
+    if (ko && en) return `- "${en}" ↔ "${ko}"${def}`
+    if (ko)       return `- "${ko}"${def}`
+    if (en)       return `- "${en}"${def}`
+    return ''
+  }).filter(Boolean)
+  if (lines.length === 0) return ''
+  return `\n\n[Industry-specific glossary — use these exact translations]\n${lines.join('\n')}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -82,15 +148,11 @@ Deno.serve(async (req: Request) => {
       return `__M${idx}__`
     })
 
-    const systemPrompt = `You are a translator. Translate the user's text from ${srcName} to ${tgtName}.
+    const baseSystemPrompt = `You are a translator. Translate the user's text from ${srcName} to ${tgtName}.
 
 Rules:
 - Output ONLY the translated text, nothing else
 - No explanations, no notes, no questions
-- For logistics/trade terms, use industry-standard translations:
-  통관=Customs clearance, 선적=Shipment, 수금=Collection,
-  화물=Cargo, 운임=Freight, 견적=Quotation, 인보이스=Invoice,
-  포워더=Freight forwarder, 창고=Warehouse, 수입=Import, 수출=Export
 - Preserve: numbers, dates, names, codes (B/L, FCL, etc.) exactly
 - Preserve @username tokens (format: @word) EXACTLY as-is — never translate or modify them
 - Preserve __M{N}__ placeholder tokens EXACTLY as-is — these are protected mention markers
@@ -98,6 +160,16 @@ Rules:
 - NEVER respond with English explanations
 - NEVER ask for clarification
 - ALWAYS output the translation`
+
+    // Glossary matching — inject matched terms into system prompt
+    const matches = await findGlossaryMatches(source_text)
+    const glossaryContext = buildGlossaryContext(matches)
+    const finalSystemPrompt = `${baseSystemPrompt}${glossaryContext}`
+
+    console.log(`[glossary] tokens=${extractTokens(source_text).length}, hits=${matches.length}`)
+    if (matches.length > 0) {
+      console.log('[glossary] matched:', matches.slice(0, 5).map(m => m.term_en ?? m.term_ko))
+    }
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -109,7 +181,7 @@ Rules:
       body: JSON.stringify({
         model:      'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system:   systemPrompt,
+        system:     finalSystemPrompt,
         messages: [{ role: 'user', content: sanitized }],
       }),
     })

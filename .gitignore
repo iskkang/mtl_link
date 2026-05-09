@@ -26,3 +26,9 @@ Thumbs.db
 # 로그
 *.log
 npm-debug.log*
+
+# 용어집 원본 CSV (대용량/민감)
+data/
+
+# 일회성 유틸 스크립트
+scripts/import_glossary.mjs
