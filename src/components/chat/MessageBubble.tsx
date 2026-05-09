@@ -109,7 +109,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
     setSheetOpen(true)
   }, [message._status])
 
-  const longPress = useLongPress({ onLongPress: openSheetOnLongPress })
+  const longPress = useLongPress({ onLongPress: openSheetOnLongPress, delay: 700 })
 
   const handleCopy = useCallback(() => {
     if (message.content) {
@@ -223,7 +223,11 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       {...longPress}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => {
+        const sel = window.getSelection()
+        if (sel && sel.toString().length > 0) return
+        e.preventDefault()
+      }}
     >
       {/* 아바타 (수신 메시지만) */}
       {!isOwn && (

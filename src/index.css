@@ -289,6 +289,11 @@ body, .chat-panel, .chat-header, .composer-panel,
     -webkit-touch-callout: none;
     user-select: none;
   }
+  /* 말풍선 본문만 텍스트 선택 허용 (OS 복사 기능 지원) */
+  .message-bubble-row .message-bubble {
+    -webkit-touch-callout: default;
+    user-select: text;
+  }
 }
 
 /* ── MenuRail narrow scrollbar ──────────────────────────────── */
