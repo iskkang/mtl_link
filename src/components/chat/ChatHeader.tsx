@@ -1,4 +1,4 @@
-import { ArrowLeft, Globe, ChevronDown, Search } from 'lucide-react'
+import { ArrowLeft, Globe, ChevronDown, Search, Pin } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { ChatHeaderMenu } from './ChatHeaderMenu'
@@ -25,6 +25,8 @@ interface Props {
   isAnnouncement?: boolean
   onLeave:         () => void
   onDelete:        () => void
+  pinnedCount?:    number
+  onTogglePinPanel?: () => void
 }
 
 export function ChatHeader({
@@ -33,6 +35,7 @@ export function ChatHeader({
   effectivePeerLang, onOpenTranslation,
   searchOpen, onToggleSearch,
   notifEnabled, onToggleNotif, isAnnouncement, onLeave, onDelete,
+  pinnedCount, onTogglePinPanel,
 }: Props) {
   const { t } = useTranslation()
 
@@ -148,6 +151,29 @@ export function ChatHeader({
             >
               <Search size={17} />
             </button>
+
+            {onTogglePinPanel && (
+              <button
+                onClick={onTogglePinPanel}
+                className="relative p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ink-3)', background: 'transparent' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                aria-label={t('pinnedMessages')}
+                title={t('pinnedMessages')}
+              >
+                <Pin size={17} />
+                {!!pinnedCount && pinnedCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-0.5 rounded-full
+                               text-[9px] font-bold flex items-center justify-center"
+                    style={{ background: 'var(--brand)', color: '#fff' }}
+                  >
+                    {pinnedCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             <ChatHeaderMenu
               notifEnabled={notifEnabled}

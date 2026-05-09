@@ -55,15 +55,17 @@ export async function fetchPinnedIds(roomId: string): Promise<PinnedMessageRow[]
   return (data ?? []) as PinnedMessageRow[]
 }
 
-/** 핀 패널용 풀 데이터 (Phase C에서 사용) */
+/** 핀 패널용 풀 데이터 (Phase C에서 사용)
+ *  pinned_by → auth.users FK라 profiles 직접 join 불가 → 2단계 fetch
+ */
 export async function fetchPinnedMessages(roomId: string): Promise<PinnedMessageWithDetails[]> {
-  const { data, error } = await db()
+  // 1단계: pinned_messages + 메시지(sender 포함)
+  const { data: rawRows, error: e1 } = await db()
     .select(`
       id,
       message_id,
       pinned_at,
       pinned_by,
-      pinned_by_profile:profiles!pinned_messages_pinned_by_fkey ( name ),
       message:messages!pinned_messages_message_id_fkey (
         id, content, sender_id, created_at, message_type,
         sender:profiles!messages_sender_id_fkey ( name )
@@ -72,6 +74,28 @@ export async function fetchPinnedMessages(roomId: string): Promise<PinnedMessage
     .eq('room_id', roomId)
     .order('pinned_at', { ascending: false })
     .limit(PIN_MAX)
-  if (error) throw error
-  return (data ?? []) as PinnedMessageWithDetails[]
+  if (e1) throw e1
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (rawRows ?? []) as any[]
+  if (rows.length === 0) return []
+
+  // 2단계: pinned_by user_id → profiles 일괄 fetch
+  const userIds = [...new Set<string>(rows.map((r: { pinned_by: string }) => r.pinned_by).filter(Boolean))]
+  const { data: profilesData, error: e2 } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', userIds)
+  if (e2) throw e2
+
+  const profileMap = new Map((profilesData ?? []).map(p => [p.id, p]))
+
+  return rows.map(r => ({
+    id:               r.id,
+    message_id:       r.message_id,
+    pinned_at:        r.pinned_at,
+    pinned_by:        r.pinned_by,
+    pinned_by_profile: profileMap.get(r.pinned_by) ?? null,
+    message:          r.message ?? null,
+  })) as PinnedMessageWithDetails[]
 }

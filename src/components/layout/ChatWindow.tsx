@@ -29,6 +29,7 @@ import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
 import { ReplyPreview } from '../chat/ReplyPreview'
 import { ForwardSheet } from '../chat/ForwardSheet'
+import { PinnedMessagesPanel } from '../chat/PinnedMessagesPanel'
 import { usePinnedMessages } from '../../hooks/usePinnedMessages'
 import { pinMessage, unpinMessage, PIN_MAX } from '../../services/pinMessage'
 import { AiQuickActions } from '../ai/AiQuickActions'
@@ -69,6 +70,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
   const [forwardTarget,   setForwardTarget]   = useState<MessageWithSender | null>(null)
   const [forwardToast,    setForwardToast]    = useState<string | null>(null)
+  const [pinPanelOpen,    setPinPanelOpen]    = useState(false)
   const forwardToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pinToast,        setPinToast]        = useState<string | null>(null)
   const pinToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -111,6 +113,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     setSearchQuery('')
     setGlobalOpen(false)
     setThreadRootId(null)
+    setPinPanelOpen(false)
     if (!roomId) return
 
     Promise.resolve(
@@ -308,6 +311,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         isAnnouncement={room?.is_announcement}
         onLeave={() => setLeaveOpen(true)}
         onDelete={() => setDeleteOpen(true)}
+        pinnedCount={pinnedCount}
+        onTogglePinPanel={() => setPinPanelOpen(o => !o)}
       />
 
       {/* ── 공지 배너 ─────────────────────────────────── */}
@@ -511,6 +516,16 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         <DeleteRoomModal
           onConfirm={handleDelete}
           onClose={() => setDeleteOpen(false)}
+        />
+      )}
+
+      {pinPanelOpen && roomId && user?.id && (
+        <PinnedMessagesPanel
+          roomId={roomId}
+          currentUserId={user.id}
+          onClose={() => setPinPanelOpen(false)}
+          onJumpToMessage={scrollToMessage}
+          onUnpinSuccess={() => showPinToast(t('unpinMessage'))}
         />
       )}
 
