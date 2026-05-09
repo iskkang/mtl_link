@@ -11,6 +11,8 @@ export interface MessageActions {
   onReact?:         (emoji: string) => void
   onReply?:         () => void
   onForward?:       () => void
+  onPin?:           () => void
+  onUnpin?:         () => void
 }
 
 /** Shared context for conditional action visibility */
@@ -19,4 +21,6 @@ export interface MessageActionContext {
   canEdit:          boolean
   needsResponse:    boolean
   responseReceived: boolean
+  isPinned?:        boolean
+  isMyPin?:         boolean
 }

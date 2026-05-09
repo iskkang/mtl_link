@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft, Forward } from 'lucide-react'
+import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft, Forward, Pin, PinOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 import { QuickEmojiPicker } from './QuickEmojiPicker'
@@ -14,7 +14,8 @@ export function MobileMessageSheet({
   isOwn, canEdit, needsResponse, responseReceived,
   onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
-  onEdit, onDelete, onReact, onReply, onForward,
+  onEdit, onDelete, onReact, onReply, onForward, onPin, onUnpin,
+  isPinned, isMyPin,
 }: Props) {
   const { t } = useTranslation()
 
@@ -70,6 +71,12 @@ export function MobileMessageSheet({
           <SheetRow icon={Copy}        label={t('msgCopy')}       onClick={act(onCopy)} />
           {onForward && (
             <SheetRow icon={Forward} label={t('msgForward')} onClick={act(onForward)} />
+          )}
+          {!isPinned && onPin && (
+            <SheetRow icon={Pin} label={t('pinMessage')} onClick={act(onPin)} />
+          )}
+          {isPinned && isMyPin && onUnpin && (
+            <SheetRow icon={PinOff} label={t('unpinMessage')} onClick={act(onUnpin)} />
           )}
           <SheetRow icon={CheckSquare} label={t('msgCreateTask')} onClick={act(onCreateTask)} />
           {onOpenThread && (

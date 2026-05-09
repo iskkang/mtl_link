@@ -29,6 +29,8 @@ import { ThreadPanel } from '../chat/ThreadPanel'
 import { ThreadSheet } from '../chat/ThreadSheet'
 import { ReplyPreview } from '../chat/ReplyPreview'
 import { ForwardSheet } from '../chat/ForwardSheet'
+import { usePinnedMessages } from '../../hooks/usePinnedMessages'
+import { pinMessage, unpinMessage, PIN_MAX } from '../../services/pinMessage'
 import { AiQuickActions } from '../ai/AiQuickActions'
 import { AiQuickBar }     from '../ai/AiQuickBar'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
@@ -68,6 +70,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [forwardTarget,   setForwardTarget]   = useState<MessageWithSender | null>(null)
   const [forwardToast,    setForwardToast]    = useState<string | null>(null)
   const forwardToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [pinToast,        setPinToast]        = useState<string | null>(null)
+  const pinToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { pinnedIds, myPinnedIds, count: pinnedCount, reload: reloadPinned } = usePinnedMessages(roomId)
 
   // 스레드
   const [threadRootId, setThreadRootId] = useState<string | null>(null)
@@ -172,6 +177,39 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const handleReply = useCallback((msg: MessageWithSender) => {
     setReplyTo(msg)
   }, [])
+
+  const showPinToast = useCallback((msg: string) => {
+    setPinToast(msg)
+    if (pinToastTimer.current) clearTimeout(pinToastTimer.current)
+    pinToastTimer.current = setTimeout(() => setPinToast(null), 2500)
+  }, [])
+
+  const handlePin = useCallback(async (message: { id: string }) => {
+    if (!roomId || !user?.id) return
+    if (pinnedCount >= PIN_MAX) {
+      showPinToast(t('pinLimitReached'))
+      return
+    }
+    try {
+      await pinMessage(roomId, message.id, user.id)
+      showPinToast(t('pinSuccess'))
+      reloadPinned()
+    } catch (err) {
+      console.error('[handlePin] failed', err)
+      showPinToast(t('pinFailed'))
+    }
+  }, [roomId, user?.id, pinnedCount, showPinToast, t, reloadPinned])
+
+  const handleUnpin = useCallback(async (message: { id: string }) => {
+    if (!roomId) return
+    try {
+      await unpinMessage(roomId, message.id)
+      reloadPinned()
+    } catch (err) {
+      console.error('[handleUnpin] failed', err)
+      showPinToast(t('pinFailed'))
+    }
+  }, [roomId, showPinToast, t, reloadPinned])
 
   // 전송: 파일이 있으면 sendFileMessage, 없으면 텍스트 전송
   const handleSend = useCallback(async (content: string, mentions: string[]) => {
@@ -356,6 +394,10 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 onScrollToMessage={scrollToMessage}
                 onReply={handleReply}
                 onForward={setForwardTarget}
+                onPin={handlePin}
+                onUnpin={handleUnpin}
+                pinnedIds={pinnedIds}
+                myPinnedIds={myPinnedIds}
                 searchQuery={searchOpen ? searchQuery : ''}
                 currentResultId={searchCurrent?.id ?? null}
                 roomId={roomId ?? ''}
@@ -492,6 +534,15 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                         bg-gray-800 dark:bg-surface-panel
                         text-white text-sm font-medium pointer-events-none">
           {forwardToast}
+        </div>
+      )}
+
+      {pinToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]
+                        px-5 py-3 rounded-xl shadow-lg
+                        bg-gray-800 dark:bg-surface-panel
+                        text-white text-sm font-medium pointer-events-none">
+          {pinToast}
         </div>
       )}
 

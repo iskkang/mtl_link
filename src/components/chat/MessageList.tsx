@@ -19,13 +19,17 @@ interface Props {
   onScrollToMessage: (messageId: string) => void
   onReply?:          (msg: MessageWithSender) => void
   onForward?:        (msg: MessageWithSender) => void
+  onPin?:            (msg: MessageWithSender) => void
+  onUnpin?:          (msg: MessageWithSender) => void
+  pinnedIds?:        Set<string>
+  myPinnedIds?:      Set<string>
   searchQuery?:      string
   currentResultId?:  string | null
   roomId?:           string
   isBotTyping?:      boolean
 }
 
-export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, onReply, onForward, searchQuery = '', currentResultId = null, roomId, isBotTyping = false }: Props) {
+export function MessageList({ messages, loading, hasMore, currentUserId, isGroupRoom, members, onLoadMore, onOpenThread, onScrollToMessage, onReply, onForward, onPin, onUnpin, pinnedIds, myPinnedIds, searchQuery = '', currentResultId = null, roomId, isBotTyping = false }: Props) {
   const { t } = useTranslation()
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -134,6 +138,10 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
                 prevMessage={prev}
                 onReply={onReply ? () => onReply(msg) : undefined}
                 onForward={onForward ? () => onForward(msg) : undefined}
+                onPin={onPin ? () => onPin(msg) : undefined}
+                onUnpin={onUnpin ? () => onUnpin(msg) : undefined}
+                isPinned={pinnedIds?.has(msg.id) ?? false}
+                isMyPin={myPinnedIds?.has(msg.id) ?? false}
                 onOpenThread={onOpenThread ? () => onOpenThread(msg.id) : undefined}
                 onScrollToMessage={onScrollToMessage}
                 members={members}

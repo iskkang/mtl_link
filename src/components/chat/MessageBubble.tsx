@@ -4,7 +4,7 @@ import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
 import { toggleNeedsResponse, markResponseReceived } from '../../services/followupService'
 import { useRequestStore } from '../../stores/requestStore'
-import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare, Smile, Share2 } from 'lucide-react'
+import { Mic, AlertCircle, Clock, ClipboardCheck, CheckCheck, ChevronDown, ScanText, MessageSquare, Smile, Share2, Pin } from 'lucide-react'
 import { getLangName } from '../../lib/langFlags'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
@@ -35,6 +35,10 @@ interface Props {
   prevMessage?:       MessageWithSender | null
   onReply?:           () => void
   onForward?:         () => void
+  onPin?:             () => void
+  onUnpin?:           () => void
+  isPinned?:          boolean
+  isMyPin?:           boolean
   onOpenThread?:      () => void
   onScrollToMessage?: (messageId: string) => void
   members:            RoomListItem['members']
@@ -61,7 +65,7 @@ function isWithin5Min(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000
 }
 
-export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onForward, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, keywords = [] }: Props) {
+export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onReply, onForward, onPin, onUnpin, isPinned = false, isMyPin = false, onOpenThread, onScrollToMessage, members, currentUserId, isGroup, searchQuery = '', isCurrentResult = false, keywords = [] }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage, setReactions } = useMessageStore()
@@ -454,6 +458,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                 onReact={handleReact}
                 onReply={onReply}
                 onForward={onForward}
+                onPin={onPin}
+                onUnpin={onUnpin}
+                isPinned={isPinned}
+                isMyPin={isMyPin}
               />
             </>
           )}
@@ -557,6 +565,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               </span>
             )}
 
+            {isPinned && (
+              <Pin size={10} className="flex-shrink-0" style={{ color: 'var(--ink-4)' }} />
+            )}
             <time
               title={formatFullDateTime(message.created_at)}
               className="text-[10px] flex-shrink-0" style={{ color: 'var(--ink-4)' }}
@@ -608,6 +619,10 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         onReact={handleReact}
         onReply={onReply}
         onForward={onForward}
+        onPin={onPin}
+        onUnpin={onUnpin}
+        isPinned={isPinned}
+        isMyPin={isMyPin}
       />
     </div>
   )
