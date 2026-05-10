@@ -8,8 +8,8 @@ export type ActionItem = Database['public']['Tables']['action_items']['Row'] & {
 
 const ACTION_ITEM_SELECT = `
   *,
-  creator:profiles!action_items_created_by_fkey(id, name, avatar_url, avatar_color),
-  assignee:profiles!action_items_assigned_to_fkey(id, name, avatar_url, avatar_color)
+  creator:profiles!action_items_created_by_fkey(id, name, avatar_url, avatar_color, presence_status, status_message),
+  assignee:profiles!action_items_assigned_to_fkey(id, name, avatar_url, avatar_color, presence_status, status_message)
 `
 
 export async function createActionItem(params: {

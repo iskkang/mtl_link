@@ -5,6 +5,7 @@ import { FriendItem } from './FriendItem'
 import { FriendProfileModal } from './FriendProfileModal'
 import { fetchFriends, type FriendProfile } from '../../services/friendsService'
 import { usePresence } from '../../hooks/usePresence'
+import { getEffectiveStatus } from '../../lib/presence'
 import { EmptyState } from '../ui/EmptyState'
 
 const DEPT_ORDER = ['HQ', 'UZ', 'RU', 'JP', 'CN', 'KG', 'VN', 'OTHER']
@@ -109,7 +110,7 @@ export function FriendsList({ onSelectFriend }: Props) {
                 <FriendItem
                   key={friend.id}
                   friend={friend}
-                  isOnline={onlineIds.has(friend.id)}
+                  effectiveStatus={getEffectiveStatus(friend, onlineIds)}
                   onViewProfile={() => setProfileTarget(friend)}
                 />
               ))}
@@ -122,7 +123,7 @@ export function FriendsList({ onSelectFriend }: Props) {
       {profileTarget && (
         <FriendProfileModal
           friend={profileTarget}
-          isOnline={onlineIds.has(profileTarget.id)}
+          effectiveStatus={getEffectiveStatus(profileTarget, onlineIds)}
           onClose={() => setProfileTarget(null)}
           onMessage={() => onSelectFriend(profileTarget.id)}
         />

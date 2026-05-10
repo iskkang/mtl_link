@@ -36,6 +36,7 @@ import { AiQuickActions } from '../ai/AiQuickActions'
 import { AiQuickBar }     from '../ai/AiQuickBar'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender } from '../../types/chat'
+import type { PresenceStatus } from '../profile/StatusDot'
 
 interface Props {
   roomId:              string | null
@@ -136,6 +137,10 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
 
   const peer = room && !isGroup
     ? room.members.find(m => m.id !== currentUserId) ?? null
+    : null
+
+  const peerStatus = peer
+    ? ((peer.presence_status ?? 'offline') as PresenceStatus)
     : null
 
   // DM 피어 프로필을 fresh하게 가져와서 최신 언어 표시
@@ -302,6 +307,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         isOwner={isOwner}
         headerSubtitle={headerSubtitle}
         onBack={onBack}
+        peerStatus={peerStatus}
+        peerStatusMessage={peer?.status_message ?? null}
         effectivePeerLang={effectivePeerLang ?? null}
         onOpenTranslation={() => setTranslationOpen(true)}
         searchOpen={searchOpen}

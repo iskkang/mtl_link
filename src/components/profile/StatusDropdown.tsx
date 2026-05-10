@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import type { Database } from '../../types/database'
+import { StatusDot } from './StatusDot'
+import type { PresenceStatus } from './StatusDot'
 
-export type PresenceStatus = Database['public']['Tables']['profiles']['Row']['presence_status']
+export type { PresenceStatus }
+export { StatusDot }
 
 export const STATUS_OPTIONS: { value: PresenceStatus; color: string; labelKey: string }[] = [
   { value: 'online',  color: '#22C55E', labelKey: 'statusOnline'  },
@@ -50,23 +52,5 @@ export function StatusDropdown({ current, onSelect }: DropdownProps) {
         )
       })}
     </div>
-  )
-}
-
-export function StatusDot({
-  status,
-  size = 10,
-  className = '',
-}: {
-  status: PresenceStatus
-  size?: number
-  className?: string
-}) {
-  const color = STATUS_OPTIONS.find(o => o.value === status)?.color ?? '#9CA3AF'
-  return (
-    <span
-      className={`rounded-full flex-shrink-0 block ${className}`}
-      style={{ width: size, height: size, background: color }}
-    />
   )
 }

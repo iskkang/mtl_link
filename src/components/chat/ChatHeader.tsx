@@ -2,7 +2,9 @@ import { ArrowLeft, Globe, ChevronDown, Search, Pin } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { ChatHeaderMenu } from './ChatHeaderMenu'
+import { StatusDot } from '../profile/StatusDot'
 import { getLangName } from '../../lib/langFlags'
+import type { PresenceStatus } from '../profile/StatusDot'
 
 interface Props {
   hasRoom:       boolean
@@ -13,6 +15,9 @@ interface Props {
   isOwner:       boolean
   headerSubtitle: string
   onBack?:       () => void
+
+  peerStatus?:        PresenceStatus | null
+  peerStatusMessage?: string | null
 
   effectivePeerLang: string | null
   onOpenTranslation: () => void
@@ -32,6 +37,7 @@ interface Props {
 export function ChatHeader({
   hasRoom, displayName, avatarInfo, isGroup, isDirect, isOwner, headerSubtitle,
   onBack,
+  peerStatus, peerStatusMessage,
   effectivePeerLang, onOpenTranslation,
   searchOpen, onToggleSearch,
   notifEnabled, onToggleNotif, isAnnouncement, onLeave, onDelete,
@@ -75,18 +81,21 @@ export function ChatHeader({
             ) : (
               <div className="relative flex-shrink-0">
                 <Avatar name={avatarInfo.name} avatarUrl={avatarInfo.avatarUrl} avatarColor={avatarInfo.avatarColor} size="sm" />
-                <span
-                  className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
-                  style={{ background: 'var(--green)', borderColor: 'var(--card)' }}
-                />
+                <span className="absolute bottom-0 right-0">
+                  <StatusDot
+                    status={peerStatus ?? 'online'}
+                    size={10}
+                    showOffline
+                  />
+                </span>
               </div>
             )}
             <div className="min-w-0">
               <p className="text-[13px] font-semibold truncate leading-tight" style={{ color: 'var(--ink)' }}>
                 {displayName}
               </p>
-              <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--ink-3)' }}>
-                {headerSubtitle}
+              <p className="text-[11px] leading-tight mt-0.5 truncate" style={{ color: 'var(--ink-3)' }}>
+                {peerStatusMessage || headerSubtitle}
               </p>
             </div>
           </div>

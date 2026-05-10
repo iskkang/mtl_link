@@ -73,7 +73,7 @@ export async function searchAllRooms(query: string): Promise<SearchResult> {
     .from('messages')
     .select(`
       id, room_id, content, content_original, created_at, message_type,
-      sender:profiles!messages_sender_id_fkey(name, avatar_url),
+      sender:profiles!messages_sender_id_fkey(name, avatar_url, presence_status),
       room:rooms!messages_room_id_fkey(name)
     `)
     .is('deleted_at', null)
@@ -150,7 +150,7 @@ export async function searchAllRoomsLegacy(query: string): Promise<LegacySearchR
       .from('messages')
       .select(`
         id, room_id, content, content_original, created_at, message_type,
-        sender:profiles!messages_sender_id_fkey(name, avatar_url),
+        sender:profiles!messages_sender_id_fkey(name, avatar_url, presence_status),
         room:rooms!messages_room_id_fkey(name)
       `)
       .in('id', ids)

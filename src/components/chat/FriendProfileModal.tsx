@@ -2,20 +2,22 @@ import { createPortal } from 'react-dom'
 import { X, MessageCircle, Mail } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
+import { StatusDot } from '../profile/StatusDot'
 import { SUPPORTED_LANGS } from '../../lib/i18n'
 import type { FriendProfile } from '../../services/friendsService'
+import type { PresenceStatus } from '../profile/StatusDot'
 
 interface Props {
-  friend:    FriendProfile
-  isOnline:  boolean
-  onClose:   () => void
-  onMessage: () => void
+  friend:          FriendProfile
+  effectiveStatus: PresenceStatus
+  onClose:         () => void
+  onMessage:       () => void
 }
 
 const langInfo = (code: string | null) =>
   SUPPORTED_LANGS.find(l => l.code === code) ?? null
 
-export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Props) {
+export function FriendProfileModal({ friend, effectiveStatus, onClose, onMessage }: Props) {
   const { t } = useTranslation()
   const lang = langInfo(friend.preferred_language)
 
@@ -56,11 +58,7 @@ export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Pro
             <h3 className="text-base font-semibold text-gray-900 dark:text-[#e9edef]">
               {friend.name}
             </h3>
-            <span
-              className={`w-2 h-2 rounded-full flex-shrink-0
-                          ${isOnline ? 'bg-emerald-400' : 'bg-gray-300 dark:bg-[#556e78]'}`}
-              title={isOnline ? t('friendsOnline') : t('friendsOffline')}
-            />
+            <StatusDot status={effectiveStatus} size={9} showOffline />
           </div>
 
           {friend.position && (
@@ -95,10 +93,20 @@ export function FriendProfileModal({ friend, isOnline, onClose, onMessage }: Pro
             </InfoRow>
 
             <InfoRow label={t('profileStatus')}>
-              <span className={`text-xs font-medium ${isOnline ? 'text-emerald-500' : 'text-gray-400 dark:text-[#8696a0]'}`}>
-                {isOnline ? `● ${t('friendsOnline')}` : `○ ${t('friendsOffline')}`}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <StatusDot status={effectiveStatus} size={8} showOffline />
+                <span className="text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
+                  {t(`status${effectiveStatus.charAt(0).toUpperCase()}${effectiveStatus.slice(1)}`)}
+                </span>
+              </div>
             </InfoRow>
+            {friend.status_message && !friend.is_bot && (
+              <InfoRow label={t('statusMessage')}>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+                  {friend.status_message}
+                </span>
+              </InfoRow>
+            )}
           </div>
 
           <button

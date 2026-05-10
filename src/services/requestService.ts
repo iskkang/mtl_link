@@ -27,7 +27,7 @@ const SELECT = `
   content,
   source_language,
   created_at,
-  sender:profiles!sender_id(id, name, avatar_url, avatar_color),
+  sender:profiles!sender_id(id, name, avatar_url, avatar_color, presence_status, status_message),
   room:rooms(id, name, room_type),
   translations:message_translations(language, translated_text)
 ` as const
