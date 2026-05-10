@@ -56,6 +56,7 @@ export function Avatar({ name, avatarUrl, avatarColor, size = 'md', className = 
         src={avatarUrl}
         alt={name}
         className={`${sizeClass} rounded-full object-cover flex-shrink-0 ${className}`}
+        onError={e => { e.currentTarget.style.display = 'none' }}
       />
     )
   }

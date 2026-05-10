@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Camera, Check } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Loader2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { Avatar } from '../ui/Avatar'
 import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../../lib/i18n'
 import { AVATAR_COLORS } from '../../constants/avatarColors'
 import { supabase } from '../../lib/supabase'
+import { uploadAvatar, deleteAvatar } from '../../services/profileImage'
 
 interface Props {
   open:    boolean
@@ -24,6 +25,10 @@ export function ProfileEditPage({ open, onClose }: Props) {
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState<string | null>(null)
   const [toast,       setToast]       = useState<string | null>(null)
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null | undefined>(undefined)
+  const [uploadBusy,  setUploadBusy]  = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (profile && open) {
@@ -31,9 +36,46 @@ export function ProfileEditPage({ open, onClose }: Props) {
       setDepartment(profile.department ?? '')
       setLang((profile.preferred_language as LangCode) ?? 'en')
       setAvatarColor(profile.avatar_color ?? null)
+      setLocalAvatarUrl(profile.avatar_url ?? null)
       setError(null)
+      setUploadError(null)
     }
   }, [profile, open])
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user?.id) return
+    setUploadBusy(true)
+    setUploadError(null)
+    try {
+      const url = await uploadAvatar(user.id, file)
+      setLocalAvatarUrl(url)
+      await refreshProfile()
+      showToast(t('profileSaved'), 1500)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t('profileImageUploadFailed')
+      setUploadError(msg)
+    } finally {
+      setUploadBusy(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteAvatar = async () => {
+    if (!user?.id || !confirm(t('confirmDeleteAvatar'))) return
+    setUploadBusy(true)
+    setUploadError(null)
+    try {
+      await deleteAvatar(user.id)
+      setLocalAvatarUrl(null)
+      await refreshProfile()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t('profileImageUploadFailed')
+      setUploadError(msg)
+    } finally {
+      setUploadBusy(false)
+    }
+  }
 
   const showToast = (msg: string, duration = 2000) => {
     setToast(msg)
@@ -121,24 +163,68 @@ export function ProfileEditPage({ open, onClose }: Props) {
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
 
-        {/* Avatar preview + color picker */}
+        {/* Avatar preview + upload */}
         <div className="flex flex-col items-center gap-4 pt-8 pb-6 px-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleAvatarFile}
+            className="hidden"
+          />
           <div className="relative">
             {profile
-              ? <Avatar name={profile.name} avatarUrl={profile.avatar_url} avatarColor={avatarColor} size="xl" />
+              ? <Avatar name={profile.name} avatarUrl={localAvatarUrl ?? undefined} avatarColor={avatarColor} size="xl" />
               : <div className="w-20 h-20 rounded-full" style={{ background: 'var(--line)' }} />
             }
+            {uploadBusy ? (
+              <div
+                className="absolute inset-0 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.45)' }}
+              >
+                <Loader2 size={20} className="animate-spin" style={{ color: 'white' }} />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-7 h-7 rounded-full
+                           flex items-center justify-center shadow-md"
+                style={{ background: 'var(--brand)', color: 'white' }}
+                aria-label={t('changePhoto')}
+              >
+                <Camera size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Upload / Remove buttons */}
+          <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => showToast(t('profileAvatarSoon'))}
-              className="absolute bottom-0 right-0 w-7 h-7 rounded-full
-                         flex items-center justify-center shadow-md"
-              style={{ background: 'var(--brand)', color: 'white' }}
-              aria-label="아바타 변경"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadBusy}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-opacity"
+              style={{ background: 'var(--brand)', color: 'white', opacity: uploadBusy ? 0.5 : 1 }}
             >
-              <Camera size={13} />
+              {localAvatarUrl ? t('changePhoto') : t('uploadPhoto')}
             </button>
+            {localAvatarUrl && (
+              <button
+                type="button"
+                onClick={handleDeleteAvatar}
+                disabled={uploadBusy}
+                className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition-opacity"
+                style={{ color: 'var(--ink-3)', border: '1px solid var(--line)', opacity: uploadBusy ? 0.5 : 1 }}
+              >
+                <Trash2 size={13} />
+                {t('removePhoto')}
+              </button>
+            )}
           </div>
+          {uploadError && (
+            <p className="text-xs" style={{ color: 'var(--red)' }}>{uploadError}</p>
+          )}</div>
 
           {/* Color palette */}
           <div className="w-full max-w-xs">
@@ -170,7 +256,6 @@ export function ProfileEditPage({ open, onClose }: Props) {
               })}
             </div>
           </div>
-        </div>
 
         {/* Form */}
         <div className="px-4 space-y-5 max-w-md mx-auto pb-10">
