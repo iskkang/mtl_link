@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Loader2, X, Image, Film, FileText, File } from 'lucide-react'
+import { Loader2, X, Image, Film, FileText, File, Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { searchAllRoomsLegacy } from '../../services/searchService'
 import type { LegacySearchResult } from '../../services/searchService'
@@ -186,9 +186,20 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
 
                 {/* 번역 매칭 배지 */}
                 {item._translatedMatch && (
-                  <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--ink-3)' }}>
-                    🌐 {t('matchedInTranslation')}: {highlightText(item._translatedMatch, searched)}
-                  </p>
+                  <div
+                    className="flex items-start gap-1.5 mt-1.5 px-2 py-1 rounded text-xs"
+                    style={{
+                      color:      'var(--ink-2)',
+                      background: 'var(--blue-soft)',
+                      border:     '1px solid var(--line)',
+                    }}
+                  >
+                    <Languages size={12} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
+                    <div className="flex-1 min-w-0 truncate">
+                      <span className="font-medium mr-1">{t('matchedInTranslation')}:</span>
+                      {highlightText(item._translatedMatch, searched)}
+                    </div>
+                  </div>
                 )}
               </button>
             ))}
