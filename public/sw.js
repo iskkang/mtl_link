@@ -1,5 +1,5 @@
 // Bump CACHE_NAME on every deployment to invalidate all old caches.
-const CACHE_NAME = 'mtl-link-v2';
+const CACHE_NAME = 'mtl-link-v3';
 
 // Only precache static assets — never cache index.html here.
 // index.html must always come from the network so new deploys are reflected.
@@ -55,7 +55,7 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets (icons, manifest): cache-first.
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    caches.match(event.request).then(cached => cached || fetch(event.request)).catch(() => Response.error())
   );
 });
 
