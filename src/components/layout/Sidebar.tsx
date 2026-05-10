@@ -15,12 +15,15 @@ import { useRequestStore } from '../../stores/requestStore'
 import { MobileTabBar } from './MobileTabBar'
 import { LogoBox } from '../ui/LogoBox'
 import { EmptyState } from '../ui/EmptyState'
+import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel'
+import { FilesPanel } from '../files/FilesPanel'
+import type { Section } from './MenuRail'
 
 interface Props {
   selectedRoomId:  string | null
   onSelectRoom:    (id: string) => void
   onNewChat:       () => void
-  activeTab:       SidebarTab
+  activeTab:       SidebarTab | Section
   onTabChange:     (tab: SidebarTab) => void
   onSelectFriend:  (userId: string) => void
   totalUnread:     number
@@ -43,6 +46,11 @@ export function Sidebar({
   const requestCount = useRequestStore(s => s.receivedCount)
 
   useDueDateNotifications(received)
+
+  const SIDEBAR_TABS = new Set<string>(['chat', 'members', 'tasks', 'requests'])
+  const tabBarActive: SidebarTab = SIDEBAR_TABS.has(activeTab as string)
+    ? (activeTab as SidebarTab)
+    : 'chat'
 
   return (
     <div className="flex flex-col h-full sidebar-panel">
@@ -152,6 +160,20 @@ export function Sidebar({
         </div>
       )}
 
+      {/* ── 공지 섹션 ────────────────────────────────── */}
+      {activeTab === 'announcements' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <AnnouncementsPanel />
+        </div>
+      )}
+
+      {/* ── 파일 섹션 ────────────────────────────────── */}
+      {activeTab === 'files' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <FilesPanel onJump={onSelectRequest} />
+        </div>
+      )}
+
       {/* ── 채널 탐색 모달 ─────────────────────────────── */}
       {channelBrowseOpen && (
         <ChannelBrowseModal
@@ -168,7 +190,7 @@ export function Sidebar({
 
       {/* ── 하단 탭바 (position: fixed, DOM 위치 무관) ── */}
       <MobileTabBar
-        activeTab={activeTab}
+        activeTab={tabBarActive}
         onTabChange={onTabChange}
         totalUnread={totalUnread}
         taskCount={pendingCount}

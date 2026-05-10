@@ -72,9 +72,9 @@ export function AppLayout({
 
   const openProfileEdit = () => { setMoreOpen(false); setProfileEditOpen(true) }
 
-  const mobileTab: SidebarTab = MOBILE_SECTION_MAP.has(activeSection)
+  const mobileTab = MOBILE_SECTION_MAP.has(activeSection)
     ? (activeSection as SidebarTab)
-    : 'chat'
+    : activeSection
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
