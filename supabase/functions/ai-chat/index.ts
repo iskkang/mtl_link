@@ -33,6 +33,53 @@ interface AiChatRequest {
   userId:       string
 }
 
+interface KnowledgeHit {
+  title:    string
+  category: string | null
+  content:  string
+}
+
+function extractSearchTerms(text: string): string[] {
+  const terms = new Set<string>()
+  const en = text.match(/[A-Za-z][A-Za-z0-9/]{1,}/g) ?? []
+  for (const m of en) terms.add(m)
+  const ko = text.match(/[가-힯]{2,}/g) ?? []
+  for (const m of ko) terms.add(m)
+  return [...terms].slice(0, 20)
+}
+
+async function findRelevantKnowledge(db: ReturnType<typeof createClient>, question: string): Promise<KnowledgeHit[]> {
+  const { data, error } = await db
+    .from('knowledge_base')
+    .select('title, category, content')
+    .eq('status', 'verified')
+    .limit(20)
+
+  if (error) {
+    console.error('[knowledge] fetch error:', error.message)
+    return []
+  }
+
+  const items = (data ?? []) as KnowledgeHit[]
+  if (items.length === 0) return []
+
+  const terms = extractSearchTerms(question).map(t => t.toLowerCase())
+  const relevant = items.filter(item => {
+    const hay = `${item.title} ${item.category ?? ''} ${item.content}`.toLowerCase()
+    return terms.some(t => hay.includes(t))
+  })
+
+  return (relevant.length > 0 ? relevant : items).slice(0, 5)
+}
+
+function buildKnowledgeContext(hits: KnowledgeHit[]): string {
+  if (hits.length === 0) return ''
+  const lines = hits.map(h =>
+    `[${h.category ?? '일반'}] ${h.title}\n${h.content.slice(0, 400)}`
+  )
+  return `\n\n[MTL Internal Knowledge — prioritize the following information in your answer]\n${lines.join('\n\n')}`
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
@@ -71,9 +118,14 @@ Deno.serve(async (req: Request) => {
     }
     contextMessages.push({ role: 'user', content: message })
 
-    // 2. Anthropic call
-    const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
-    const systemPrompt = SYSTEM_PROMPT.replace(/{languageName}/g, languageName)
+    // 2. Knowledge base lookup — verified items only, keyword match
+    const knowledgeHits    = await findRelevantKnowledge(db, message)
+    const knowledgeContext = buildKnowledgeContext(knowledgeHits)
+    console.info(`[knowledge] verified=${knowledgeHits.length}`, knowledgeHits.map(h => h.title))
+
+    // 3. Anthropic call with knowledge-augmented system prompt
+    const languageName    = LANGUAGE_NAMES[userLanguage] ?? 'English'
+    const systemPrompt    = SYSTEM_PROMPT.replace(/{languageName}/g, languageName) + knowledgeContext
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -101,17 +153,17 @@ Deno.serve(async (req: Request) => {
     const answer = claudeData.content?.[0]?.text?.trim()
     if (!answer) throw new Error('Empty response from Anthropic')
 
-    // 3. Check if first message (for session title)
+    // 4. Check if first message (for session title)
     const { count } = await db
       .from('ai_conversations')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('session_id', sessionId)
 
-    const isFirst     = (count ?? 0) === 0
+    const isFirst      = (count ?? 0) === 0
     const sessionTitle = isFirst ? message.slice(0, 30) : undefined
 
-    // 4. Save to DB
+    // 5. Save to DB
     const { error: insertError } = await db.from('ai_conversations').insert({
       user_id:          userId,
       session_id:       sessionId,
