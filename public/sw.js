@@ -1,5 +1,5 @@
 // Bump CACHE_NAME on every deployment to invalidate all old caches.
-const CACHE_NAME = 'mtl-link-v3';
+const CACHE_NAME = 'mtl-link-v4';
 
 // Only precache static assets — never cache index.html here.
 // index.html must always come from the network so new deploys are reflected.
