@@ -8,8 +8,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useAuth } from '../../hooks/useAuth'
+import { useUserStatus } from '../../hooks/useUserStatus'
 import { SUPPORTED_LANGS } from '../../lib/i18n'
 import { Avatar } from '../ui/Avatar'
+import { StatusDot, StatusDropdown } from '../profile/StatusDropdown'
 import { LanguagePickerModal } from '../ui/LanguagePickerModal'
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
 import type { Section } from './MenuRail'
@@ -35,6 +37,7 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
   const { t, i18n } = useTranslation()
   const { mode, toggle: toggleTheme } = useTheme()
   const { profile, signOut } = useAuth()
+  const { status, setStatus } = useUserStatus()
   const navigate = useNavigate()
   const [langOpen,  setLangOpen]  = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -96,9 +99,12 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
           >
             {profile && <Avatar name={profile.name} avatarUrl={profile.avatar_url} avatarColor={profile.avatar_color} size="md" />}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
-                {profile?.name ?? ''}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <StatusDot status={status} size={9} />
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>
+                  {profile?.name ?? ''}
+                </p>
+              </div>
               <p className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>
                 {[profile?.department, currentLang ? `${currentLang.flag} ${currentLang.label}` : null]
                   .filter(Boolean).join(' · ')}
@@ -124,6 +130,13 @@ export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onTogg
           className="flex-1 overflow-y-auto"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
+          {/* Status section */}
+          <SectionLabel label={t('myStatus')} />
+          <div className="px-3 pb-2">
+            <StatusDropdown current={status} onSelect={setStatus} />
+          </div>
+          <div className="border-t" style={{ borderColor: 'var(--line)' }} />
+
           {/* Info section */}
           <SectionLabel label={t('moreInfo')} />
           {INFO_ITEMS.map(({ id, Icon, labelKey }) => (

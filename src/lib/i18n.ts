@@ -554,6 +554,14 @@ const resources = {
       customsChemical:         '화학품 포함',
       customsAnalyze:          '리스크 체크',
       customsAnalyzing:        '분석 중…',
+      // ── 상태 메시지 ──────────────────────────────
+      myStatus:                    '내 상태',
+      statusOnline:                '온라인',
+      statusAway:                  '자리비움',
+      statusDnd:                   '방해금지',
+      statusOffline:               '오프라인',
+      statusMessage:               '상태 메시지',
+      statusMessagePlaceholder:    '예: 회의 중, 점심 시간…',
     },
   },
 
@@ -1064,6 +1072,14 @@ const resources = {
       customsChemical:         'Contains Chemical',
       customsAnalyze:          'Check Risk',
       customsAnalyzing:        'Analyzing…',
+      // ── Presence status ───────────────────────────
+      myStatus:                    'My Status',
+      statusOnline:                'Online',
+      statusAway:                  'Away',
+      statusDnd:                   'Do Not Disturb',
+      statusOffline:               'Offline',
+      statusMessage:               'Status Message',
+      statusMessagePlaceholder:    'e.g. In a meeting, lunch break…',
     },
   },
 
@@ -1574,6 +1590,14 @@ const resources = {
       customsChemical:         'Содержит химикат',
       customsAnalyze:          'Проверить риски',
       customsAnalyzing:        'Анализирую…',
+      // ── Присутствие ───────────────────────────────
+      myStatus:                    'Мой статус',
+      statusOnline:                'Онлайн',
+      statusAway:                  'Отошёл',
+      statusDnd:                   'Не беспокоить',
+      statusOffline:               'Офлайн',
+      statusMessage:               'Статус-сообщение',
+      statusMessagePlaceholder:    'напр. На встрече, обед…',
     },
   },
 
@@ -2084,6 +2108,14 @@ const resources = {
       customsChemical:         'Kimyoviy modda',
       customsAnalyze:          'Riskni tekshirish',
       customsAnalyzing:        'Tahlil…',
+      // ── Holat ─────────────────────────────────────
+      myStatus:                    'Mening holatim',
+      statusOnline:                'Onlayn',
+      statusAway:                  'Ketdim',
+      statusDnd:                   'Bezovta qilmang',
+      statusOffline:               'Oflayn',
+      statusMessage:               'Holat xabari',
+      statusMessagePlaceholder:    'masalan: Yig\'ilishda, tushlik…',
     },
   },
 
@@ -2594,6 +2626,14 @@ const resources = {
       customsChemical:         '含化学品',
       customsAnalyze:          '检查风险',
       customsAnalyzing:        '分析中…',
+      // ── 状态消息 ──────────────────────────────────
+      myStatus:                    '我的状态',
+      statusOnline:                '在线',
+      statusAway:                  '离开',
+      statusDnd:                   '请勿打扰',
+      statusOffline:               '离线',
+      statusMessage:               '状态消息',
+      statusMessagePlaceholder:    '例：开会中，午餐时间…',
     },
   },
 
@@ -3104,6 +3144,14 @@ const resources = {
       customsChemical:         '化学品含む',
       customsAnalyze:          'リスクチェック',
       customsAnalyzing:        '分析中…',
+      // ── ステータスメッセージ ─────────────────────────
+      myStatus:                    'マイステータス',
+      statusOnline:                'オンライン',
+      statusAway:                  '離席中',
+      statusDnd:                   '取り込み中',
+      statusOffline:               'オフライン',
+      statusMessage:               'ステータスメッセージ',
+      statusMessagePlaceholder:    '例：会議中、ランチ中…',
     },
   },
 }

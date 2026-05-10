@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../contexts/ThemeContext'
+import { useUserStatus } from '../../hooks/useUserStatus'
 import { Avatar } from '../ui/Avatar'
 import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
+import { StatusDropdown } from '../profile/StatusDropdown'
 
 interface Props {
   notifEnabled:  boolean
@@ -20,6 +22,7 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
   const { t, i18n } = useTranslation()
   const { profile, user, signOut } = useAuth()
   const { mode, toggle: toggleTheme } = useTheme()
+  const { status, setStatus } = useUserStatus()
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -78,6 +81,17 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
             </p>
           )}
         </div>
+      </div>
+
+      {/* Status picker */}
+      <div className="border-b" style={{ borderColor: 'var(--line)' }}>
+        <p
+          className="px-4 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider"
+          style={{ color: 'var(--ink-4)' }}
+        >
+          {t('myStatus')}
+        </p>
+        <StatusDropdown current={status} onSelect={setStatus} />
       </div>
 
       <div className="py-1">

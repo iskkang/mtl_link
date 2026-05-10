@@ -8,6 +8,7 @@ import { SUPPORTED_LANGS, saveLanguage, type LangCode } from '../../lib/i18n'
 import { AVATAR_COLORS } from '../../constants/avatarColors'
 import { supabase } from '../../lib/supabase'
 import { uploadAvatar, deleteAvatar } from '../../services/profileImage'
+import { StatusDropdown, type PresenceStatus } from './StatusDropdown'
 
 interface Props {
   open:    boolean
@@ -18,16 +19,18 @@ export function ProfileEditPage({ open, onClose }: Props) {
   const { t, i18n } = useTranslation()
   const { profile, user, refreshProfile } = useAuth()
 
-  const [name,        setName]        = useState('')
-  const [department,  setDepartment]  = useState('')
-  const [lang,        setLang]        = useState<LangCode>('en')
-  const [avatarColor, setAvatarColor] = useState<string | null>(null)
-  const [saving,      setSaving]      = useState(false)
-  const [error,       setError]       = useState<string | null>(null)
-  const [toast,       setToast]       = useState<string | null>(null)
+  const [name,           setName]           = useState('')
+  const [department,     setDepartment]     = useState('')
+  const [lang,           setLang]           = useState<LangCode>('en')
+  const [avatarColor,    setAvatarColor]    = useState<string | null>(null)
+  const [presenceStatus, setPresenceStatus] = useState<PresenceStatus>('offline')
+  const [statusMsg,      setStatusMsg]      = useState('')
+  const [saving,         setSaving]         = useState(false)
+  const [error,          setError]          = useState<string | null>(null)
+  const [toast,          setToast]          = useState<string | null>(null)
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null | undefined>(undefined)
-  const [uploadBusy,  setUploadBusy]  = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadBusy,     setUploadBusy]     = useState(false)
+  const [uploadError,    setUploadError]    = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -36,6 +39,8 @@ export function ProfileEditPage({ open, onClose }: Props) {
       setDepartment(profile.department ?? '')
       setLang((profile.preferred_language as LangCode) ?? 'en')
       setAvatarColor(profile.avatar_color ?? null)
+      setPresenceStatus((profile.presence_status as PresenceStatus | undefined | null) ?? 'offline')
+      setStatusMsg(profile.status_message ?? '')
       setLocalAvatarUrl(profile.avatar_url ?? null)
       setError(null)
       setUploadError(null)
@@ -100,6 +105,8 @@ export function ProfileEditPage({ open, onClose }: Props) {
           department:         department.trim() || null,
           preferred_language: lang,
           avatar_color:       avatarColor,
+          presence_status:    presenceStatus,
+          status_message:     statusMsg.trim() || null,
         })
         .eq('id', user.id)
 
@@ -305,6 +312,35 @@ export function ProfileEditPage({ open, onClose }: Props) {
                   <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
                 ))}
               </select>
+            </Field>
+
+            <div>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                style={{ color: 'var(--ink-4)' }}
+              >
+                {t('myStatus')}
+              </p>
+              <div
+                className="rounded-xl border"
+                style={{ borderColor: 'var(--line)', background: 'var(--card)' }}
+              >
+                <StatusDropdown current={presenceStatus} onSelect={setPresenceStatus} />
+              </div>
+            </div>
+
+            <Field label={t('statusMessage')}>
+              <input
+                type="text"
+                value={statusMsg}
+                onChange={e => setStatusMsg(e.target.value)}
+                placeholder={t('statusMessagePlaceholder')}
+                maxLength={80}
+                className={inputCls}
+                style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand)')}
+                onBlur={e  => (e.currentTarget.style.borderColor = 'var(--line)')}
+              />
             </Field>
           </div>
 
