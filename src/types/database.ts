@@ -30,6 +30,8 @@ export type Database = {
           avatar_color:         string | null
           role:                 'admin' | 'member' | 'read_only'
           status:               'active' | 'inactive' | 'pending' | 'rejected'
+          presence_status:      'online' | 'away' | 'dnd' | 'offline'
+          status_message:       string | null
           is_admin:             boolean
           is_bot:               boolean
           must_change_password: boolean
@@ -47,6 +49,8 @@ export type Database = {
           avatar_color?:         string | null
           role?:                 'admin' | 'member' | 'read_only'
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
+          presence_status?:      'online' | 'away' | 'dnd' | 'offline'
+          status_message?:       string | null
           is_admin?:             boolean
           is_bot?:               boolean
           must_change_password?: boolean
@@ -64,6 +68,8 @@ export type Database = {
           avatar_color?:         string | null
           role?:                 'admin' | 'member' | 'read_only'
           status?:               'active' | 'inactive' | 'pending' | 'rejected'
+          presence_status?:      'online' | 'away' | 'dnd' | 'offline'
+          status_message?:       string | null
           is_admin?:             boolean
           is_bot?:               boolean
           must_change_password?: boolean
