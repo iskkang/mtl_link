@@ -17,6 +17,7 @@ import { LogoBox } from '../ui/LogoBox'
 import { EmptyState } from '../ui/EmptyState'
 import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel'
 import { FilesPanel } from '../files/FilesPanel'
+import { ChannelsPanel } from '../channels/ChannelsPanel'
 import type { Section } from './MenuRail'
 
 interface Props {
@@ -171,6 +172,13 @@ export function Sidebar({
       {activeTab === 'files' && (
         <div className="flex flex-col flex-1 min-h-0">
           <FilesPanel onJump={onSelectRequest} />
+        </div>
+      )}
+
+      {/* ── 채널 섹션 ────────────────────────────────── */}
+      {activeTab === 'channels' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <ChannelsPanel onSelectRoom={onSelectRoom} />
         </div>
       )}
 

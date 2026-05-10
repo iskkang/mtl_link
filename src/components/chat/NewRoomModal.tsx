@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Users, MessageSquare, Loader2 } from 'lucide-react'
+import { X, Users, MessageSquare, Hash, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { UserPicker } from './UserPicker'
-import { createDirectRoom, createGroupRoom, fetchRooms } from '../../services/roomService'
+import { createDirectRoom, createGroupRoom, createChannel, fetchRooms } from '../../services/roomService'
 import { fetchActiveProfiles } from '../../services/profileService'
 import { useRoomStore } from '../../stores/roomStore'
 import { useAuth } from '../../hooks/useAuth'
 import { getUserFriendlyMessage } from '../../lib/errors'
 
-type Tab = 'direct' | 'group'
+type Tab = 'direct' | 'group' | 'channel'
 
 interface Props {
   open:          boolean
@@ -17,23 +18,28 @@ interface Props {
 }
 
 export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const setRooms = useRoomStore(s => s.setRooms)
 
-  const [tab,       setTab]       = useState<Tab>('direct')
-  const [groupName, setGroupName] = useState('')
-  const [selected,  setSelected]  = useState<string[]>([])
-  const [creating,  setCreating]  = useState(false)
-  const [loadingId, setLoadingId] = useState<string | null>(null)
-  const [error,     setError]     = useState<string | null>(null)
+  const [tab,         setTab]         = useState<Tab>('direct')
+  const [groupName,   setGroupName]   = useState('')
+  const [channelName, setChannelName] = useState('')
+  const [channelDesc, setChannelDesc] = useState('')
+  const [selected,    setSelected]    = useState<string[]>([])
+  const [creating,    setCreating]    = useState(false)
+  const [loadingId,   setLoadingId]   = useState<string | null>(null)
+  const [error,       setError]       = useState<string | null>(null)
 
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setSelected([])
     setGroupName('')
+    setChannelName('')
+    setChannelDesc('')
     setError(null)
-    if (tab === 'group') setTimeout(() => nameInputRef.current?.focus(), 50)
+    if (tab === 'group' || tab === 'channel') setTimeout(() => nameInputRef.current?.focus(), 50)
   }, [tab])
 
   useEffect(() => {
@@ -41,6 +47,8 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
       setTab('direct')
       setSelected([])
       setGroupName('')
+      setChannelName('')
+      setChannelDesc('')
       setError(null)
       setCreating(false)
       setLoadingId(null)
@@ -91,6 +99,21 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
     }
   }
 
+  const handleCreateChannel = async () => {
+    const name = channelName.trim()
+    if (!name) return
+    setCreating(true)
+    setError(null)
+    try {
+      const roomId = await createChannel({ name, description: channelDesc.trim() || null, memberIds: selected })
+      await refreshRooms()
+      onRoomCreated(roomId)
+    } catch (err) {
+      setError(getUserFriendlyMessage(err))
+      setCreating(false)
+    }
+  }
+
   if (!open) return null
 
   const groupReady = groupName.trim().length > 0 && selected.length >= 2
@@ -114,7 +137,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
           style={{ borderColor: 'var(--line)' }}
         >
           <h2 className="text-xl font-bold tracking-wide" style={{ color: 'var(--ink)' }}>
-            새 채팅
+            {t('newChatBtn')}
           </h2>
           <button
             onClick={onClose}
@@ -131,8 +154,9 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
         {/* 탭 */}
         <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--line)' }}>
           {([
-            { key: 'direct', label: '1:1 채팅', Icon: MessageSquare },
-            { key: 'group',  label: '그룹 채팅', Icon: Users },
+            { key: 'direct',  label: '1:1 채팅',          Icon: MessageSquare },
+            { key: 'group',   label: '그룹 채팅',          Icon: Users },
+            { key: 'channel', label: t('channelType'),    Icon: Hash },
           ] as const).map(({ key, label, Icon }) => {
             const isActive = tab === key
             return (
@@ -177,6 +201,72 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
                 onPickSingle={handleCreateDirect}
                 loadingId={loadingId}
               />
+            </div>
+          ) : tab === 'channel' ? (
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="px-4 pt-4 pb-3 flex-shrink-0 flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
+                    {t('channelName')} <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={channelName}
+                    onChange={e => setChannelName(e.target.value)}
+                    placeholder={t('channelNamePlaceholder')}
+                    maxLength={50}
+                    className="mtl-input"
+                    onKeyDown={e => { if (e.key === 'Enter') handleCreateChannel() }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
+                    {t('channelDescription')}
+                  </label>
+                  <input
+                    type="text"
+                    value={channelDesc}
+                    onChange={e => setChannelDesc(e.target.value)}
+                    placeholder={t('channelDescriptionPlaceholder')}
+                    maxLength={200}
+                    className="mtl-input"
+                  />
+                </div>
+              </div>
+
+              <div className="px-4 pb-1 flex-shrink-0">
+                <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
+                  {t('channelInviteOptional')}{' '}
+                  {selected.length > 0 && (
+                    <span style={{ color: 'var(--brand)' }}>({selected.length}명)</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <UserPicker
+                  mode="multi"
+                  selected={selected}
+                  onChange={setSelected}
+                  excludeId={user?.id}
+                />
+              </div>
+
+              <div className="px-4 py-4 flex-shrink-0 border-t" style={{ borderColor: 'var(--line)' }}>
+                <button
+                  onClick={handleCreateChannel}
+                  disabled={!channelName.trim() || creating}
+                  className="w-full py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                  style={{ background: 'var(--brand)' }}
+                >
+                  {creating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      생성 중…
+                    </span>
+                  ) : t('channelCreate')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden">

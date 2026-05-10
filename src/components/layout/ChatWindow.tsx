@@ -31,6 +31,7 @@ import { ReplyPreview } from '../chat/ReplyPreview'
 import { ForwardSheet } from '../chat/ForwardSheet'
 import { PinnedMessagesPanel } from '../chat/PinnedMessagesPanel'
 import { usePinnedMessages } from '../../hooks/usePinnedMessages'
+import { ChannelSettingsPanel } from '../channels/ChannelSettingsPanel'
 import { pinMessage, unpinMessage, PIN_MAX } from '../../services/pinMessage'
 import { AiQuickActions } from '../ai/AiQuickActions'
 import { AiQuickBar }     from '../ai/AiQuickBar'
@@ -71,7 +72,8 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const [replyTo,         setReplyTo]         = useState<MessageWithSender | null>(null)
   const [forwardTarget,   setForwardTarget]   = useState<MessageWithSender | null>(null)
   const [forwardToast,    setForwardToast]    = useState<string | null>(null)
-  const [pinPanelOpen,    setPinPanelOpen]    = useState(false)
+  const [pinPanelOpen,          setPinPanelOpen]          = useState(false)
+  const [channelSettingsOpen,   setChannelSettingsOpen]   = useState(false)
   const forwardToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pinToast,        setPinToast]        = useState<string | null>(null)
   const pinToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -115,6 +117,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     setGlobalOpen(false)
     setThreadRootId(null)
     setPinPanelOpen(false)
+    setChannelSettingsOpen(false)
     if (!roomId) return
 
     Promise.resolve(
@@ -316,10 +319,12 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         notifEnabled={notifEnabled}
         onToggleNotif={onToggleNotif}
         isAnnouncement={room?.is_announcement}
+        isChannel={isChannel}
         onLeave={() => setLeaveOpen(true)}
         onDelete={() => setDeleteOpen(true)}
         pinnedCount={pinnedCount}
         onTogglePinPanel={() => setPinPanelOpen(o => !o)}
+        onToggleChannelSettings={isChannel ? () => setChannelSettingsOpen(o => !o) : undefined}
       />
 
       {/* ── 공지 배너 ─────────────────────────────────── */}
@@ -533,6 +538,24 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           onClose={() => setPinPanelOpen(false)}
           onJumpToMessage={scrollToMessage}
           onUnpinSuccess={() => showPinToast(t('unpinMessage'))}
+        />
+      )}
+
+      {channelSettingsOpen && roomId && room && isChannel && (
+        <ChannelSettingsPanel
+          roomId={roomId}
+          roomName={room.name ?? ''}
+          roomDesc={room.description ?? null}
+          isOwner={isOwner}
+          onClose={() => setChannelSettingsOpen(false)}
+          onLeft={() => {
+            setChannelSettingsOpen(false)
+            onLeaveOrDelete?.(t('leaveRoomToast'))
+          }}
+          onDeleted={() => {
+            setChannelSettingsOpen(false)
+            onLeaveOrDelete?.(t('deleteRoomToast'))
+          }}
         />
       )}
 

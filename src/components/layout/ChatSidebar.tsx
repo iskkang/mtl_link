@@ -13,6 +13,7 @@ import { CalendarHolidayList } from '../calendar/CalendarHolidayList'
 import { Button } from '../ui/Button'
 import { FilesPanel } from '../files/FilesPanel'
 import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel'
+import { ChannelsPanel } from '../channels/ChannelsPanel'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -181,8 +182,15 @@ export function ChatSidebar({
         <AnnouncementsPanel />
       )}
 
+      {/* ── Channels section ── */}
+      {activeSection === 'channels' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <ChannelsPanel onSelectRoom={onSelectRoom} />
+        </div>
+      )}
+
       {/* ── Placeholder sections ── */}
-      {(['channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
+      {(['bots', 'settings'] as Section[]).includes(activeSection) && (
         <ComingSoon label={title} section={activeSection} onSectionChange={onSectionChange} />
       )}
     </div>

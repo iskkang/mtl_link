@@ -1,4 +1,4 @@
-import { ArrowLeft, Globe, ChevronDown, Search, Pin } from 'lucide-react'
+import { ArrowLeft, Globe, ChevronDown, Search, Pin, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { ChatHeaderMenu } from './ChatHeaderMenu'
@@ -28,10 +28,12 @@ interface Props {
   notifEnabled:    boolean
   onToggleNotif:   () => void
   isAnnouncement?: boolean
+  isChannel?:      boolean
   onLeave:         () => void
   onDelete:        () => void
   pinnedCount?:    number
-  onTogglePinPanel?: () => void
+  onTogglePinPanel?:       () => void
+  onToggleChannelSettings?: () => void
 }
 
 export function ChatHeader({
@@ -40,8 +42,8 @@ export function ChatHeader({
   peerStatus, peerStatusMessage,
   effectivePeerLang, onOpenTranslation,
   searchOpen, onToggleSearch,
-  notifEnabled, onToggleNotif, isAnnouncement, onLeave, onDelete,
-  pinnedCount, onTogglePinPanel,
+  notifEnabled, onToggleNotif, isAnnouncement, isChannel, onLeave, onDelete,
+  pinnedCount, onTogglePinPanel, onToggleChannelSettings,
 }: Props) {
   const { t } = useTranslation()
 
@@ -181,6 +183,19 @@ export function ChatHeader({
                     {pinnedCount}
                   </span>
                 )}
+              </button>
+            )}
+
+            {isChannel && onToggleChannelSettings && (
+              <button
+                onClick={onToggleChannelSettings}
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ink-3)', background: 'transparent' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                title={t('channelSettings')}
+              >
+                <Settings size={17} />
               </button>
             )}
 

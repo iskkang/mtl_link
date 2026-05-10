@@ -244,6 +244,93 @@ export async function fetchPublicChannels(): Promise<PublicChannel[]> {
   }))
 }
 
+// ─── 채널 생성 / 수정 / 멤버 관리 ──────────────────────────────
+
+export async function createChannel(params: {
+  name: string
+  description?: string | null
+  memberIds?: string[]
+}): Promise<string> {
+  const { name, description = null, memberIds = [] } = params
+
+  const { data: room, error: roomErr } = await supabase
+    .from('rooms')
+    .insert({
+      name:        name.trim(),
+      description: description?.trim() || null,
+      room_type:   'channel',
+      is_private:  false,
+    } as never)
+    .select('id')
+    .single()
+
+  if (roomErr) throw roomErr
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const allMemberIds = [...new Set([user!.id, ...memberIds])]
+
+  const { error: memberErr } = await supabase
+    .from('room_members')
+    .insert(allMemberIds.map(uid => ({ room_id: (room as { id: string }).id, user_id: uid })))
+
+  if (memberErr) throw memberErr
+
+  return (room as { id: string }).id
+}
+
+export async function updateChannel(
+  roomId: string,
+  updates: { name?: string; description?: string | null }
+): Promise<void> {
+  const patch: Record<string, unknown> = {}
+  if (updates.name !== undefined)        patch.name        = updates.name.trim()
+  if (updates.description !== undefined) patch.description = updates.description?.trim() || null
+
+  const { error } = await supabase
+    .from('rooms')
+    .update(patch as never)
+    .eq('id', roomId)
+
+  if (error) throw error
+}
+
+export async function inviteToChannel(roomId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('room_members')
+    .insert({ room_id: roomId, user_id: userId })
+  if (error && error.code !== '23505') throw error
+}
+
+export async function removeMemberFromChannel(roomId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('room_members')
+    .delete()
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
+export async function fetchChannelMembers(
+  roomId: string
+): Promise<{ id: string; name: string; avatar_url: string | null; avatar_color: string | null }[]> {
+  const { data: mems, error: e1 } = await supabase
+    .from('room_members')
+    .select('user_id')
+    .eq('room_id', roomId)
+  if (e1) throw e1
+
+  const userIds = (mems ?? []).map(m => m.user_id)
+  if (!userIds.length) return []
+
+  const { data: profiles, error: e2 } = await supabase
+    .from('profiles')
+    .select('id, name, avatar_url, avatar_color')
+    .in('id', userIds)
+  if (e2) throw e2
+
+  return (profiles ?? []) as { id: string; name: string; avatar_url: string | null; avatar_color: string | null }[]
+}
+
 export async function deleteRoom(roomId: string): Promise<void> {
   const { error } = await supabase.from('rooms').delete().eq('id', roomId)
   if (error) throw error
