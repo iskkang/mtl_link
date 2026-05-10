@@ -20,10 +20,11 @@ const TABS: { key: AttachmentFilter; labelKey: string }[] = [
 ]
 
 interface Props {
-  roomId?: string
+  roomId?:  string
+  onJump?:  (roomId: string, messageId: string) => void
 }
 
-export function FilesPanel({ roomId }: Props) {
+export function FilesPanel({ roomId, onJump }: Props) {
   const { t } = useTranslation()
   const { items, filter, loading, hasMore, setFilter, loadMore } = useAttachments(roomId)
 
@@ -87,7 +88,7 @@ export function FilesPanel({ roomId }: Props) {
         {!isGridMode && items.length > 0 && (
           <div className="flex flex-col">
             {items.map(item => (
-              <FileListItem key={item.id} item={item} />
+              <FileListItem key={item.id} item={item} onJump={onJump} />
             ))}
           </div>
         )}
@@ -156,7 +157,13 @@ function FileGridItem({ item }: { item: AttachmentItem }) {
 }
 
 /* ── FileListItem ─────────────────────────────────────────── */
-function FileListItem({ item }: { item: AttachmentItem }) {
+function FileListItem({
+  item,
+  onJump,
+}: {
+  item:    AttachmentItem
+  onJump?: (roomId: string, messageId: string) => void
+}) {
   const { t } = useTranslation()
   const publicUrl = getPublicUrl(item.file_path)
 
@@ -173,8 +180,13 @@ function FileListItem({ item }: { item: AttachmentItem }) {
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 border-b transition-colors"
+      role={onJump ? 'button' : undefined}
+      tabIndex={onJump ? 0 : undefined}
+      onClick={() => onJump?.(item.room_id, item.message_id)}
+      onKeyDown={e => { if (e.key === 'Enter') onJump?.(item.room_id, item.message_id) }}
+      className={`flex items-center gap-3 px-4 py-3 border-b transition-colors ${onJump ? 'cursor-pointer hover:bg-[var(--side-row)]' : ''}`}
       style={{ borderColor: 'var(--side-line)' }}
+      title={onJump ? t('jumpToMessage') : undefined}
     >
       {/* 파일 아이콘 */}
       <div

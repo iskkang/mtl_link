@@ -171,7 +171,7 @@ export function ChatSidebar({
       {/* ── Files section ── */}
       {activeSection === 'files' && (
         <div className="flex flex-col flex-1 min-h-0">
-          <FilesPanel />
+          <FilesPanel onJump={onSelectRequest} />
         </div>
       )}
 
