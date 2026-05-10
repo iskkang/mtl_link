@@ -26,6 +26,15 @@ Guidelines:
 - Do not use markdown formatting — plain text and line breaks only
 - For HS-code, customs, DG, sanctions: always say "확인 필요" / "candidate only", never confirm`
 
+// Module-level Supabase admin client (reused across requests)
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  { auth: { persistSession: false } },
+)
+
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
+
 interface AiChatRequest {
   sessionId:    string
   message:      string
@@ -39,6 +48,8 @@ interface KnowledgeHit {
   content:  string
 }
 
+// ── 키워드 매칭 (폴백 / 임베딩 없는 기존 항목용) ──────────────────────────
+
 function extractSearchTerms(text: string): string[] {
   const terms = new Set<string>()
   const en = text.match(/[A-Za-z][A-Za-z0-9/]{1,}/g) ?? []
@@ -48,8 +59,8 @@ function extractSearchTerms(text: string): string[] {
   return [...terms].slice(0, 20)
 }
 
-async function findRelevantKnowledge(db: ReturnType<typeof createClient>, question: string): Promise<KnowledgeHit[]> {
-  const { data, error } = await db
+async function findRelevantKnowledge(question: string): Promise<KnowledgeHit[]> {
+  const { data, error } = await supabaseAdmin
     .from('knowledge_base')
     .select('title, category, content')
     .eq('status', 'verified')
@@ -72,6 +83,70 @@ async function findRelevantKnowledge(db: ReturnType<typeof createClient>, questi
   return (relevant.length > 0 ? relevant : items).slice(0, 5)
 }
 
+// ── 벡터 검색 (주 경로) ────────────────────────────────────────────────────
+
+async function embedQuestion(text: string): Promise<number[] | null> {
+  if (!OPENAI_API_KEY) return null
+  try {
+    const res = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text.slice(0, 8000),
+      }),
+    })
+    if (!res.ok) {
+      console.error('[knowledge] OpenAI 임베딩 오류:', res.status, await res.text())
+      return null
+    }
+    const data = await res.json()
+    return data.data[0].embedding as number[]
+  } catch (err) {
+    console.error('[knowledge] 임베딩 예외:', err)
+    return null
+  }
+}
+
+async function findRelevantKnowledgeByVector(question: string): Promise<KnowledgeHit[]> {
+  const embedding = await embedQuestion(question)
+
+  if (!embedding) {
+    console.log('[knowledge] 임베딩 실패 → 키워드 매칭 폴백')
+    return findRelevantKnowledge(question)
+  }
+
+  const { data, error } = await supabaseAdmin.rpc('match_knowledge', {
+    query_embedding: embedding,
+    match_threshold:  0.5,
+    match_count:      5,
+  })
+
+  if (error) {
+    console.error('[knowledge] 벡터 검색 오류:', error.message, '→ 키워드 매칭 폴백')
+    return findRelevantKnowledge(question)
+  }
+
+  if (!data || (data as unknown[]).length === 0) {
+    console.log('[knowledge] 벡터 검색 결과 없음 → 키워드 매칭 폴백')
+    return findRelevantKnowledge(question)
+  }
+
+  console.log(
+    `[knowledge] 벡터 검색 hits=${(data as unknown[]).length}`,
+    (data as { title: string; similarity: number }[])
+      .map(d => `${d.title}(${d.similarity.toFixed(2)})`),
+  )
+
+  return (data as { title: string; category: string | null; content: string }[])
+    .map(item => ({ title: item.title, category: item.category, content: item.content }))
+}
+
+// ── 시스템 프롬프트 주입 ───────────────────────────────────────────────────
+
 function buildKnowledgeContext(hits: KnowledgeHit[]): string {
   if (hits.length === 0) return ''
   const lines = hits.map(h =>
@@ -79,6 +154,8 @@ function buildKnowledgeContext(hits: KnowledgeHit[]): string {
   )
   return `\n\n[MTL Internal Knowledge — prioritize the following information in your answer]\n${lines.join('\n\n')}`
 }
+
+// ── 핸들러 ────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -94,16 +171,11 @@ Deno.serve(async (req: Request) => {
 
     if (!sessionId || !message || !userId) return json({ error: 'missing required fields' }, 400)
 
-    const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
-    const serviceKey   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-
     if (!anthropicKey) return json({ error: 'AI service not configured' }, 500)
 
-    const db = createClient(supabaseUrl, serviceKey)
-
     // 1. Load session context (recent 10 turns)
-    const { data: history } = await db
+    const { data: history } = await supabaseAdmin
       .from('ai_conversations')
       .select('question, answer')
       .eq('user_id', userId)
@@ -118,14 +190,14 @@ Deno.serve(async (req: Request) => {
     }
     contextMessages.push({ role: 'user', content: message })
 
-    // 2. Knowledge base lookup — verified items only, keyword match
-    const knowledgeHits    = await findRelevantKnowledge(db, message)
+    // 2. Vector search → keyword fallback
+    const knowledgeHits    = await findRelevantKnowledgeByVector(message)
     const knowledgeContext = buildKnowledgeContext(knowledgeHits)
-    console.info(`[knowledge] verified=${knowledgeHits.length}`, knowledgeHits.map(h => h.title))
+    console.info(`[ai-chat] knowledge hits=${knowledgeHits.length}`)
 
-    // 3. Anthropic call with knowledge-augmented system prompt
-    const languageName    = LANGUAGE_NAMES[userLanguage] ?? 'English'
-    const systemPrompt    = SYSTEM_PROMPT.replace(/{languageName}/g, languageName) + knowledgeContext
+    // 3. Anthropic call
+    const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
+    const systemPrompt = SYSTEM_PROMPT.replace(/{languageName}/g, languageName) + knowledgeContext
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -154,7 +226,7 @@ Deno.serve(async (req: Request) => {
     if (!answer) throw new Error('Empty response from Anthropic')
 
     // 4. Check if first message (for session title)
-    const { count } = await db
+    const { count } = await supabaseAdmin
       .from('ai_conversations')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
@@ -164,7 +236,7 @@ Deno.serve(async (req: Request) => {
     const sessionTitle = isFirst ? message.slice(0, 30) : undefined
 
     // 5. Save to DB
-    const { error: insertError } = await db.from('ai_conversations').insert({
+    const { error: insertError } = await supabaseAdmin.from('ai_conversations').insert({
       user_id:          userId,
       session_id:       sessionId,
       session_title:    sessionTitle,
