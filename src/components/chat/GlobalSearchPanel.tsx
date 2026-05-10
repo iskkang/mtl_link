@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, X } from 'lucide-react'
-import { searchAllRooms } from '../../services/searchService'
-import type { SearchResult } from '../../services/searchService'
+import { searchAllRoomsLegacy } from '../../services/searchService'
+import type { LegacySearchResult } from '../../services/searchService'
 import { formatMessageTime } from '../../lib/date'
 
 interface Props {
@@ -22,7 +22,7 @@ function highlightText(text: string, query: string): React.ReactNode {
 }
 
 export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
-  const [results,  setResults]  = useState<SearchResult[]>([])
+  const [results,  setResults]  = useState<LegacySearchResult[]>([])
   const [loading,  setLoading]  = useState(false)
   const [searched, setSearched] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -35,7 +35,7 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const data = await searchAllRooms(q)
+        const data = await searchAllRoomsLegacy(q)
         setResults(data)
         setSearched(q)
       } finally {
@@ -49,7 +49,7 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
   }, [query])
 
   // Group by room
-  const grouped = results.reduce<Record<string, { roomName: string | null; items: SearchResult[] }>>((acc, r) => {
+  const grouped = results.reduce<Record<string, { roomName: string | null; items: LegacySearchResult[] }>>((acc, r) => {
     if (!acc[r.room_id]) acc[r.room_id] = { roomName: r.room_name, items: [] }
     acc[r.room_id].items.push(r)
     return acc
