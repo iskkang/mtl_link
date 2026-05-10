@@ -162,79 +162,81 @@ export function ProfileEditPage({ open, onClose }: Props) {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
+        <div className="max-w-md mx-auto px-4 pt-8 pb-10 flex flex-col gap-6">
 
-        {/* Avatar preview + upload */}
-        <div className="flex flex-col items-center gap-4 pt-8 pb-6 px-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleAvatarFile}
-            className="hidden"
-          />
-          <div className="relative">
-            {profile
-              ? <Avatar name={profile.name} avatarUrl={localAvatarUrl ?? undefined} avatarColor={avatarColor} size="xl" />
-              : <div className="w-20 h-20 rounded-full" style={{ background: 'var(--line)' }} />
-            }
-            {uploadBusy ? (
-              <div
-                className="absolute inset-0 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(0,0,0,0.45)' }}
-              >
-                <Loader2 size={20} className="animate-spin" style={{ color: 'white' }} />
-              </div>
-            ) : (
+          {/* Avatar preview + upload */}
+          <div className="flex flex-col items-center gap-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarFile}
+              className="hidden"
+            />
+            <div className="relative">
+              {profile
+                ? <Avatar name={profile.name} avatarUrl={localAvatarUrl ?? undefined} avatarColor={avatarColor} size="xl" />
+                : <div className="w-20 h-20 rounded-full" style={{ background: 'var(--line)' }} />
+              }
+              {uploadBusy ? (
+                <div
+                  className="absolute inset-0 rounded-full flex items-center justify-center"
+                  style={{ background: 'rgba(0,0,0,0.45)' }}
+                >
+                  <Loader2 size={20} className="animate-spin" style={{ color: 'white' }} />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-7 h-7 rounded-full
+                             flex items-center justify-center shadow-md"
+                  style={{ background: 'var(--brand)', color: 'white' }}
+                  aria-label={t('changePhoto')}
+                >
+                  <Camera size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Upload / Remove buttons */}
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-7 h-7 rounded-full
-                           flex items-center justify-center shadow-md"
-                style={{ background: 'var(--brand)', color: 'white' }}
-                aria-label={t('changePhoto')}
-              >
-                <Camera size={13} />
-              </button>
-            )}
-          </div>
-
-          {/* Upload / Remove buttons */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadBusy}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-opacity"
-              style={{ background: 'var(--brand)', color: 'white', opacity: uploadBusy ? 0.5 : 1 }}
-            >
-              {localAvatarUrl ? t('changePhoto') : t('uploadPhoto')}
-            </button>
-            {localAvatarUrl && (
-              <button
-                type="button"
-                onClick={handleDeleteAvatar}
                 disabled={uploadBusy}
-                className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition-opacity"
-                style={{ color: 'var(--ink-3)', border: '1px solid var(--line)', opacity: uploadBusy ? 0.5 : 1 }}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-opacity"
+                style={{ background: 'var(--brand)', color: 'white', opacity: uploadBusy ? 0.5 : 1 }}
               >
-                <Trash2 size={13} />
-                {t('removePhoto')}
+                {localAvatarUrl ? t('changePhoto') : t('uploadPhoto')}
               </button>
+              {localAvatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAvatar}
+                  disabled={uploadBusy}
+                  className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 transition-opacity"
+                  style={{ color: 'var(--ink-3)', border: '1px solid var(--line)', opacity: uploadBusy ? 0.5 : 1 }}
+                >
+                  <Trash2 size={13} />
+                  {t('removePhoto')}
+                </button>
+              )}
+            </div>
+            {uploadError && (
+              <p className="text-xs" style={{ color: 'var(--red)' }}>{uploadError}</p>
             )}
           </div>
-          {uploadError && (
-            <p className="text-xs" style={{ color: 'var(--red)' }}>{uploadError}</p>
-          )}</div>
 
           {/* Color palette */}
-          <div className="w-full max-w-xs">
+          <div>
             <p
               className="text-[11px] font-semibold uppercase tracking-wider mb-2 text-center"
               style={{ color: 'var(--ink-4)' }}
             >
               {t('profileAvatarColor')}
             </p>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="grid grid-cols-6 gap-2 justify-items-center">
               {AVATAR_COLORS.map(color => {
                 const isSelected = (avatarColor ?? null) === color
                 return (
@@ -257,53 +259,55 @@ export function ProfileEditPage({ open, onClose }: Props) {
             </div>
           </div>
 
-        {/* Form */}
-        <div className="px-4 space-y-5 max-w-md mx-auto pb-10">
-          {error && (
-            <p
-              className="text-sm px-3 py-2 rounded-lg"
-              style={{ color: 'var(--red)', background: 'rgba(239,63,26,0.08)' }}
-            >
-              {error}
-            </p>
-          )}
+          {/* Form */}
+          <div className="space-y-5">
+            {error && (
+              <p
+                className="text-sm px-3 py-2 rounded-lg"
+                style={{ color: 'var(--red)', background: 'rgba(239,63,26,0.08)' }}
+              >
+                {error}
+              </p>
+            )}
 
-          <Field label={`${t('profileName')} *`}>
-            <input
-              type="text"
-              value={name}
-              onChange={e => { setName(e.target.value); setError(null) }}
-              className={inputCls}
-              style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-              onFocus={e  => (e.currentTarget.style.borderColor = 'var(--brand)')}
-              onBlur={e   => (e.currentTarget.style.borderColor = 'var(--line)')}
-            />
-          </Field>
+            <Field label={`${t('profileName')} *`}>
+              <input
+                type="text"
+                value={name}
+                onChange={e => { setName(e.target.value); setError(null) }}
+                className={inputCls}
+                style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                onFocus={e  => (e.currentTarget.style.borderColor = 'var(--brand)')}
+                onBlur={e   => (e.currentTarget.style.borderColor = 'var(--line)')}
+              />
+            </Field>
 
-          <Field label={t('profileDepartment')}>
-            <input
-              type="text"
-              value={department}
-              onChange={e => setDepartment(e.target.value)}
-              className={inputCls}
-              style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-              onFocus={e  => (e.currentTarget.style.borderColor = 'var(--brand)')}
-              onBlur={e   => (e.currentTarget.style.borderColor = 'var(--line)')}
-            />
-          </Field>
+            <Field label={t('profileDepartment')}>
+              <input
+                type="text"
+                value={department}
+                onChange={e => setDepartment(e.target.value)}
+                className={inputCls}
+                style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                onFocus={e  => (e.currentTarget.style.borderColor = 'var(--brand)')}
+                onBlur={e   => (e.currentTarget.style.borderColor = 'var(--line)')}
+              />
+            </Field>
 
-          <Field label={t('profileLanguage')}>
-            <select
-              value={lang}
-              onChange={e => setLang(e.target.value as LangCode)}
-              className={inputCls}
-              style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-            >
-              {SUPPORTED_LANGS.map(l => (
-                <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
-              ))}
-            </select>
-          </Field>
+            <Field label={t('profileLanguage')}>
+              <select
+                value={lang}
+                onChange={e => setLang(e.target.value as LangCode)}
+                className={inputCls}
+                style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+              >
+                {SUPPORTED_LANGS.map(l => (
+                  <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
         </div>
       </div>
 
