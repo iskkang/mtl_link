@@ -14,6 +14,7 @@ interface MessageStore {
   refetchSinceLastSeen: (roomId: string) => Promise<void>
   setTranslation:      (roomId: string, messageId: string, text: string) => void
   setReactions:        (roomId: string, messageId: string, reactions: { emoji: string; user_id: string }[]) => void
+  patchSender:         (userId: string, patch: Partial<NonNullable<MessageWithSender['sender']>>) => void
 }
 
 export const MSG_SELECT = `
@@ -208,4 +209,17 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     next[idx] = { ...next[idx], reactions }
     return { messagesByRoom: { ...s.messagesByRoom, [roomId]: next } }
   }),
+
+  patchSender: (userId, patch) => set(s => ({
+    messagesByRoom: Object.fromEntries(
+      Object.entries(s.messagesByRoom).map(([roomId, msgs]) => [
+        roomId,
+        msgs.map(m =>
+          m.sender?.id === userId
+            ? { ...m, sender: { ...m.sender!, ...patch } }
+            : m,
+        ),
+      ]),
+    ),
+  })),
 }))

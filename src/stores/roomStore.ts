@@ -26,6 +26,7 @@ interface RoomStore {
   incrementUnread:      (roomId: string) => void
   resetUnread:          (roomId: string) => void
   applyLocalRead:       (roomId: string, lastReadAt: string) => void
+  patchMember:          (userId: string, patch: Partial<RoomListItem['members'][number]>) => void
 }
 
 export const useRoomStore = create<RoomStore>((set, _get) => ({
@@ -98,6 +99,15 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
     next[idx] = { ...next[idx], last_read_at: lastReadAt, unread_count: 0 }
     return { rooms: next }
   }),
+
+  patchMember: (userId, patch) => set(s => ({
+    rooms: s.rooms.map(room => ({
+      ...room,
+      members: room.members.map(m =>
+        m.id === userId ? { ...m, ...patch } : m,
+      ),
+    })),
+  })),
 }))
 
 // 인증 상태 변경 시 스토어 초기화

@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Search, ChevronDown, ChevronRight, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FriendItem } from './FriendItem'
 import { FriendProfileModal } from './FriendProfileModal'
-import { fetchFriends, type FriendProfile } from '../../services/friendsService'
+import { useFriendsStore } from '../../stores/friendsStore'
 import { usePresence } from '../../hooks/usePresence'
 import { getEffectiveStatus } from '../../lib/presence'
 import { EmptyState } from '../ui/EmptyState'
+import type { FriendProfile } from '../../services/friendsService'
 
 const DEPT_ORDER = ['HQ', 'UZ', 'RU', 'JP', 'CN', 'KG', 'VN', 'OTHER']
 
@@ -16,19 +17,13 @@ interface Props {
 
 export function FriendsList({ onSelectFriend }: Props) {
   const { t } = useTranslation()
-  const [friends,        setFriends]       = useState<FriendProfile[]>([])
-  const [loading,        setLoading]       = useState(true)
-  const [query,          setQuery]         = useState('')
-  const [collapsed,      setCollapsed]     = useState<Record<string, boolean>>({})
-  const [profileTarget,  setProfileTarget] = useState<FriendProfile | null>(null)
+  const { friends, loading, load } = useFriendsStore()
+  const [query,         setQuery]        = useState('')
+  const [collapsed,     setCollapsed]    = useState<Record<string, boolean>>({})
+  const [profileTarget, setProfileTarget] = useState<FriendProfile | null>(null)
   const { onlineIds } = usePresence()
 
-  useEffect(() => {
-    fetchFriends()
-      .then(setFriends)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+  useEffect(() => { void load() }, [load])
 
   const filtered = useMemo(() => {
     if (!query.trim()) return friends

@@ -6,6 +6,7 @@ import { MoreSheet } from './MoreSheet'
 import { ProfileEditPage } from '../profile/ProfileEditPage'
 import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
+import { usePresenceSubscription } from '../../hooks/usePresenceSubscription'
 import { useRequestStore } from '../../stores/requestStore'
 import type { Section } from './MenuRail'
 import type { SidebarTab } from '../chat/SidebarTabs'
@@ -63,6 +64,8 @@ export function AppLayout({
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
   activeSessionId, onSelectSession, aiSidebarVersion,
 }: Props) {
+  usePresenceSubscription()
+
   const isDesktop = useIsDesktop()
   const [moreOpen,        setMoreOpen]        = useState(false)
   const [profileEditOpen, setProfileEditOpen] = useState(false)
