@@ -12,6 +12,7 @@ import { AiSidebar } from '../ai/AiSidebar'
 import { CalendarHolidayList } from '../calendar/CalendarHolidayList'
 import { Button } from '../ui/Button'
 import { FilesPanel } from '../files/FilesPanel'
+import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -175,8 +176,13 @@ export function ChatSidebar({
         </div>
       )}
 
+      {/* ── Announcements section ── */}
+      {activeSection === 'announcements' && (
+        <AnnouncementsPanel />
+      )}
+
       {/* ── Placeholder sections ── */}
-      {(['announcements', 'channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
+      {(['channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
         <ComingSoon label={title} section={activeSection} onSectionChange={onSectionChange} />
       )}
     </div>
