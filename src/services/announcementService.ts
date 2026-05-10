@@ -22,7 +22,7 @@ export async function fetchAnnouncements(roomId: string): Promise<AnnouncementIt
   const { data: msgs, error: msgErr } = await (supabase as any)
     .from('messages')
     .select(`
-      id, content, created_at, updated_at, room_id,
+      id, content, created_at, edited_at, room_id,
       sender:profiles!messages_sender_id_fkey(id, name, avatar_url, is_admin)
     `)
     .eq('room_id', roomId)
@@ -49,7 +49,7 @@ export async function fetchAnnouncements(roomId: string): Promise<AnnouncementIt
     id:         msg.id,
     content:    msg.content ?? '',
     created_at: msg.created_at,
-    updated_at: msg.updated_at ?? null,
+    updated_at: msg.edited_at ?? null,
     room_id:    msg.room_id,
     author:     msg.sender
       ? {
