@@ -340,8 +340,9 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           canPrev={searchCanGoPrev}
           onGlobal={() => setGlobalOpen(v => !v)}
           onEnter={() => searchForce(searchQuery)}
-          placeholder={t('searchPlaceholder')}
+          placeholder={t('inRoomSearchPlaceholder')}
           labelGlobal={t('searchGlobal')}
+          infoTooltip={t('inRoomSearchTooltip')}
         />
       )}
 

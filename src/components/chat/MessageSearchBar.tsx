@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { X, ChevronDown, ChevronUp, Globe } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, Globe, Info } from 'lucide-react'
 
 interface Props {
   query:       string
@@ -11,17 +11,18 @@ interface Props {
   onPrev:      () => void
   canNext:     boolean
   canPrev:     boolean
-  onGlobal:    () => void
-  onEnter:     () => void
-  placeholder: string
-  labelGlobal: string
+  onGlobal:     () => void
+  onEnter:      () => void
+  placeholder:  string
+  labelGlobal:  string
+  infoTooltip?: string
 }
 
 export function MessageSearchBar({
   query, onChange, onClose,
   total, currentIdx,
   onNext, onPrev, canNext, canPrev,
-  onGlobal, onEnter, placeholder, labelGlobal,
+  onGlobal, onEnter, placeholder, labelGlobal, infoTooltip,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -55,6 +56,19 @@ export function MessageSearchBar({
         <span className="text-xs whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>
           {currentIdx + 1}/{total}
         </span>
+      )}
+
+      {infoTooltip && (
+        <button
+          type="button"
+          className="flex-shrink-0 p-1 rounded"
+          title={infoTooltip}
+          style={{ color: 'var(--ink-3)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          <Info size={14} />
+        </button>
       )}
 
       <button

@@ -188,16 +188,14 @@ export function GlobalSearchPanel({ query, onClose, onRoomSelect }: Props) {
                 {item._translatedMatch && (
                   <div
                     className="flex items-start gap-1.5 mt-1.5 px-2 py-1 rounded text-xs"
-                    style={{
-                      color:      'var(--ink-2)',
-                      background: 'var(--blue-soft)',
-                      border:     '1px solid var(--line)',
-                    }}
+                    style={{ color: 'var(--ink-2)', background: 'var(--blue-soft)' }}
                   >
                     <Languages size={12} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
-                    <div className="flex-1 min-w-0 truncate">
-                      <span className="font-medium mr-1">{t('matchedInTranslation')}:</span>
-                      {highlightText(item._translatedMatch, searched)}
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium mr-1" style={{ color: 'var(--brand)' }}>
+                        {t('matchedInTranslation')}
+                      </span>
+                      <span>{highlightText(item._translatedMatch, searched)}</span>
                     </div>
                   </div>
                 )}
