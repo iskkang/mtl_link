@@ -1,15 +1,49 @@
 import * as mammoth from 'mammoth'
 import * as XLSX from 'xlsx'
 
-export type SupportedFileType = 'docx' | 'xlsx' | 'xls' | 'txt' | 'csv'
+export type SupportedFileType = 'pdf' | 'docx' | 'xlsx' | 'xls' | 'txt' | 'csv'
 
 export function getSupportedFileType(file: File): SupportedFileType | null {
   const name = file.name.toLowerCase()
+  if (name.endsWith('.pdf'))                         return 'pdf'
   if (name.endsWith('.docx'))                        return 'docx'
   if (name.endsWith('.xlsx') || name.endsWith('.xls')) return 'xlsx'
   if (name.endsWith('.txt'))                         return 'txt'
   if (name.endsWith('.csv'))                         return 'csv'
   return null
+}
+
+export async function parsePdf(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist')
+
+  // CDN worker — version-matched automatically
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+
+  const pageTexts: string[] = []
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum)
+    const content = await page.getTextContent()
+
+    const pageText = content.items
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((item: any) => ('str' in item ? item.str : ''))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    if (pageText) pageTexts.push(pageText)
+  }
+
+  if (pageTexts.length === 0) {
+    throw new Error('SCAN_PDF')
+  }
+
+  return pageTexts.join('\n\n').trim()
 }
 
 export async function parseDocx(file: File): Promise<string> {
@@ -50,6 +84,9 @@ export async function parseDocument(file: File): Promise<{
 
   let text = ''
   switch (fileType) {
+    case 'pdf':
+      text = await parsePdf(file)
+      break
     case 'docx':
       text = await parseDocx(file)
       break
