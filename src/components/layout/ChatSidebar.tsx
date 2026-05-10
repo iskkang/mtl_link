@@ -11,6 +11,7 @@ import { RequestList } from '../requests/RequestList'
 import { AiSidebar } from '../ai/AiSidebar'
 import { CalendarHolidayList } from '../calendar/CalendarHolidayList'
 import { Button } from '../ui/Button'
+import { FilesPanel } from '../files/FilesPanel'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -167,8 +168,15 @@ export function ChatSidebar({
         <AiSidebar key={aiSidebarVersion} activeSessionId={activeSessionId} onSelectSession={onSelectSession} />
       )}
 
+      {/* ── Files section ── */}
+      {activeSection === 'files' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <FilesPanel />
+        </div>
+      )}
+
       {/* ── Placeholder sections ── */}
-      {(['announcements', 'files', 'channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
+      {(['announcements', 'channels', 'bots', 'settings'] as Section[]).includes(activeSection) && (
         <ComingSoon label={title} section={activeSection} onSectionChange={onSectionChange} />
       )}
     </div>

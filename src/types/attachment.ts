@@ -24,7 +24,7 @@ export interface AttachmentItem {
 export type AttachmentFilter = 'all' | AttachmentType
 
 export interface AttachmentFetchOptions {
-  roomId:  string
+  roomId?: string
   filter:  AttachmentFilter
   before?: string
   limit?:  number

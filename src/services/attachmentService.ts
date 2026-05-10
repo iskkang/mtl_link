@@ -13,9 +13,10 @@ export async function fetchRoomAttachments(opts: AttachmentFetchOptions): Promis
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q = (supabase.from('message_attachments') as any)
     .select(ATTACH_SELECT)
-    .eq('room_id', roomId)
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  if (roomId) q = q.eq('room_id', roomId)
 
   if (filter !== 'all') q = q.eq('attachment_type', filter)
   if (before)           q = q.lt('created_at', before)
