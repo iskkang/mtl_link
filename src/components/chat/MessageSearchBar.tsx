@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { X, ChevronDown, ChevronUp, Globe, Info } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, FileSearch } from 'lucide-react'
 
 interface Props {
   query:       string
@@ -11,18 +11,17 @@ interface Props {
   onPrev:      () => void
   canNext:     boolean
   canPrev:     boolean
-  onGlobal:     () => void
-  onEnter:      () => void
-  placeholder:  string
-  labelGlobal:  string
-  infoTooltip?: string
+  onGlobal:    () => void
+  onEnter:     () => void
+  placeholder: string
+  labelGlobal: string
 }
 
 export function MessageSearchBar({
   query, onChange, onClose,
   total, currentIdx,
   onNext, onPrev, canNext, canPrev,
-  onGlobal, onEnter, placeholder, labelGlobal, infoTooltip,
+  onGlobal, onEnter, placeholder, labelGlobal,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -58,19 +57,6 @@ export function MessageSearchBar({
         </span>
       )}
 
-      {infoTooltip && (
-        <button
-          type="button"
-          className="flex-shrink-0 p-1 rounded"
-          title={infoTooltip}
-          style={{ color: 'var(--ink-3)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        >
-          <Info size={14} />
-        </button>
-      )}
-
       <button
         onClick={onPrev}
         disabled={!canPrev}
@@ -103,7 +89,7 @@ export function MessageSearchBar({
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
         title={labelGlobal}
       >
-        <Globe size={14} />
+        <FileSearch size={14} />
         <span className="hidden sm:inline">{labelGlobal}</span>
       </button>
 

@@ -342,7 +342,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
           onEnter={() => searchForce(searchQuery)}
           placeholder={t('inRoomSearchPlaceholder')}
           labelGlobal={t('searchGlobal')}
-          infoTooltip={t('inRoomSearchTooltip')}
         />
       )}
 
