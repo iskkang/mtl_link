@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
-import { Dashboard }          from './Dashboard'
-import { CalendarPage }       from '../components/calendar/CalendarPage'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
@@ -15,6 +13,8 @@ import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh }  from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
 
+const Dashboard         = lazy(() => import('./Dashboard').then(m => ({ default: m.Dashboard })))
+const CalendarPage      = lazy(() => import('../components/calendar/CalendarPage').then(m => ({ default: m.CalendarPage })))
 const QuotationPage     = lazy(() => import('../components/ai/QuotationPage').then(m => ({ default: m.QuotationPage })))
 const MessageWriterPage = lazy(() => import('../components/ai/MessageWriterPage').then(m => ({ default: m.MessageWriterPage })))
 const TransportPage     = lazy(() => import('../components/ai/TransportPage').then(m => ({ default: m.TransportPage })))

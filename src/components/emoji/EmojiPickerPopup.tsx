@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
-import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react'
+import { useEffect, useRef, lazy, Suspense } from 'react'
 import { useTheme } from '../../contexts/ThemeContext'
+
+const EmojiPickerCore = lazy(() => import('./EmojiPickerCore'))
 
 interface Props {
   onSelect: (emoji: string) => void
@@ -29,17 +30,23 @@ export function EmojiPickerPopup({ onSelect, onClose }: Props) {
       ref={ref}
       className="absolute bottom-12 left-0 z-50 shadow-2xl rounded-xl overflow-hidden"
     >
-      <EmojiPicker
-        theme={mode === 'dark' ? Theme.DARK : Theme.LIGHT}
-        emojiStyle={EmojiStyle.NATIVE}
-        onEmojiClick={d => onSelect(d.emoji)}
-        height={320}
-        width={300}
-        searchPlaceholder="이모지 검색…"
-        lazyLoadEmojis
-        skinTonesDisabled
-        previewConfig={{ showPreview: false }}
-      />
+      <Suspense fallback={
+        <div
+          className="w-[300px] h-[320px] flex items-center justify-center"
+          style={{ background: 'var(--card)' }}
+        >
+          <div
+            className="w-6 h-6 border-2 rounded-full animate-spin"
+            style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }}
+          />
+        </div>
+      }>
+        <EmojiPickerCore
+          isDark={mode === 'dark'}
+          onSelect={onSelect}
+          onClose={onClose}
+        />
+      </Suspense>
     </div>
   )
 }
