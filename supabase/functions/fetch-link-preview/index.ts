@@ -3,6 +3,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 function json(body: unknown, status = 200) {
@@ -42,7 +43,7 @@ function getDomain(url: string): string {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: CORS })
 
   try {
     const { message_id, room_id, url } = await req.json() as {
