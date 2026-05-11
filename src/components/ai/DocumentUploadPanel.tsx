@@ -24,6 +24,7 @@ export function DocumentUploadPanel({ onComplete }: Props) {
     { label: t('categoryTracking'),  value: 'tracking' },
     { label: t('categoryClaim'),     value: 'claim' },
     { label: t('categoryGeneral'),   value: 'general' },
+    { label: t('categoryRate'),      value: 'rate' },
   ]
 
   const [file,     setFile]     = useState<File | null>(null)
