@@ -89,21 +89,12 @@ export async function parseExcelWithContext(file: File): Promise<string[]> {
 
     if (rows.length < 3) continue
 
-    // 헤더 행 찾기 (대리점 또는 Mode 컬럼이 있는 행)
-    let headerRowIdx = -1
-    let headers: string[] = []
-    for (let i = 0; i < Math.min(5, rows.length); i++) {
-      const row = rows[i].map(String)
-      if (row.includes('대리점') || row.includes('Mode')) {
-        headerRowIdx = i
-        headers = row
-        break
-      }
-    }
-    if (headerRowIdx === -1) continue
-
-    // 헤더 다음 빈행 건너뜀 (headerRowIdx + 2부터 데이터)
-    const dataRows = rows.slice(headerRowIdx + 2)
+    // Row 1 = header, Row 2 = sub-header (skip), Row 3+ = data
+    const headers = rows[0].map(String)
+    const dataRows = rows.slice(2).filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (row: any[]) => row.some((cell: unknown) => String(cell).trim() !== '')
+    )
 
     const ROWS_PER_CHUNK = 20
     for (let i = 0; i < dataRows.length; i += ROWS_PER_CHUNK) {
