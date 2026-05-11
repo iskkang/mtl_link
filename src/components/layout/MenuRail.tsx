@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import {
   MessageSquare, Users, CheckSquare, Inbox,
-  Bell, Calendar, FolderOpen, Hash, Bot, Settings,
+  Bell, Calendar, FolderOpen, Hash, Settings,
 } from 'lucide-react'
+import { MarvisIcon } from '../ui/MarvisIcon'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { Avatar } from '../ui/Avatar'
@@ -80,7 +81,7 @@ export function MenuRail({
 
         <div className="flex flex-col items-center gap-0.5 w-full">
           <RailBtn
-            Icon={Bot}
+            Icon={MarvisIcon}
             label={t('menuRailBots')}
             active={activeSection === 'ai'}
             onClick={() => onSectionChange('ai')}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Sun, Moon, Bell, BellOff, Globe, KeyRound, LogOut,
-  Megaphone, Calendar, FolderOpen, Hash, Bot, ChevronRight, Settings2,
+  Megaphone, FolderOpen, Hash, ChevronRight, Settings2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -15,6 +15,7 @@ import { StatusDot } from '../profile/StatusDot'
 import { StatusDropdown } from '../profile/StatusDropdown'
 import { LanguagePickerModal } from '../ui/LanguagePickerModal'
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
+import { MarvisIcon } from '../ui/MarvisIcon'
 import type { Section } from './MenuRail'
 
 interface Props {
@@ -28,10 +29,9 @@ interface Props {
 
 const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] = [
   { id: 'announcements', Icon: Megaphone,  labelKey: 'menuRailAnnouncements' },
-  { id: 'calendar',      Icon: Calendar,   labelKey: 'menuRailCalendar'      },
   { id: 'files',         Icon: FolderOpen, labelKey: 'menuRailFiles'         },
   { id: 'channels',      Icon: Hash,       labelKey: 'menuRailChannels'      },
-  { id: 'ai',            Icon: Bot,        labelKey: 'menuRailBots'          },
+  { id: 'ai',            Icon: MarvisIcon, labelKey: 'menuRailBots'          },
 ]
 
 export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onToggleNotif, onEditProfile }: Props) {
