@@ -38,28 +38,33 @@ interface Props {
 export function RateFinderPage({ onBack }: Props) {
   const { t } = useTranslation()
 
-  const [polOptions,   setPolOptions]   = useState<string[]>([])
-  const [podOptions,   setPodOptions]   = useState<string[]>([])
-  const [pol,          setPol]          = useState('')
-  const [pod,          setPod]          = useState('')
-  const [owner,        setOwner]        = useState('')
+  const [polOptions,    setPolOptions]    = useState<string[]>([])
+  const [borderOptions, setBorderOptions] = useState<string[]>([])
+  const [podOptions,    setPodOptions]    = useState<string[]>([])
+  const [pol,           setPol]           = useState('')
+  const [border,        setBorder]        = useState('')
+  const [pod,           setPod]           = useState('')
+  const [owner,         setOwner]         = useState('')
   const [selectedMonth, setSelectedMonth] = useState('5')
-  const [results,      setResults]      = useState<RateRow[]>([])
-  const [loading,      setLoading]      = useState(false)
-  const [searched,     setSearched]     = useState(false)
+  const [results,       setResults]       = useState<RateRow[]>([])
+  const [loading,       setLoading]       = useState(false)
+  const [searched,      setSearched]      = useState(false)
   const [filterLoading, setFilterLoading] = useState(true)
 
   // Load filter options on mount
   useEffect(() => {
     void (async () => {
       setFilterLoading(true)
-      const [polRes, podRes] = await Promise.all([
+      const [polRes, borderRes, podRes] = await Promise.all([
         supabase.from('rate_entries').select('pol').not('pol', 'is', null),
+        supabase.from('rate_entries').select('border').not('border', 'is', null),
         supabase.from('rate_entries').select('pod').not('pod', 'is', null),
       ])
-      const pols = [...new Set((polRes.data ?? []).map(r => r.pol as string))].sort()
-      const pods = [...new Set((podRes.data ?? []).map(r => r.pod as string))].sort()
+      const pols    = [...new Set((polRes.data    ?? []).map(r => r.pol    as string))].sort()
+      const borders = [...new Set((borderRes.data ?? []).map(r => r.border as string))].sort()
+      const pods    = [...new Set((podRes.data    ?? []).map(r => r.pod    as string))].sort()
       setPolOptions(pols)
+      setBorderOptions(borders)
       setPodOptions(pods)
       setFilterLoading(false)
     })()
@@ -71,9 +76,10 @@ export function RateFinderPage({ onBack }: Props) {
 
     let query = supabase.from('rate_entries').select('*')
 
-    if (pol)   query = query.eq('pol',   pol)
-    if (pod)   query = query.eq('pod',   pod)
-    if (owner) query = query.eq('owner', owner)
+    if (pol)    query = query.eq('pol',    pol)
+    if (border) query = query.eq('border', border)
+    if (pod)    query = query.eq('pod',    pod)
+    if (owner)  query = query.eq('owner',  owner)
 
     const monthCol = MONTH_COLS.find(m => m.value === selectedMonth)?.key ?? 'rate_may'
     const { data, error } = await query
@@ -166,6 +172,22 @@ export function RateFinderPage({ onBack }: Props) {
                 >
                   <option value="">{t('rateFinderAll')}</option>
                   {polOptions.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+
+              {/* Border */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium" style={{ color: 'var(--ink-3)' }}>
+                  Border
+                </label>
+                <select
+                  value={border}
+                  onChange={e => setBorder(e.target.value)}
+                  style={selectStyle}
+                  disabled={filterLoading}
+                >
+                  <option value="">{t('rateFinderAll')}</option>
+                  {borderOptions.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
 
@@ -287,7 +309,7 @@ export function RateFinderPage({ onBack }: Props) {
                   <table className="w-full text-xs">
                     <thead>
                       <tr style={{ background: 'var(--chat-bg)', borderBottom: '1px solid var(--line)' }}>
-                        {['대리점', 'Mode', 'POL', 'Loading', 'Border', 'POD', 'Type', 'Owner', `${monthMeta.label} 운임`, 'T/Time'].map(h => (
+                        {['대리점', 'Mode', 'POL', 'Loading', 'Border', 'POD', 'Type', 'Owner', `${monthMeta.label} 운임`, 'L/Time'].map(h => (
                           <th
                             key={h}
                             className="px-3 py-2 text-left font-semibold whitespace-nowrap"
@@ -345,7 +367,7 @@ export function RateFinderPage({ onBack }: Props) {
                               {rate != null ? `$${rate.toLocaleString()}` : '—'}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--ink-3)' }}>
-                              {row.ltime ?? '—'}
+                              {row.ltime || '—'}
                             </td>
                           </tr>
                         )
