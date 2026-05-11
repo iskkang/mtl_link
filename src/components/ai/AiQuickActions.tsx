@@ -57,11 +57,8 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 overflow-y-auto">
       {/* Welcome header */}
       <div className="mb-8 text-center">
-        <div
-          className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 shadow-sm"
-          style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
-        >
-          <span className="text-2xl">🤖</span>
+        <div className="mb-4">
+          <img src="/marvis-logo.png" alt="MARVIS" className="w-14 h-14 object-contain" />
         </div>
         <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--ink)' }}>
           {t('aiWelcomeTitle')}
