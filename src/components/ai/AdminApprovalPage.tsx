@@ -40,7 +40,8 @@ export function AdminApprovalPage({ onBack }: Props) {
   const [hsPending, setHsPending]   = useState<HsPending[]>([])
   const [kbPending, setKbPending]   = useState<KbPending[]>([])
   const [loading,   setLoading]     = useState(true)
-  const [acting,    setActing]      = useState<string | null>(null)
+  const [acting,       setActing]       = useState<string | null>(null)
+  const [approvingAll, setApprovingAll] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -62,6 +63,28 @@ export function AdminApprovalPage({ onBack }: Props) {
   }
 
   useEffect(() => { void load() }, [])
+
+  const handleApproveAllHs = async () => {
+    if (!user || hsPending.length === 0) return
+    setApprovingAll(true)
+    await supabase
+      .from('hs_code_notes')
+      .update({ approval_status: 'verified', approved_by: user.id, approved_at: new Date().toISOString() })
+      .in('approval_status', ['pending_review', 'draft'])
+    setHsPending([])
+    setApprovingAll(false)
+  }
+
+  const handleApproveAllKb = async () => {
+    if (!user || kbPending.length === 0) return
+    setApprovingAll(true)
+    await supabase
+      .from('knowledge_base')
+      .update({ status: 'verified', approved_by: user.id })
+      .in('status', ['pending_review', 'draft'])
+    setKbPending([])
+    setApprovingAll(false)
+  }
 
   const handleHsAction = async (id: string, action: 'approve' | 'reject') => {
     if (!user) return
@@ -171,7 +194,22 @@ export function AdminApprovalPage({ onBack }: Props) {
                 <p className="text-sm" style={{ color: 'var(--ink-4)' }}>{t('approvalEmpty')}</p>
               </div>
             ) : (
-              hsPending.map(item => (
+              <>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleApproveAllHs()}
+                    disabled={approvingAll}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                    style={{ background: '#22C55E', color: '#fff' }}
+                  >
+                    {approvingAll
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : '✅'}
+                    {t('approvalApprove')} ({hsPending.length})
+                  </button>
+                </div>
+              {hsPending.map(item => (
                 <div
                   key={item.id}
                   className="rounded-2xl border p-4"
@@ -229,7 +267,8 @@ export function AdminApprovalPage({ onBack }: Props) {
                     </div>
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )
           ) : (
             kbPending.length === 0 ? (
@@ -237,7 +276,22 @@ export function AdminApprovalPage({ onBack }: Props) {
                 <p className="text-sm" style={{ color: 'var(--ink-4)' }}>{t('approvalEmpty')}</p>
               </div>
             ) : (
-              kbPending.map(item => (
+              <>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleApproveAllKb()}
+                    disabled={approvingAll}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                    style={{ background: '#22C55E', color: '#fff' }}
+                  >
+                    {approvingAll
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : '✅'}
+                    {t('approvalApprove')} ({kbPending.length})
+                  </button>
+                </div>
+              {kbPending.map(item => (
                 <div
                   key={item.id}
                   className="rounded-2xl border p-4"
@@ -291,7 +345,8 @@ export function AdminApprovalPage({ onBack }: Props) {
                     </div>
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )
           )}
 
