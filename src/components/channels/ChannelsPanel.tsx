@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Hash, Search, Loader2, Users } from 'lucide-react'
+import { Hash, Search, Loader2, Users, Plus } from 'lucide-react'
 import { fetchPublicChannels, joinChannel } from '../../services/roomService'
 import { useRoomStore } from '../../stores/roomStore'
 import { fetchRooms } from '../../services/roomService'
 import type { PublicChannel } from '../../services/roomService'
+import { NewRoomModal } from '../chat/NewRoomModal'
 
 interface Props {
   onSelectRoom?: (id: string) => void
@@ -12,10 +13,11 @@ interface Props {
 
 export function ChannelsPanel({ onSelectRoom }: Props) {
   const { t } = useTranslation()
-  const [channels, setChannels] = useState<PublicChannel[]>([])
-  const [query,    setQuery]    = useState('')
-  const [loading,  setLoading]  = useState(true)
-  const [joining,  setJoining]  = useState<string | null>(null)
+  const [channels,         setChannels]         = useState<PublicChannel[]>([])
+  const [query,            setQuery]            = useState('')
+  const [loading,          setLoading]          = useState(true)
+  const [joining,          setJoining]          = useState<string | null>(null)
+  const [showCreateModal,  setShowCreateModal]  = useState(false)
   const setRooms = useRoomStore(s => s.setRooms)
 
   const load = useCallback(() => {
@@ -48,6 +50,24 @@ export function ChannelsPanel({ onSelectRoom }: Props) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      {/* 헤더 */}
+      <div className="px-4 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--line)' }}>
+        <h2 className="font-semibold text-base" style={{ color: 'var(--ink-1)' }}>
+          {t('channelBrowseTitle')}
+        </h2>
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="p-1.5 rounded-lg transition-colors"
+          title={t('channelCreate')}
+          style={{ color: 'var(--ink-2)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+
       {/* 검색 */}
       <div className="px-3 py-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--side-line)' }}>
         <div
@@ -129,6 +149,16 @@ export function ChannelsPanel({ onSelectRoom }: Props) {
           </div>
         ))}
       </div>
+
+      <NewRoomModal
+        open={showCreateModal}
+        initialTab="channel"
+        onClose={() => setShowCreateModal(false)}
+        onRoomCreated={() => {
+          setShowCreateModal(false)
+          load()
+        }}
+      />
     </div>
   )
 }

@@ -12,12 +12,13 @@ import { getUserFriendlyMessage } from '../../lib/errors'
 type Tab = 'direct' | 'group' | 'channel'
 
 interface Props {
-  open:          boolean
-  onClose:       () => void
-  onRoomCreated: (roomId: string) => void
+  open:           boolean
+  onClose:        () => void
+  onRoomCreated:  (roomId: string) => void
+  initialTab?:    Tab
 }
 
-export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
+export function NewRoomModal({ open, onClose, onRoomCreated, initialTab }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const setRooms = useRoomStore(s => s.setRooms)
@@ -44,7 +45,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
 
   useEffect(() => {
     if (open) {
-      setTab('direct')
+      setTab(initialTab ?? 'direct')
       setSelected([])
       setGroupName('')
       setChannelName('')
@@ -53,7 +54,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated }: Props) {
       setCreating(false)
       setLoadingId(null)
     }
-  }, [open])
+  }, [open, initialTab])
 
   useEffect(() => {
     if (!open) return
