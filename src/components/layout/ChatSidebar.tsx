@@ -185,7 +185,13 @@ export function ChatSidebar({
       {/* ── Channels section ── */}
       {activeSection === 'channels' && (
         <div className="flex flex-col flex-1 min-h-0">
-          <ChannelsPanel onSelectRoom={onSelectRoom} />
+          <ChannelsPanel
+            onSelectRoom={onSelectRoom}
+            onEnterRoom={roomId => {
+              onSelectRoom(roomId)
+              onSectionChange('chat')
+            }}
+          />
         </div>
       )}
 

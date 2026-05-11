@@ -9,9 +9,10 @@ import { NewRoomModal } from '../chat/NewRoomModal'
 
 interface Props {
   onSelectRoom?: (id: string) => void
+  onEnterRoom?:  (id: string) => void
 }
 
-export function ChannelsPanel({ onSelectRoom }: Props) {
+export function ChannelsPanel({ onSelectRoom, onEnterRoom }: Props) {
   const { t } = useTranslation()
   const [channels,         setChannels]         = useState<PublicChannel[]>([])
   const [query,            setQuery]            = useState('')
@@ -105,7 +106,11 @@ export function ChannelsPanel({ onSelectRoom }: Props) {
           <div
             key={ch.id}
             className="flex items-center gap-3 px-4 py-3"
-            style={{ borderBottom: '1px solid var(--side-line)' }}
+            style={{
+              borderBottom: '1px solid var(--side-line)',
+              cursor: ch.isJoined ? 'pointer' : 'default',
+            }}
+            onClick={() => ch.isJoined && onEnterRoom?.(ch.id)}
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
@@ -131,7 +136,7 @@ export function ChannelsPanel({ onSelectRoom }: Props) {
 
             <button
               type="button"
-              onClick={() => handleJoin(ch)}
+              onClick={e => { e.stopPropagation(); handleJoin(ch) }}
               disabled={ch.isJoined || joining === ch.id}
               className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors"
               style={{
