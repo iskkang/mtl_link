@@ -16,9 +16,10 @@ export function getSupportedFileType(file: File): SupportedFileType | null {
 export async function parsePdf(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist')
 
-  // CDN worker — version-matched automatically
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString()
 
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
