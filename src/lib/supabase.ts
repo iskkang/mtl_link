@@ -32,7 +32,7 @@ export function handleAuthError(error: { status?: number; message?: string } | n
     error.message?.includes('JWT') ||
     error.message?.includes('token')
   ) {
-    console.log('[Auth] Token expired or forbidden, signing out')
+    if (import.meta.env.DEV) console.log('[Auth] Token expired or forbidden, signing out')
     supabase.auth.signOut().catch(() => {})
     return true
   }

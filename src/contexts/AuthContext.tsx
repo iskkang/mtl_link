@@ -66,10 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         if (!active) return
 
-        console.log('[Auth] Event:', event)
+        if (import.meta.env.DEV) console.log('[Auth] Event:', event)
 
         if (event === 'TOKEN_REFRESHED') {
-          console.log('[Auth] Token refreshed successfully')
+          if (import.meta.env.DEV) console.log('[Auth] Token refreshed successfully')
         }
 
         const currentUser = session?.user ?? null
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const publicPaths = ['/login', '/signup', '/pending', '/rejected', '/install', '/change-password']
             const isPublic = publicPaths.some(p => window.location.pathname.startsWith(p))
             if (!isPublic) {
-              console.log('[Auth] Session ended, redirecting to login')
+              if (import.meta.env.DEV) console.log('[Auth] Session ended, redirecting to login')
               window.location.href = '/login'
             }
           }

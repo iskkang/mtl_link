@@ -19,8 +19,8 @@ export function isPushSupported(): boolean {
 }
 
 export async function subscribeToPushNotifications(): Promise<PushSubscription | null> {
-  console.log('[Push] subscribeToPushNotifications() called')
-  console.log('[Push] VAPID key length:', VAPID_PUBLIC_KEY?.length ?? 'MISSING')
+  if (import.meta.env.DEV) console.log('[Push] subscribeToPushNotifications() called')
+  if (import.meta.env.DEV) console.log('[Push] VAPID key length:', VAPID_PUBLIC_KEY?.length ?? 'MISSING')
 
   if (!isPushSupported()) {
     console.warn('[Push] Not supported (SW/PushManager/VAPID missing)')
@@ -33,20 +33,20 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
 
   try {
     const registration = await navigator.serviceWorker.ready
-    console.log('[Push] SW ready, scope:', registration.scope)
+    if (import.meta.env.DEV) console.log('[Push] SW ready, scope:', registration.scope)
 
     let subscription = await registration.pushManager.getSubscription()
 
     if (!subscription) {
-      console.log('[Push] No existing subscription, creating new...')
+      if (import.meta.env.DEV) console.log('[Push] No existing subscription, creating new...')
       // Uint8Array 직접 전달 (ArrayBuffer 불가 — Chrome 요구사항)
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!),
       })
-      console.log('[Push] Subscribed:', subscription.endpoint.slice(0, 60) + '...')
+      if (import.meta.env.DEV) console.log('[Push] Subscribed:', subscription.endpoint.slice(0, 60) + '...')
     } else {
-      console.log('[Push] Reusing existing subscription')
+      if (import.meta.env.DEV) console.log('[Push] Reusing existing subscription')
     }
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -67,7 +67,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     if (error) {
       console.error('[Push] DB upsert error:', error)
     } else {
-      console.log('[Push] Subscription saved to DB ✓')
+      if (import.meta.env.DEV) console.log('[Push] Subscription saved to DB ✓')
     }
 
     return subscription
@@ -86,7 +86,7 @@ export async function unsubscribeFromPushNotifications(): Promise<void> {
     if (!subscription) return
 
     await subscription.unsubscribe()
-    console.log('[Push] Unsubscribed from browser')
+    if (import.meta.env.DEV) console.log('[Push] Unsubscribed from browser')
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
@@ -95,7 +95,7 @@ export async function unsubscribeFromPushNotifications(): Promise<void> {
         .delete()
         .eq('user_id', user.id)
         .eq('endpoint', subscription.endpoint)
-      console.log('[Push] Subscription removed from DB')
+      if (import.meta.env.DEV) console.log('[Push] Subscription removed from DB')
     }
   } catch (err) {
     console.warn('[Push] unsubscribe failed:', err)

@@ -28,7 +28,7 @@ export function InstallBanner() {
     if (!deferredPrompt) return
     await deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') console.log('[PWA] install accepted')
+    if (import.meta.env.DEV && outcome === 'accepted') console.log('[PWA] install accepted')
     setDeferredPrompt(null)
     setShow(false)
   }

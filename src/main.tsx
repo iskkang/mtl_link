@@ -20,7 +20,7 @@ if ('serviceWorker' in navigator) {
             // navigator.serviceWorker.controller being non-null means there
             // was already a SW controlling this page (i.e. not the first install).
             if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-              console.log('[SW] New version activated, reloading...')
+              if (import.meta.env.DEV) console.log('[SW] New version activated, reloading...')
               window.location.reload()
             }
           })
@@ -36,7 +36,7 @@ window.addEventListener('vite:preloadError', () => {
 })
 
 window.addEventListener('appinstalled', () => {
-  console.log('[PWA] App installed')
+  if (import.meta.env.DEV) console.log('[PWA] App installed')
   localStorage.setItem('pwa-installed', 'true')
 })
 
