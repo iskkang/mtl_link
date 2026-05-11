@@ -5,7 +5,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SYSTEM_PROMPT = `You are MTL AI, a logistics communication assistant.
+const SYSTEM_PROMPT = `You are MARVIS, a logistics communication assistant.
 Write a professional logistics message based on the situation provided.
 
 Always write the message content in {language}.

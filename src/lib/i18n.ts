@@ -3,6 +3,38 @@ import { initReactI18next } from 'react-i18next'
 
 const STORAGE_KEY = 'mtl_lang'
 
+// Country code → app language mapping for geo-detection
+const COUNTRY_LANG: Record<string, string> = {
+  KR: 'ko',
+  CN: 'zh',
+  TW: 'zh',
+  HK: 'zh',
+  JP: 'ja',
+  RU: 'ru',
+  KG: 'ru', // Kyrgyzstan
+  KZ: 'ru', // Kazakhstan
+  TJ: 'ru', // Tajikistan
+  BY: 'ru', // Belarus
+  UZ: 'uz',
+}
+
+// Detect country via IP and set language on first visit (no stored preference).
+// Fire-and-forget — call without await.
+export async function detectAndSetInitialLang(): Promise<void> {
+  if (localStorage.getItem(STORAGE_KEY)) return
+  try {
+    const res = await fetch('https://ip-api.com/json/?fields=countryCode', {
+      signal: AbortSignal.timeout(4000),
+    })
+    const { countryCode } = await res.json() as { countryCode?: string }
+    const lang = (countryCode && COUNTRY_LANG[countryCode]) ?? 'en'
+    await i18n.changeLanguage(lang)
+    localStorage.setItem(STORAGE_KEY, lang)
+  } catch {
+    // API 실패 시 기본값(ko) 유지
+  }
+}
+
 export const SUPPORTED_LANGS = [
   { code: 'ko', label: '한국어',  flag: '🇰🇷' },
   { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -464,7 +496,7 @@ const resources = {
       aiYesterday:  '어제',
       aiPrev7Days:  '이전 7일',
       aiPrev30Days:           '이전 30일',
-      aiWelcomeTitle:         'MTL AI Assistant',
+      aiWelcomeTitle:         'MARVIS',
       aiWelcomeSubtitle:      '물류 업무를 도와드릴게요',
       aiQuickQuotation:       '견적 체크리스트',
       aiQuickMessage:         '메시지 작성',
@@ -1026,7 +1058,7 @@ const resources = {
       aiYesterday:  'Yesterday',
       aiPrev7Days:  'Previous 7 days',
       aiPrev30Days:           'Previous 30 days',
-      aiWelcomeTitle:         'MTL AI Assistant',
+      aiWelcomeTitle:         'MARVIS',
       aiWelcomeSubtitle:      'Here to help with logistics',
       aiQuickQuotation:       'Quotation Checklist',
       aiQuickMessage:         'Write Message',
@@ -1588,7 +1620,7 @@ const resources = {
       aiYesterday:  'Вчера',
       aiPrev7Days:  'Последние 7 дней',
       aiPrev30Days:           'Последние 30 дней',
-      aiWelcomeTitle:         'MTL AI Assistant',
+      aiWelcomeTitle:         'MARVIS',
       aiWelcomeSubtitle:      'Помогу с логистикой',
       aiQuickQuotation:       'Чеклист котировки',
       aiQuickMessage:         'Написать сообщение',
@@ -2150,7 +2182,7 @@ const resources = {
       aiYesterday:  'Kecha',
       aiPrev7Days:  'Oldingi 7 kun',
       aiPrev30Days:           'Oldingi 30 kun',
-      aiWelcomeTitle:         'MTL AI Assistant',
+      aiWelcomeTitle:         'MARVIS',
       aiWelcomeSubtitle:      'Logistika bo\'yicha yordam',
       aiQuickQuotation:       'Taklif tekshiruvi',
       aiQuickMessage:         'Xabar yozish',
@@ -2712,7 +2744,7 @@ const resources = {
       aiYesterday:  '昨天',
       aiPrev7Days:  '过去7天',
       aiPrev30Days:           '过去30天',
-      aiWelcomeTitle:         'MTL AI助手',
+      aiWelcomeTitle:         'MARVIS',
       aiWelcomeSubtitle:      '为您提供物流支持',
       aiQuickQuotation:       '报价清单',
       aiQuickMessage:         '撰写消息',
@@ -3274,7 +3306,7 @@ const resources = {
       aiYesterday:  '昨日',
       aiPrev7Days:  '過去7日',
       aiPrev30Days:           '過去30日',
-      aiWelcomeTitle:         'MTL AIアシスタント',
+      aiWelcomeTitle:         'MARVIS',
       aiWelcomeSubtitle:      '物流業務をサポートします',
       aiQuickQuotation:       '見積チェックリスト',
       aiQuickMessage:         'メッセージ作成',

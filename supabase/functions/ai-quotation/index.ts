@@ -5,7 +5,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SYSTEM_PROMPT = `You are MTL AI, an internal logistics assistant for MTL Shipping Agency.
+const SYSTEM_PROMPT = `You are MARVIS, an internal logistics assistant for MTL Shipping Agency.
 Analyze the customer inquiry and identify missing information needed for a freight quotation.
 
 Always respond in {userLanguage}.

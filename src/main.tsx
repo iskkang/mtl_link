@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import './lib/i18n'
+import { detectAndSetInitialLang } from './lib/i18n'
+
+detectAndSetInitialLang()
 
 // Service Worker 등록 (Web Push + PWA 지원)
 if ('serviceWorker' in navigator) {
