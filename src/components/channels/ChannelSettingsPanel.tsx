@@ -106,6 +106,7 @@ export function ChannelSettingsPanel({
     if (!window.confirm(t('channelDeleteConfirm'))) return
     try {
       await deleteRoom(roomId)
+      useRoomStore.getState().removeRoom(roomId)
       onDeleted()
     } catch (err) {
       console.error('[ChannelSettings] delete failed', err)
