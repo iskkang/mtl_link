@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, MessageSquare, MoreHorizontal, Star, Pencil, Trash2, Bell, BookOpen } from 'lucide-react'
+import { Plus, MessageSquare, MoreHorizontal, Star, Pencil, Trash2, Bell, BookOpen, DollarSign } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -267,8 +267,19 @@ export function AiSidebar({ activeSessionId, onSelectSession }: Props) {
         )}
       </div>
 
-      {/* Bottom nav: Knowledge + Admin */}
+      {/* Bottom nav: Rate Finder + Knowledge + Admin */}
       <div className="flex-shrink-0 border-t px-2 py-2 flex flex-col gap-1" style={{ borderColor: 'var(--side-line)' }}>
+        <button
+          type="button"
+          onClick={() => aiEvents.emitNavigate('ratefinder')}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+          style={{ color: 'var(--side-text)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          <DollarSign size={13} />
+          {t('rateFinderTitle')}
+        </button>
         <button
           type="button"
           onClick={() => aiEvents.emitNavigate('knowledge')}

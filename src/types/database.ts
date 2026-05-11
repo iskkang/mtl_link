@@ -877,6 +877,74 @@ export type Database = {
         Update: never
         Relationships: []
       }
+
+      // ─── rate_entries ─────────────────────────────────────────────────────────
+      rate_entries: {
+        Row: {
+          id:          string
+          source_file: string | null
+          agent:       string | null
+          mode:        string | null
+          pol:         string | null
+          loading:     string | null
+          border:      string | null
+          pod:         string | null
+          type:        string | null
+          owner:       string | null
+          rate_jan:    number | null
+          rate_feb:    number | null
+          rate_mar:    number | null
+          rate_apr:    number | null
+          rate_may:    number | null
+          ltime:       string | null
+          remark:      string | null
+          valid_month: string | null
+          created_by:  string | null
+          created_at:  string
+        }
+        Insert: {
+          id?:          string
+          source_file?: string | null
+          agent?:       string | null
+          mode?:        string | null
+          pol?:         string | null
+          loading?:     string | null
+          border?:      string | null
+          pod?:         string | null
+          type?:        string | null
+          owner?:       string | null
+          rate_jan?:    number | null
+          rate_feb?:    number | null
+          rate_mar?:    number | null
+          rate_apr?:    number | null
+          rate_may?:    number | null
+          ltime?:       string | null
+          remark?:      string | null
+          valid_month?: string | null
+          created_by?:  string | null
+          created_at?:  string
+        }
+        Update: Partial<{
+          source_file: string | null
+          agent:       string | null
+          mode:        string | null
+          pol:         string | null
+          loading:     string | null
+          border:      string | null
+          pod:         string | null
+          type:        string | null
+          owner:       string | null
+          rate_jan:    number | null
+          rate_feb:    number | null
+          rate_mar:    number | null
+          rate_apr:    number | null
+          rate_may:    number | null
+          ltime:       string | null
+          remark:      string | null
+          valid_month: string | null
+        }>
+        Relationships: []
+      }
     }
 
     Views: {

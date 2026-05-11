@@ -23,9 +23,10 @@ const HsCodePage        = lazy(() => import('../components/ai/HsCodePage').then(
 const KnowledgePage     = lazy(() => import('../components/ai/KnowledgePage').then(m => ({ default: m.KnowledgePage })))
 const AdminApprovalPage = lazy(() => import('../components/ai/AdminApprovalPage').then(m => ({ default: m.AdminApprovalPage })))
 const TrackingPage      = lazy(() => import('../components/ai/TrackingPage').then(m => ({ default: m.TrackingPage })))
+const RateFinderPage    = lazy(() => import('../components/ai/RateFinderPage').then(m => ({ default: m.RateFinderPage })))
 const AiChatWindow      = lazy(() => import('../components/ai/AiChatWindow').then(m => ({ default: m.AiChatWindow })))
 
-type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking'
+type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking' | 'ratefinder'
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -255,6 +256,8 @@ export default function ChatPage() {
             <AdminApprovalPage onBack={handleAiBack} />
           ) : activeSection === 'ai' && activeAiView === 'tracking' ? (
             <TrackingPage onBack={handleAiBack} />
+          ) : activeSection === 'ai' && activeAiView === 'ratefinder' ? (
+            <RateFinderPage onBack={handleAiBack} />
           ) : activeSection === 'ai' ? (
             <AiChatWindow
               sessionId={activeSessionId}
