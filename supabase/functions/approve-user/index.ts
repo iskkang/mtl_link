@@ -15,25 +15,34 @@ function page(emoji: string, title: string, body: string): Response {
   const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{padding:60px 16px;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center}
+.card{max-width:420px;margin:0 auto;background:#fff;border-radius:16px;padding:48px 32px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.icon{font-size:52px;margin-bottom:20px}
+h1{font-size:22px;font-weight:700;color:#111;margin-bottom:10px}
+.msg{color:#6b7280;font-size:14px;line-height:1.6}
+.foot{margin-top:24px;font-size:12px;color:#9ca3af}
+</style>
 </head>
-<body style="margin:0;padding:60px 16px;background:#f3f4f6;
-             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center">
-  <div style="max-width:420px;margin:0 auto;background:#fff;border-radius:16px;
-              padding:48px 32px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-    <div style="font-size:52px;margin-bottom:20px">${emoji}</div>
-    <h1 style="margin:0 0 10px;font-size:22px;font-weight:700;color:#111">${title}</h1>
-    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6">${body}</p>
-    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af">MTL Link 관리 시스템</p>
+<body>
+  <div class="card">
+    <div class="icon">${emoji}</div>
+    <h1>${title}</h1>
+    <p class="msg">${body}</p>
+    <p class="foot">MTL Link 관리 시스템</p>
   </div>
 </body>
 </html>`
-  const bytes = new TextEncoder().encode(html)
-  return new Response(bytes, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+    },
   })
 }
 

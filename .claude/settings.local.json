@@ -52,7 +52,11 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\DELL\\\\Documents\\\\MTL_Link\\\\src\\\\components\\\\chat\")",
       "Bash(Measure-Object)",
       "Bash(Select-Object -ExpandProperty Count)",
-      "PowerShell($env:VERCEL_TOKEN; [System.Environment]::GetEnvironmentVariable\\(\"VERCEL_TOKEN\", \"User\"\\))"
+      "PowerShell($env:VERCEL_TOKEN; [System.Environment]::GetEnvironmentVariable\\(\"VERCEL_TOKEN\", \"User\"\\))",
+      "Bash(git tag *)",
+      "Bash(node -e \"require\\('sharp'\\); console.log\\('sharp ok'\\)\")",
+      "Bash(node -e ' *)",
+      "Read(//c/Users/DELL/.claude/projects/c--Users-DELL-Documents-MTL-Link/memory/**)"
     ]
   }
 }

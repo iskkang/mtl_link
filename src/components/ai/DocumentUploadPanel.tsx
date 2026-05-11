@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react'
 import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { embedDocumentFile, type EmbedProgress } from '../../services/embedKnowledgeService'
 import { getSupportedFileType } from '../../services/documentParser'
-
-const CATEGORIES = ['업무절차', '운송정보', '통관', '요율', '고객사', 'FAQ', '내규', '기타']
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.xls', '.txt', '.csv']
 const ACCEPT = SUPPORTED_EXTENSIONS.join(',')
@@ -14,11 +13,22 @@ interface Props {
 }
 
 export function DocumentUploadPanel({ onComplete }: Props) {
+  const { t } = useTranslation()
   const { profile } = useAuth()
+
+  const CATEGORIES = [
+    { label: t('categoryQa'),        value: 'qa' },
+    { label: t('categoryCustoms'),   value: 'customs' },
+    { label: t('categoryMessage'),   value: 'message' },
+    { label: t('categoryQuotation'), value: 'quotation' },
+    { label: t('categoryTracking'),  value: 'tracking' },
+    { label: t('categoryClaim'),     value: 'claim' },
+    { label: t('categoryGeneral'),   value: 'general' },
+  ]
 
   const [file,     setFile]     = useState<File | null>(null)
   const [title,    setTitle]    = useState('')
-  const [category, setCategory] = useState(CATEGORIES[0])
+  const [category, setCategory] = useState('qa')
   const [progress, setProgress] = useState<EmbedProgress | null>(null)
   const [error,    setError]    = useState<string | null>(null)
   const [done,     setDone]     = useState(false)
@@ -163,7 +173,7 @@ export function DocumentUploadPanel({ onComplete }: Props) {
                 color:      'var(--ink-1)',
               }}
             >
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
         </>

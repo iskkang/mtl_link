@@ -9,9 +9,10 @@ const supabase = createClient(
 const OPENAI_API_KEY  = Deno.env.get('OPENAI_API_KEY')!
 const EMBEDDING_MODEL = 'text-embedding-3-small'
 
-const CORS = {
+const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 interface EmbedRequest {
@@ -48,7 +49,7 @@ async function getEmbedding(text: string): Promise<number[]> {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -56,7 +57,7 @@ Deno.serve(async (req: Request) => {
     const { title, category, content, source_file, chunk_index, chunk_total, created_by } = body
 
     if (!content?.trim()) {
-      return Response.json({ error: '내용이 비어있습니다' }, { status: 400, headers: CORS })
+      return Response.json({ error: '내용이 비어있습니다' }, { status: 400, headers: corsHeaders })
     }
 
     console.log(`[embed] ${source_file} chunk ${chunk_index + 1}/${chunk_total}`)
@@ -87,12 +88,14 @@ Deno.serve(async (req: Request) => {
     console.log(`[embed] 저장 완료: ${data.id}`)
     return Response.json(
       { success: true, id: data.id, chunk: `${chunk_index + 1}/${chunk_total}` },
-      { headers: CORS },
+      { headers: corsHeaders },
     )
 
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[embed] 오류:', msg)
-    return Response.json({ error: msg }, { status: 500, headers: CORS })
+  } catch (error) {
+    console.error('[embed-knowledge] error:', error)
+    return new Response(
+      JSON.stringify({ error: String(error), stack: (error as Error)?.stack }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   }
 })
