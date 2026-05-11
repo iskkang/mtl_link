@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Users, MessageSquare, Hash, Loader2 } from 'lucide-react'
+import { X, Users, MessageSquare, Hash, Loader2, Lock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { UserPicker } from './UserPicker'
@@ -20,7 +20,8 @@ interface Props {
 
 export function NewRoomModal({ open, onClose, onRoomCreated, initialTab }: Props) {
   const { t } = useTranslation()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
   const setRooms = useRoomStore(s => s.setRooms)
 
   const [tab,         setTab]         = useState<Tab>('direct')
@@ -204,71 +205,83 @@ export function NewRoomModal({ open, onClose, onRoomCreated, initialTab }: Props
               />
             </div>
           ) : tab === 'channel' ? (
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="px-4 pt-4 pb-3 flex-shrink-0 flex flex-col gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
-                    {t('channelName')} <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={channelName}
-                    onChange={e => setChannelName(e.target.value)}
-                    placeholder={t('channelNamePlaceholder')}
-                    maxLength={50}
-                    className="mtl-input"
-                    onKeyDown={e => { if (e.key === 'Enter') handleCreateChannel() }}
+            isAdmin ? (
+              <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="px-4 pt-4 pb-3 flex-shrink-0 flex flex-col gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
+                      {t('channelName')} <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      ref={nameInputRef}
+                      type="text"
+                      value={channelName}
+                      onChange={e => setChannelName(e.target.value)}
+                      placeholder={t('channelNamePlaceholder')}
+                      maxLength={50}
+                      className="mtl-input"
+                      onKeyDown={e => { if (e.key === 'Enter') handleCreateChannel() }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
+                      {t('channelDescription')}
+                    </label>
+                    <input
+                      type="text"
+                      value={channelDesc}
+                      onChange={e => setChannelDesc(e.target.value)}
+                      placeholder={t('channelDescriptionPlaceholder')}
+                      maxLength={200}
+                      className="mtl-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="px-4 pb-1 flex-shrink-0">
+                  <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
+                    {t('channelInviteOptional')}{' '}
+                    {selected.length > 0 && (
+                      <span style={{ color: 'var(--brand)' }}>({selected.length}명)</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <UserPicker
+                    mode="multi"
+                    selected={selected}
+                    onChange={setSelected}
+                    excludeId={user?.id}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--ink-3)' }}>
-                    {t('channelDescription')}
-                  </label>
-                  <input
-                    type="text"
-                    value={channelDesc}
-                    onChange={e => setChannelDesc(e.target.value)}
-                    placeholder={t('channelDescriptionPlaceholder')}
-                    maxLength={200}
-                    className="mtl-input"
-                  />
+
+                <div className="px-4 py-4 flex-shrink-0 border-t" style={{ borderColor: 'var(--line)' }}>
+                  <button
+                    onClick={handleCreateChannel}
+                    disabled={!channelName.trim() || creating}
+                    className="w-full py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                    style={{ background: 'var(--brand)' }}
+                  >
+                    {creating ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 size={16} className="animate-spin" />
+                        생성 중…
+                      </span>
+                    ) : t('channelCreate')}
+                  </button>
                 </div>
               </div>
-
-              <div className="px-4 pb-1 flex-shrink-0">
-                <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
-                  {t('channelInviteOptional')}{' '}
-                  {selected.length > 0 && (
-                    <span style={{ color: 'var(--brand)' }}>({selected.length}명)</span>
-                  )}
-                </span>
+            ) : (
+              <div className="flex flex-col items-center justify-center flex-1 gap-3 py-10 text-center">
+                <Lock size={32} style={{ color: 'var(--ink-3)' }} />
+                <p className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
+                  채널 생성은 관리자만 가능합니다
+                </p>
+                <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
+                  채널 참여는 # 탭에서 할 수 있습니다
+                </p>
               </div>
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <UserPicker
-                  mode="multi"
-                  selected={selected}
-                  onChange={setSelected}
-                  excludeId={user?.id}
-                />
-              </div>
-
-              <div className="px-4 py-4 flex-shrink-0 border-t" style={{ borderColor: 'var(--line)' }}>
-                <button
-                  onClick={handleCreateChannel}
-                  disabled={!channelName.trim() || creating}
-                  className="w-full py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
-                  style={{ background: 'var(--brand)' }}
-                >
-                  {creating ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 size={16} className="animate-spin" />
-                      생성 중…
-                    </span>
-                  ) : t('channelCreate')}
-                </button>
-              </div>
-            </div>
+            )
           ) : (
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
               {/* 그룹 이름 */}
