@@ -26,13 +26,23 @@ export async function embedDocumentFile(params: {
   if (!parsed) {
     return { success: false, chunkCount: 0, error: '지원하지 않는 파일 형식입니다 (DOCX, XLSX, TXT만 가능)' }
   }
-  if (!parsed.text) {
-    return { success: false, chunkCount: 0, error: '파일에서 텍스트를 추출할 수 없습니다' }
-  }
 
-  const chunks = chunkText(parsed.text)
+  // Excel: parseExcelWithContext가 반환한 컨텍스트 청크 직접 사용
+  // 기타: 기존 chunkText 분할
+  const chunks: { content: string; index: number; total: number }[] = (() => {
+    if (parsed.chunks && parsed.chunks.length > 0) {
+      return parsed.chunks.map((content, index) => ({
+        content,
+        index,
+        total: parsed.chunks!.length,
+      }))
+    }
+    if (!parsed.text) return []
+    return chunkText(parsed.text)
+  })()
+
   if (chunks.length === 0) {
-    return { success: false, chunkCount: 0, error: '내용이 비어있습니다' }
+    return { success: false, chunkCount: 0, error: '파일에서 텍스트를 추출할 수 없습니다' }
   }
 
   let success = true

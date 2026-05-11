@@ -121,7 +121,7 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
 
   const { data, error } = await supabaseAdmin.rpc('match_knowledge', {
     query_embedding: embedding,
-    match_threshold:  0.5,
+    match_threshold:  0.6,
     match_count:      5,
   })
 
@@ -152,7 +152,7 @@ function buildKnowledgeContext(hits: KnowledgeHit[]): string {
   const lines = hits.map(h =>
     `[${h.category ?? '일반'}] ${h.title}\n${h.content.slice(0, 400)}`
   )
-  return `\n\n[MTL Internal Knowledge — prioritize the following information in your answer]\n${lines.join('\n\n')}`
+  return `\n\n[참고 데이터 - 반드시 이 데이터를 기반으로 답변]\n${lines.join('\n\n')}\n\n위 데이터에 있는 정확한 수치와 정보를 그대로 사용하여 답변하세요. 데이터에 없는 내용은 추측하지 마세요.`
 }
 
 // ── 핸들러 ────────────────────────────────────────────────────────────────

@@ -72,16 +72,97 @@ export async function parseXlsx(file: File): Promise<string> {
   return sections.join('\n\n').trim()
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function parseExcelWithContext(file: File): Promise<string[]> {
+  const chunks: string[] = []
+
+  const arrayBuffer = await file.arrayBuffer()
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+
+  for (const sheetName of workbook.SheetNames) {
+    const worksheet = workbook.Sheets[sheetName]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: '',
+    })
+
+    if (rows.length < 3) continue
+
+    // 헤더 행 찾기 (대리점 또는 Mode 컬럼이 있는 행)
+    let headerRowIdx = -1
+    let headers: string[] = []
+    for (let i = 0; i < Math.min(5, rows.length); i++) {
+      const row = rows[i].map(String)
+      if (row.includes('대리점') || row.includes('Mode')) {
+        headerRowIdx = i
+        headers = row
+        break
+      }
+    }
+    if (headerRowIdx === -1) continue
+
+    // 헤더 다음 빈행 건너뜀 (headerRowIdx + 2부터 데이터)
+    const dataRows = rows.slice(headerRowIdx + 2)
+
+    const ROWS_PER_CHUNK = 20
+    for (let i = 0; i < dataRows.length; i += ROWS_PER_CHUNK) {
+      const chunkRows = dataRows
+        .slice(i, i + ROWS_PER_CHUNK)
+        .filter(row => row.some((cell: unknown) => String(cell).trim() !== ''))
+
+      if (chunkRows.length === 0) continue
+
+      let chunkText = `[${sheetName}]\n`
+      chunkText += `컬럼: ${headers.filter(h => h).join(' | ')}\n\n`
+
+      for (const row of chunkRows) {
+        const rowParts: string[] = []
+
+        headers.forEach((header, idx) => {
+          if (!header) return
+          const value = String(row[idx] ?? '').trim()
+
+          // Owner 컬럼은 빈값이어도 항상 포함 (SOC/COC 맥락 중요)
+          if (header === 'Owner') {
+            rowParts.push(`Owner: ${value || '-'}`)
+            return
+          }
+
+          if (value !== '') {
+            rowParts.push(`${header}: ${value}`)
+          }
+        })
+
+        if (rowParts.length > 1) {
+          chunkText += rowParts.join(' / ') + '\n'
+        }
+      }
+
+      chunks.push(chunkText)
+    }
+  }
+
+  return chunks
+}
+
 export async function parseTxt(file: File): Promise<string> {
   return await file.text()
 }
 
 export async function parseDocument(file: File): Promise<{
-  text: string
+  text:     string
   fileType: SupportedFileType
+  chunks?:  string[]
 } | null> {
   const fileType = getSupportedFileType(file)
   if (!fileType) return null
+
+  // Excel: contextual chunking (시트명 + 헤더 + Owner 보존)
+  if (fileType === 'xlsx' || fileType === 'xls') {
+    const chunks = await parseExcelWithContext(file)
+    return { text: '', fileType, chunks }
+  }
 
   let text = ''
   switch (fileType) {
@@ -90,10 +171,6 @@ export async function parseDocument(file: File): Promise<{
       break
     case 'docx':
       text = await parseDocx(file)
-      break
-    case 'xlsx':
-    case 'xls':
-      text = await parseXlsx(file)
       break
     case 'txt':
     case 'csv':
