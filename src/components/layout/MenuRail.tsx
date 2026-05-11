@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   MessageSquare, Users, CheckSquare, Inbox,
-  Bell, Calendar, FolderOpen, Hash, Settings,
+  Bell, Calendar, FolderOpen, Hash, Settings, DollarSign,
 } from 'lucide-react'
 import { MarvisIcon } from '../ui/MarvisIcon'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +13,7 @@ import { ProfileMenu } from './ProfileMenu'
 export type Section =
   | 'chat' | 'members' | 'tasks' | 'requests'
   | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots' | 'ai'
+  | 'ratefinder'
   | 'settings' | 'profile'
 
 export const MOBILE_SECTIONS = new Set<Section>(['chat', 'members', 'tasks', 'requests'])
@@ -85,6 +86,12 @@ export function MenuRail({
             label={t('menuRailBots')}
             active={activeSection === 'ai'}
             onClick={() => onSectionChange('ai')}
+          />
+          <RailBtn
+            Icon={DollarSign}
+            label={t('menuRailRates')}
+            active={activeSection === 'ratefinder'}
+            onClick={() => onSectionChange('ratefinder')}
           />
         </div>
 

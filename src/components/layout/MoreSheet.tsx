@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Sun, Moon, Bell, BellOff, Globe, KeyRound, LogOut,
-  Megaphone, FolderOpen, Hash, ChevronRight, Settings2,
+  Megaphone, FolderOpen, Hash, ChevronRight, Settings2, DollarSign,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -28,10 +28,11 @@ interface Props {
 }
 
 const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] = [
-  { id: 'announcements', Icon: Megaphone,  labelKey: 'menuRailAnnouncements' },
-  { id: 'files',         Icon: FolderOpen, labelKey: 'menuRailFiles'         },
-  { id: 'channels',      Icon: Hash,       labelKey: 'menuRailChannels'      },
-  { id: 'ai',            Icon: MarvisIcon, labelKey: 'menuRailBots'          },
+  { id: 'announcements', Icon: Megaphone,   labelKey: 'menuRailAnnouncements' },
+  { id: 'files',         Icon: FolderOpen,  labelKey: 'menuRailFiles'         },
+  { id: 'channels',      Icon: Hash,        labelKey: 'menuRailChannels'      },
+  { id: 'ai',            Icon: MarvisIcon,  labelKey: 'menuRailBots'          },
+  { id: 'ratefinder',    Icon: DollarSign,  labelKey: 'menuRailRates'         },
 ]
 
 export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onToggleNotif, onEditProfile }: Props) {
