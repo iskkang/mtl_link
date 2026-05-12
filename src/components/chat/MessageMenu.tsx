@@ -158,11 +158,9 @@ function MenuItem({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       title={title}
-      className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors
-                 disabled:opacity-40 disabled:cursor-not-allowed"
+      className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100
+                 hover:bg-[var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
       style={{ color }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'var(--bg)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
     >
       <Icon size={13} className="flex-shrink-0" />
       <span>{label}</span>

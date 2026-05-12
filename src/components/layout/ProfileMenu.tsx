@@ -138,15 +138,14 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
                 key={lang.code}
                 type="button"
                 onClick={() => handleLangSelect(lang.code)}
-                className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] transition-colors"
+                className={`flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] transition-colors duration-100
+                  ${!isActive ? 'hover:bg-[var(--bg-hover)]' : ''}`}
                 style={{
                   background: isActive ? 'rgba(51,144,236,0.10)' : 'transparent',
                   color:      isActive ? 'var(--brand)'          : 'var(--ink-3)',
                   fontWeight: isActive ? 600                     : 400,
                   border:     isActive ? '1px solid rgba(51,144,236,0.25)' : '1px solid transparent',
                 }}
-                onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg)' }}
-                onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
               >
                 <span className="text-base leading-none">{lang.flag}</span>
                 <span>{lang.label}</span>
@@ -188,10 +187,9 @@ function MenuRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-100
+        ${danger ? 'hover:bg-[rgba(239,63,26,0.06)]' : 'hover:bg-[var(--bg-hover)]'}`}
       style={{ color: danger ? 'var(--red)' : 'var(--ink)' }}
-      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
       {icon}
       <span>{label}</span>

@@ -124,10 +124,9 @@ function MenuRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-100
+        ${danger ? 'hover:bg-[rgba(239,63,26,0.06)]' : 'hover:bg-[var(--bg-hover)]'}`}
       style={{ color: danger ? 'var(--red)' : 'var(--ink)' }}
-      onMouseEnter={e => (e.currentTarget.style.background = danger ? 'rgba(239,63,26,0.06)' : 'var(--bg)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
       <span style={{ color: danger ? 'var(--red)' : 'var(--ink-3)', display: 'flex' }}>{icon}</span>
       <span className="flex-1 text-left">{label}</span>
