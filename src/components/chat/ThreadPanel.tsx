@@ -226,6 +226,7 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
         placeholder={t('threadInputPlaceholder')}
         autoFocus
         members={members}
+        onPasteFiles={handleFilesSelected}
       />
     </div>
   )

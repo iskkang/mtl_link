@@ -24,12 +24,13 @@ interface Props {
   placeholder?:     string
   autoFocus?:       boolean
   members?:         MentionMember[]
+  onPasteFiles?:    (files: File[]) => void
 }
 
 const MAX_LEN = 4000
 const WARN_AT = 3500
 
-export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder, autoFocus, members }: Props) {
+export function MessageInput({ value, onChange, onSend, disabled, hasPendingFiles, targetLanguage, isRequest, onToggleRequest, placeholder, autoFocus, members, onPasteFiles }: Props) {
   const { t } = useTranslation()
   const [sending,          setSending]          = useState(false)
   const [error,            setError]            = useState<string | null>(null)
@@ -166,6 +167,22 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
     }
   }
 
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (!file) continue
+        const ext = item.type.split('/')[1] || 'png'
+        const namedFile = new File([file], `screenshot_${Date.now()}.${ext}`, { type: item.type })
+        onPasteFiles?.([namedFile])
+        break
+      }
+    }
+  }, [onPasteFiles])
+
   const remaining        = MAX_LEN - value.length
   const activeTranslation = targetLanguage && targetLanguage !== 'none'
 
@@ -236,6 +253,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
           }}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
         />
         {value.length >= WARN_AT && (
           <span

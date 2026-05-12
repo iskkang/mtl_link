@@ -496,6 +496,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
             isRequest={isRequest}
             onToggleRequest={() => setIsRequest(v => !v)}
             members={room?.members}
+            onPasteFiles={handleFilesSelected}
           />
         </DragDropZone>
       ) : (
