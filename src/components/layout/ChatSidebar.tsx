@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SquarePen, ArrowLeft, Megaphone, Calendar, FolderOpen, Hash, Bot, Settings } from 'lucide-react'
+import { SquarePen, ArrowLeft, Megaphone, Calendar, FolderOpen, Hash, Bot } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
@@ -69,7 +69,6 @@ export function ChatSidebar({
     channels:      t('menuRailChannels'),
     bots:          t('menuRailBots'),
     ai:            'MINT',
-    settings:      t('menuRailSettings'),
   }
 
   const title = SECTION_TITLE[activeSection] ?? activeSection
@@ -222,7 +221,7 @@ export function ChatSidebar({
       )}
 
       {/* ── Placeholder sections ── */}
-      {(['bots', 'settings'] as Section[]).includes(activeSection) && (
+      {(['bots'] as Section[]).includes(activeSection) && (
         <ComingSoon label={title} section={activeSection} onSectionChange={onSectionChange} />
       )}
     </div>
@@ -294,7 +293,6 @@ const PLACEHOLDER_ICONS: Partial<Record<Section, React.ElementType>> = {
   files:         FolderOpen,
   channels:      Hash,
   bots:          Bot,
-  settings:      Settings,
 }
 
 function ComingSoon({

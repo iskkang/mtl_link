@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   MessageSquare, Users, CheckSquare, Inbox,
-  Bell, Calendar, FolderOpen, Hash, Settings, DollarSign,
+  Bell, Calendar, FolderOpen, Hash, DollarSign,
 } from 'lucide-react'
 import { MintIcon } from '../ui/MarvisIcon'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +14,7 @@ export type Section =
   | 'chat' | 'members' | 'tasks' | 'requests'
   | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots' | 'ai'
   | 'ratefinder' | 'all-unread' | 'threads'
-  | 'settings' | 'profile'
+  | 'profile'
 
 export const MOBILE_SECTIONS = new Set<Section>(['chat', 'members', 'tasks', 'requests'])
 
@@ -111,18 +111,11 @@ export function MenuRail({
         </div>
       </div>
 
-      {/* Sticky bottom — Settings + Profile */}
+      {/* Sticky bottom — Profile */}
       <div
         className="flex-shrink-0 border-t flex flex-col items-center py-2 gap-0.5"
         style={{ borderColor: 'var(--side-line)' }}
       >
-        <RailBtn
-          Icon={Settings}
-          label={t('menuRailSettings')}
-          active={activeSection === 'settings'}
-          onClick={() => onSectionChange('settings')}
-        />
-
         <div className="relative">
           <button
             type="button"
