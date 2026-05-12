@@ -1,35 +1,34 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { getWeather, getWeatherIcon, getWeatherStyle } from '../../lib/weather'
 import type { WeatherResult } from '../../lib/weather'
 
-// ── 시간대별 인사 ──────────────────────────────────────────────────
-function getGreetingMessage(name: string): { prefix: string; body: string } {
-  const h = new Date().getHours()
-  const prefix = `${name}님,`
-  if (h < 5)  return { prefix, body: '늦은 시간까지 고생 많으세요' }
-  if (h < 8)  return { prefix, body: '오늘도 좋은 하루 시작하세요' }
-  if (h < 11) return { prefix, body: '오늘도 활기찬 하루 되세요!' }
-  if (h < 13) return { prefix, body: '오전 업무 마무리 잘하세요' }
-  if (h < 15) return { prefix, body: '오후도 차분히 시작해요' }
-  if (h < 18) return { prefix, body: '오후도 조금만 더 힘내세요' }
-  if (h < 21) return { prefix, body: '오늘 하루도 고생 많으셨어요!' }
-  return { prefix, body: '편안한 밤 보내세요' }
+// ── 시간대별 인사 (i18n) ──────────────────────────────────────────
+function getGreetingBody(h: number, t: (key: string) => string): string {
+  if (h < 5)  return t('greetingLateNight')
+  if (h < 8)  return t('greetingMorning')
+  if (h < 11) return t('greetingMidMorning')
+  if (h < 13) return t('greetingNoon')
+  if (h < 15) return t('greetingAfternoon')
+  if (h < 18) return t('greetingLateAfternoon')
+  if (h < 21) return t('greetingEvening')
+  return t('greetingNight')
 }
 
-// ── 날씨 서브 멘트 ────────────────────────────────────────────────
-const WEATHER_MESSAGES: Record<string, string> = {
-  clear:        '맑은 날이에요. 가볍게 움직이기 좋아요.',
-  cloudy:       '흐린 날이에요. 일정은 여유 있게 잡으세요.',
-  rainExpected: '비가 올 예정이에요. 우산을 챙기세요.',
-  raining:      '비가 내리고 있어요. 이동 시 조심하세요.',
-  heavyRain:    '비가 많이 와요. 외근 일정은 다시 확인하세요.',
-  snowExpected: '눈 예보가 있어요. 이동 시간을 넉넉히 잡으세요.',
-  heavySnow:    '눈이 많이 와요. 출퇴근길 안전에 유의하세요.',
-  hot:          '더운 날이에요. 물 자주 마시고 무리하지 마세요.',
-  extremeHot:   '폭염 수준이에요. 야외 활동은 최소화하세요.',
-  freezing:     '기온이 영하예요. 따뜻하게 입고 이동하세요.',
-  coldWave:     '매우 추운 날이에요. 방한 준비를 꼭 하세요.',
+// ── 날씨 카테고리 → i18n 키 매핑 ────────────────────────────────
+const WEATHER_MSG_KEYS: Record<string, string> = {
+  clear:        'weatherMsgClear',
+  cloudy:       'weatherCloudy',
+  rainExpected: 'weatherRainExpected',
+  raining:      'weatherRaining',
+  heavyRain:    'weatherHeavyRain',
+  snowExpected: 'weatherSnowExpected',
+  heavySnow:    'weatherHeavySnow',
+  hot:          'weatherHot',
+  extremeHot:   'weatherExtremeHot',
+  freezing:     'weatherFreezing',
+  coldWave:     'weatherColdWave',
 }
 
 function getWeatherCategory(code: number, temp: number): string {
@@ -47,6 +46,12 @@ function getWeatherCategory(code: number, temp: number): string {
   if (temp < 0)   return 'freezing'
   if (code >= 2)  return 'cloudy'
   return 'clear'
+}
+
+// ── Locale 매핑 ───────────────────────────────────────────────────
+const LOCALE_MAP: Record<string, string> = {
+  ko: 'ko-KR', en: 'en-US', ru: 'ru-RU',
+  uz: 'uz-UZ', zh: 'zh-CN', ja: 'ja-JP',
 }
 
 // ── 그라디언트 헬퍼 ───────────────────────────────────────────────
@@ -73,6 +78,7 @@ function weatherEnd(code: number): string {
 }
 
 export function GreetingWeatherCard() {
+  const { t, i18n } = useTranslation()
   const { profile } = useAuth()
   const [weather, setWeather] = useState<WeatherResult | null>(null)
 
@@ -82,17 +88,20 @@ export function GreetingWeatherCard() {
     return () => { cancelled = true }
   }, [])
 
-  const dateStr = new Intl.DateTimeFormat('ko-KR', {
+  const userLanguage = i18n.language.split('-')[0]
+  const locale = LOCALE_MAP[userLanguage] ?? 'en-US'
+
+  const dateStr = new Intl.DateTimeFormat(locale, {
     weekday: 'long', month: 'long', day: 'numeric',
   }).format(new Date())
 
   const name = profile?.name ?? ''
-  const greeting = name
-    ? getGreetingMessage(name)
-    : { prefix: '', body: '오늘도 좋은 하루 되세요!' }
+  const h    = new Date().getHours()
+  const body = getGreetingBody(h, t)
 
   const weatherCategory = weather ? getWeatherCategory(weather.code, weather.temp) : null
-  const weatherMsg      = weatherCategory ? WEATHER_MESSAGES[weatherCategory] : null
+  const weatherMsgKey   = weatherCategory ? WEATHER_MSG_KEYS[weatherCategory] : null
+  const weatherMsg      = weatherMsgKey ? t(weatherMsgKey) : null
 
   const gStart = greetingStart()
   const gMid   = greetingMid()
@@ -128,13 +137,13 @@ export function GreetingWeatherCard() {
       {/* Bottom row: greeting | temperature */}
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
-          {greeting.prefix && (
+          {name && (
             <p className="text-[12px] font-medium leading-tight truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              {greeting.prefix}
+              {name}님,
             </p>
           )}
           <h2 className="text-[17px] font-bold leading-snug truncate" style={{ color: 'rgba(255,255,255,0.95)' }}>
-            {greeting.body}
+            {body}
           </h2>
           {weatherMsg && (
             <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.72)' }}>
@@ -148,7 +157,7 @@ export function GreetingWeatherCard() {
               {weather.temp}°
             </p>
             <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              체감 {weather.feelsLike}°
+              {t('weatherFeelsLikeTemp', { temp: weather.feelsLike })}
             </p>
           </div>
         )}
