@@ -5,10 +5,11 @@ import { useRoomStore } from '../../stores/roomStore'
 import type { Section } from '../layout/MenuRail'
 
 interface Props {
+  activeSection:   Section
   onSectionChange: (s: Section) => void
 }
 
-export function NotificationHub({ onSectionChange }: Props) {
+export function NotificationHub({ activeSection, onSectionChange }: Props) {
   const { t }    = useTranslation()
   const [tipKey, setTipKey] = useState<string | null>(null)
 
@@ -39,6 +40,7 @@ export function NotificationHub({ onSectionChange }: Props) {
         label={t('navAllUnread')}
         badge={totalUnread > 0 ? fmtBadge(totalUnread) : null}
         badgeBg="#D85A30"
+        active={activeSection === 'all-unread'}
         onClick={() => onSectionChange('all-unread')}
       />
       <HubItem
@@ -46,11 +48,13 @@ export function NotificationHub({ onSectionChange }: Props) {
         label={t('navThreads')}
         badge={threadUnread > 0 ? fmtBadge(threadUnread) : null}
         badgeBg="#D4537E"
+        active={activeSection === 'threads'}
         onClick={() => onSectionChange('threads')}
       />
       <HubItem
         icon={<AtSign size={15} />}
         label={t('navMentions')}
+        active={false}
         onClick={() => showTip('mentions')}
       />
     </nav>
@@ -58,12 +62,13 @@ export function NotificationHub({ onSectionChange }: Props) {
 }
 
 function HubItem({
-  icon, label, badge, badgeBg, muted, onClick,
+  icon, label, badge, badgeBg, active, muted, onClick,
 }: {
   icon:      React.ReactNode
   label:     string
   badge?:    string | null
   badgeBg?:  string
+  active?:   boolean
   muted?:    boolean
   onClick:   () => void
 }) {
@@ -71,13 +76,16 @@ function HubItem({
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center justify-between px-4 py-1.5 transition-colors text-left"
-      style={{ color: muted ? 'var(--side-mute)' : 'var(--side-text)' }}
-      onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-hover)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      className="w-full flex items-center justify-between px-4 py-1.5 transition-colors text-left rounded-lg mx-auto"
+      style={{
+        color:      active ? '#0C447C' : muted ? 'var(--side-mute)' : 'var(--side-text)',
+        background: active ? '#E6F1FB' : 'transparent',
+      }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--side-hover)' }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
     >
       <div className="flex items-center gap-2.5">
-        <span style={{ color: 'var(--side-mute)', display: 'flex' }}>{icon}</span>
+        <span style={{ color: active ? '#0C447C' : 'var(--side-mute)', display: 'flex' }}>{icon}</span>
         <span className="text-[13px]">{label}</span>
       </div>
       {badge && (

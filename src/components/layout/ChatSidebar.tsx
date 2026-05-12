@@ -84,10 +84,10 @@ export function ChatSidebar({
       style={{ width: 280, flexShrink: 0, background: 'var(--side-bg)' }}
     >
       {/* ── Chat section (new Slack-style layout) ── */}
-      {activeSection === 'chat' && (
+      {(['chat', 'all-unread', 'threads'] as Section[]).includes(activeSection) && (
         <>
           <WorkspaceHeader onEditProfile={onEditProfile} />
-          <NotificationHub onSectionChange={onSectionChange} />
+          <NotificationHub activeSection={activeSection} onSectionChange={onSectionChange} />
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             <NotificationPermissionCard />
             <div className="py-2">
@@ -135,7 +135,7 @@ export function ChatSidebar({
       )}
 
       {/* ── Non-chat sections: shared header ── */}
-      {activeSection !== 'chat' && (
+      {!(['chat', 'all-unread', 'threads'] as Section[]).includes(activeSection) && (
         <div
           className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b"
           style={{ borderColor: 'var(--side-line)' }}
