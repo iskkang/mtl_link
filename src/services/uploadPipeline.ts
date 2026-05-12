@@ -1,4 +1,5 @@
 import { useUploadStore } from '../stores/uploadStore'
+import { usePendingApprovalStore } from '../stores/pendingApprovalStore'
 import { parseDocument } from './documentParser'
 import { chunkText } from '../lib/textChunker'
 import { supabase } from '../lib/supabase'
@@ -121,10 +122,12 @@ export async function startKnowledgeUpload(params: {
     })
 
     useUploadStore.getState().finish('done')
+    void usePendingApprovalStore.getState().refresh()
   } catch (err) {
     const cancelled = isCancelled(err, signal)
     await rollbackUpload(uploadId)
     useUploadStore.getState().finish(cancelled ? 'cancelled' : 'failed')
+    void usePendingApprovalStore.getState().refresh()
     if (!cancelled) console.error('[upload] failed:', err)
   }
 }

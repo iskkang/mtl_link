@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useAiSessions, type AiSession } from '../../hooks/useAiSessions'
 import { aiEvents } from '../../lib/aiEvents'
+import { usePendingApprovalStore } from '../../stores/pendingApprovalStore'
 
 interface Props {
   activeSessionId: string | null
@@ -27,18 +28,15 @@ export function AiSidebar({ activeSessionId, onSelectSession }: Props) {
   const { sessions: fetched, loading } = useAiSessions()
   const isAdmin = profile?.role === 'admin'
 
-  const [pendingCount, setPendingCount] = useState(0)
+  const pendingCount      = usePendingApprovalStore(s => s.count)
+  const pendingRefresh    = usePendingApprovalStore(s => s.refresh)
+  const pendingSubscribe  = usePendingApprovalStore(s => s.subscribe)
 
   useEffect(() => {
     if (!isAdmin) return
-    void (async () => {
-      const [hsRes, kbRes] = await Promise.all([
-        supabase.from('hs_code_notes').select('id', { count: 'exact', head: true }).in('approval_status', ['pending_review', 'draft']),
-        supabase.from('knowledge_base').select('id', { count: 'exact', head: true }).in('status', ['pending_review', 'draft']),
-      ])
-      setPendingCount((hsRes.count ?? 0) + (kbRes.count ?? 0))
-    })()
-  }, [isAdmin])
+    void pendingRefresh()
+    return pendingSubscribe()
+  }, [isAdmin, pendingRefresh, pendingSubscribe])
 
   // Local copy for optimistic updates
   const [sessions, setSessions] = useState<AiSession[]>([])

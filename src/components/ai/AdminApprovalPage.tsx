@@ -3,6 +3,7 @@ import { ChevronLeft, Check, X, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
+import { usePendingApprovalStore } from '../../stores/pendingApprovalStore'
 
 interface HsPending {
   id:                string
@@ -73,6 +74,7 @@ export function AdminApprovalPage({ onBack }: Props) {
       .in('approval_status', ['pending_review', 'draft'])
     setHsPending([])
     setApprovingAll(false)
+    void usePendingApprovalStore.getState().refresh()
   }
 
   const handleApproveAllKb = async () => {
@@ -84,6 +86,7 @@ export function AdminApprovalPage({ onBack }: Props) {
       .in('status', ['pending_review', 'draft'])
     setKbPending([])
     setApprovingAll(false)
+    void usePendingApprovalStore.getState().refresh()
   }
 
   const handleHsAction = async (id: string, action: 'approve' | 'reject') => {
@@ -105,6 +108,7 @@ export function AdminApprovalPage({ onBack }: Props) {
     })
     setHsPending(prev => prev.filter(i => i.id !== id))
     setActing(null)
+    void usePendingApprovalStore.getState().refresh()
   }
 
   const handleKbAction = async (id: string, action: 'approve' | 'reject') => {
@@ -126,6 +130,7 @@ export function AdminApprovalPage({ onBack }: Props) {
     })
     setKbPending(prev => prev.filter(i => i.id !== id))
     setActing(null)
+    void usePendingApprovalStore.getState().refresh()
   }
 
   return (
