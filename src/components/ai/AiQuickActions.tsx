@@ -57,12 +57,9 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 overflow-y-auto">
       {/* Welcome header */}
       <div className="mb-8 text-center">
-        <div className="flex justify-center mb-1">
-          <img src="/mint-logo.svg" alt="MINT" className="w-14 h-14 object-contain" />
+        <div className="flex justify-center mb-3">
+          <img src="/mint-logo-wordmark.svg" alt="MINT" className="h-16 w-auto object-contain" />
         </div>
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--ink)' }}>
-          {t('aiWelcomeTitle')}
-        </h2>
         <p className="text-sm" style={{ color: 'var(--ink-3)' }}>
           {t('aiWelcomeSubtitle')}
         </p>
