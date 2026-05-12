@@ -40,8 +40,9 @@
   --bubble-out-bd: transparent;
 
   /* Sidebar — light mode values */
-  --side-bg:     #F4F4F5;
-  --side-deep:   #EBEBEC;
+  --rail-bg:     #FFFFFF;
+  --side-bg:     #F4F2EC;
+  --side-deep:   #EAE8E1;
   --side-text:   #000000;
   --side-mute:   #707579;
   --side-row:    #EBEBEC;
@@ -102,6 +103,7 @@
   --bubble-out-bd: transparent;
 
   /* Sidebar — dark mode values */
+  --rail-bg:     #061A2F;
   --side-bg:     #0A2540;
   --side-deep:   #061A2F;
   --side-text:   #F1F5F9;

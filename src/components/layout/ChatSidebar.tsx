@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { SquarePen, Search, MessageSquare, ArrowLeft, Megaphone, Calendar, FolderOpen, Hash, Bot, Settings } from 'lucide-react'
+import { SquarePen, ArrowLeft, Megaphone, Calendar, FolderOpen, Hash, Bot, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useRooms } from '../../hooks/useRooms'
-import { RoomList } from '../chat/RoomList'
 import { NotificationPermissionCard } from '../notifications/NotificationPermissionCard'
 import { FriendsList } from '../chat/FriendsList'
 import { ActionItemList } from '../actionitems/ActionItemList'
@@ -14,6 +13,11 @@ import { Button } from '../ui/Button'
 import { FilesPanel } from '../files/FilesPanel'
 import { AnnouncementsPanel } from '../announcements/AnnouncementsPanel'
 import { ChannelsPanel } from '../channels/ChannelsPanel'
+import { WorkspaceHeader } from '../sidebar/WorkspaceHeader'
+import { NotificationHub } from '../sidebar/NotificationHub'
+import { CollapsibleSection } from '../sidebar/CollapsibleSection'
+import { ChannelItem } from '../sidebar/ChannelItem'
+import { DmItem } from '../sidebar/DmItem'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -54,7 +58,6 @@ export function ChatSidebar({
   const { rooms, loading } = useRooms()
 
   const SECTION_TITLE: Partial<Record<Section, string>> = {
-    chat:          t('tabChat'),
     members:       t('tabFriends'),
     tasks:         t('tabTasks'),
     requests:      t('tabRequests'),
@@ -69,67 +72,88 @@ export function ChatSidebar({
 
   const title = SECTION_TITLE[activeSection] ?? activeSection
 
+  // Split rooms into channels and DMs for the new chat section layout
+  const channelRooms = rooms.filter(r => r.room_type === 'channel')
+  const dmRooms      = rooms.filter(r => r.room_type !== 'channel')
+
   return (
     <div
       className="flex flex-col h-full"
       style={{ width: 280, flexShrink: 0, background: 'var(--side-bg)' }}
     >
-      {/* Section header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b"
-        style={{ borderColor: 'var(--side-line)' }}
-      >
-        <h2 className="text-[13px] font-bold" style={{ color: 'var(--side-text)' }}>
-          {title}
-        </h2>
-        {activeSection === 'chat' && (
-          <button
-            onClick={onNewChat}
-            className="p-1.5 rounded-lg transition-colors"
-            style={{ color: 'var(--side-mute)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            aria-label={t('newChatBtn')}
-          >
-            <SquarePen size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* ── Chat section ── */}
+      {/* ── Chat section (new Slack-style layout) ── */}
       {activeSection === 'chat' && (
         <>
-          <div className="px-3 py-2 flex-shrink-0">
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-lg"
-              style={{ background: 'var(--side-row)' }}
-            >
-              <Search size={13} className="flex-shrink-0" style={{ color: 'var(--side-mute)' }} />
-              <input
-                type="text"
-                placeholder={t('searchChat')}
-                readOnly
-                className="flex-1 bg-transparent text-[13px] outline-none cursor-default"
-                style={{ color: 'var(--side-text)' }}
-              />
-            </div>
-          </div>
+          <WorkspaceHeader />
+          <NotificationHub />
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             <NotificationPermissionCard />
-            {rooms.length === 0 && !loading
-              ? <EmptyRoomList onNewChat={onNewChat} t={t} />
-              : (
-                <RoomList
-                  rooms={rooms}
-                  loading={loading}
-                  selectedRoomId={selectedRoomId}
-                  currentUserId={user?.id ?? ''}
-                  onSelectRoom={onSelectRoom}
-                />
-              )
-            }
+            <div className="py-2">
+              <CollapsibleSection
+                id="channels"
+                label={t('sectionChannels')}
+                onAdd={onNewChat}
+              >
+                {loading && channelRooms.length === 0
+                  ? <RoomSkeleton />
+                  : channelRooms.map(room => (
+                      <ChannelItem
+                        key={room.id}
+                        room={room}
+                        selectedRoomId={selectedRoomId}
+                        onSelect={onSelectRoom}
+                      />
+                    ))
+                }
+              </CollapsibleSection>
+            </div>
+            <div
+              className="mx-3 border-t"
+              style={{ borderColor: 'var(--side-line)' }}
+            />
+            <div className="py-2">
+              <CollapsibleSection
+                id="dms"
+                label={t('sectionDMs')}
+                onAdd={onNewChat}
+              >
+                {dmRooms.map(room => (
+                  <DmItem
+                    key={room.id}
+                    room={room}
+                    currentUserId={user?.id ?? ''}
+                    selectedRoomId={selectedRoomId}
+                    onSelect={onSelectRoom}
+                  />
+                ))}
+              </CollapsibleSection>
+            </div>
           </div>
         </>
+      )}
+
+      {/* ── Non-chat sections: shared header ── */}
+      {activeSection !== 'chat' && (
+        <div
+          className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b"
+          style={{ borderColor: 'var(--side-line)' }}
+        >
+          <h2 className="text-[13px] font-bold" style={{ color: 'var(--side-text)' }}>
+            {title}
+          </h2>
+          {activeSection === 'members' && (
+            <button
+              onClick={onNewChat}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--side-mute)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              aria-label={t('newChatBtn')}
+            >
+              <SquarePen size={16} />
+            </button>
+          )}
+        </div>
       )}
 
       {/* ── Members section ── */}
@@ -314,32 +338,13 @@ function ComingSoon({
   )
 }
 
-/* ── Empty room list ─────────────────────────────── */
-function EmptyRoomList({ onNewChat, t }: { onNewChat: () => void; t: (k: string) => string }) {
+/* ── Room loading skeleton ────────────────────────── */
+function RoomSkeleton() {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
-      <div
-        className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-        style={{ background: 'var(--side-row)' }}
-      >
-        <MessageSquare size={28} style={{ color: 'var(--side-mute)' }} />
-      </div>
-      <p className="text-[13px] font-medium mb-1" style={{ color: 'var(--side-mute)' }}>
-        {t('noRooms')}
-      </p>
-      <p className="text-[11px] mb-5 leading-relaxed whitespace-pre-line" style={{ color: 'var(--side-mute)', opacity: 0.7 }}>
-        {t('noRoomsDesc')}
-      </p>
-      <button
-        onClick={onNewChat}
-        className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white transition-colors"
-        style={{ background: 'var(--brand)' }}
-        onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
-        onMouseLeave={e => (e.currentTarget.style.filter = '')}
-      >
-        <SquarePen size={13} />
-        {t('newChatBtn')}
-      </button>
-    </div>
+    <>
+      {[1, 2, 3].map(i => (
+        <div key={i} className="h-7 mx-3 my-1 rounded-md animate-pulse" style={{ background: 'var(--side-row)' }} />
+      ))}
+    </>
   )
 }

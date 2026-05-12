@@ -55,7 +55,7 @@ export function MenuRail({
   ]
 
   return (
-    <div className="flex flex-col h-full" style={{ width: 60, background: 'var(--side-bg)' }}>
+    <div className="flex flex-col h-full" style={{ width: 60, background: 'var(--rail-bg)' }}>
 
       {/* Logo — sticky top */}
       <div className="flex items-center justify-center flex-shrink-0 pt-3 pb-2">
