@@ -6,6 +6,8 @@ import { supabase } from '../../lib/supabase'
 import { aiEvents } from '../../lib/aiEvents'
 import { AiQuickActions } from './AiQuickActions'
 import { AiQuickBar } from './AiQuickBar'
+import MintIntroCard from './MintIntroCard'
+import { isMintIntroQuery, isMintIntroResponse } from '../../utils/mintIntro'
 
 // ── MINT 로고 컴포넌트 ──────────────────────────────────────────────────────
 const MintLogo = ({ size = 32 }: { size?: number }) => (
@@ -111,6 +113,21 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
 
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content }])
     setDraft('')
+
+    // 자기소개 질문이면 AI 호출 없이 즉시 카드로 응답
+    if (isMintIntroQuery(content)) {
+      setMessages(prev => [...prev, {
+        id:      crypto.randomUUID(),
+        role:    'assistant',
+        content: 'Maritime Intelligent Navigation Tool',
+      }])
+      if (!sessionTitle) {
+        setSessionTitle(content.slice(0, 30))
+        onTitleChange?.()
+      }
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -288,7 +305,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
           className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
         >
           <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
-            {msg.role === 'assistant' && (
+            {msg.role === 'assistant' && !isMintIntroResponse(msg.content) && (
               <div
                 className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5"
                 style={{ background: 'var(--blue-soft)' }}
@@ -296,22 +313,26 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
                 <MintLogo size={16} />
               </div>
             )}
-            <div
-              className={`max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === 'user' ? 'rounded-[18px] rounded-tr-[4px]' : 'rounded-[18px] rounded-tl-[4px]'
-              }`}
-              style={{
-                background: msg.role === 'user' ? '#14b8a6' : 'var(--card)',
-                color:      msg.role === 'user' ? 'white'   : 'var(--ink)',
-                border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
-              }}
-            >
-              {msg.content}
-            </div>
+            {msg.role === 'assistant' && isMintIntroResponse(msg.content) ? (
+              <MintIntroCard />
+            ) : (
+              <div
+                className={`max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                  msg.role === 'user' ? 'rounded-[18px] rounded-tr-[4px]' : 'rounded-[18px] rounded-tl-[4px]'
+                }`}
+                style={{
+                  background: msg.role === 'user' ? '#14b8a6' : 'var(--card)',
+                  color:      msg.role === 'user' ? 'white'   : 'var(--ink)',
+                  border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
+                }}
+              >
+                {msg.content}
+              </div>
+            )}
           </div>
 
-          {/* 지식베이스 저장 버튼 — AI 메시지 전용 */}
-          {msg.role === 'assistant' && (
+          {/* 지식베이스 저장 버튼 — AI 메시지 전용 (자기소개 카드 제외) */}
+          {msg.role === 'assistant' && !isMintIntroResponse(msg.content) && (
             <div className="ml-9 mt-1">
               {saveFormId === msg.id ? (
                 <div
