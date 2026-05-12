@@ -297,8 +297,11 @@ export async function updateChannel(
 export async function inviteToChannel(roomId: string, userId: string): Promise<void> {
   const { error } = await supabase
     .from('room_members')
-    .insert({ room_id: roomId, user_id: userId })
-  if (error && error.code !== '23505') throw error
+    .upsert(
+      { room_id: roomId, user_id: userId },
+      { onConflict: 'room_id,user_id', ignoreDuplicates: true },
+    )
+  if (error) throw error
 }
 
 export async function removeMemberFromChannel(roomId: string, userId: string): Promise<void> {
