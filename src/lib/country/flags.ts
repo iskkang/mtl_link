@@ -8,11 +8,24 @@
 import { createElement } from 'react'
 import type { ReactElement } from 'react'
 
-/** Department codes used by MTL offices */
+/** Canonical department codes used by MTL offices */
 export type OfficeDept = 'HQ' | 'UZ' | 'RU' | 'JP' | 'CN' | 'KG' | 'VN'
 
+/** Normalise free-form country/department strings to a canonical OfficeDept */
+function normalizeCode(raw: string | null | undefined): OfficeDept | 'OTHER' {
+  const c = (raw ?? '').toUpperCase().trim()
+  if (['HQ', 'KR', 'KOR', 'KOREA', 'KS'].includes(c))           return 'HQ'
+  if (['UZ', 'UZB', 'UZBEKISTAN'].includes(c))                   return 'UZ'
+  if (['RU', 'RUS', 'RUSSIA'].includes(c))                       return 'RU'
+  if (['JP', 'JPN', 'JAPAN'].includes(c))                        return 'JP'
+  if (['CN', 'CHN', 'CHINA'].includes(c))                        return 'CN'
+  if (['KG', 'KGZ', 'KYRGYZSTAN'].includes(c))                   return 'KG'
+  if (['VN', 'VNM', 'VIETNAM'].includes(c))                      return 'VN'
+  return 'OTHER'
+}
+
 export function CountryFlag({ code, size = 14 }: { code: string; size?: number }): ReactElement {
-  const key = (code ?? '').toUpperCase() as OfficeDept
+  const key = normalizeCode(code)
 
   switch (key) {
     case 'HQ': // South Korea — simplified Taegeukgi
@@ -71,7 +84,7 @@ export function CountryFlag({ code, size = 14 }: { code: string; size?: number }
 }
 
 export function getOfficeLabel(dept: string | null | undefined): string {
-  switch ((dept ?? '').toUpperCase()) {
+  switch (normalizeCode(dept)) {
     case 'HQ': return '본사 (HQ)'
     case 'UZ': return 'UZ'
     case 'RU': return 'RU'

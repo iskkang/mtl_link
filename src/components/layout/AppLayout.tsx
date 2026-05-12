@@ -237,6 +237,7 @@ function DesktopColumns({
           activeSessionId={activeSessionId}
           onSelectSession={onSelectSession}
           aiSidebarVersion={aiSidebarVersion}
+          onEditProfile={onEditProfile}
         />
       </div>
     </>

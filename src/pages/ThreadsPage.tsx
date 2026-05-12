@@ -1,11 +1,13 @@
-import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '../stores/roomStore'
 
-export function ThreadsPage() {
-  const { t }    = useTranslation()
-  const navigate = useNavigate()
+interface Props {
+  onBack: () => void
+}
+
+export function ThreadsPage({ onBack }: Props) {
+  const { t } = useTranslation()
 
   const threadUnread = useRoomStore(s => s.threadUnread)
   const totalThreads = Object.keys(threadUnread).length
@@ -19,7 +21,7 @@ export function ThreadsPage() {
       >
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={onBack}
           className="p-1.5 rounded-lg"
           style={{ color: 'var(--ink-3)' }}
           onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}

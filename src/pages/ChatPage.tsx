@@ -13,6 +13,8 @@ import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh }  from '../hooks/usePollingRefresh'
 import type { Section }       from '../components/layout/MenuRail'
 
+const UnreadAllPage     = lazy(() => import('./UnreadAllPage').then(m => ({ default: m.UnreadAllPage })))
+const ThreadsPage       = lazy(() => import('./ThreadsPage').then(m => ({ default: m.ThreadsPage })))
 const Dashboard         = lazy(() => import('./Dashboard').then(m => ({ default: m.Dashboard })))
 const CalendarPage      = lazy(() => import('../components/calendar/CalendarPage').then(m => ({ default: m.CalendarPage })))
 const QuotationPage     = lazy(() => import('../components/ai/QuotationPage').then(m => ({ default: m.QuotationPage })))
@@ -203,7 +205,7 @@ export default function ChatPage() {
   return (
     <>
       <AppLayout
-        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai' || activeSection === 'ratefinder'}
+        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai' || activeSection === 'ratefinder' || activeSection === 'all-unread' || activeSection === 'threads'}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
@@ -258,6 +260,13 @@ export default function ChatPage() {
             <TrackingPage onBack={handleAiBack} />
           ) : activeSection === 'ratefinder' ? (
             <RateFinderPage onBack={() => setActiveSection('chat')} />
+          ) : activeSection === 'all-unread' ? (
+            <UnreadAllPage
+              onBack={() => setActiveSection('chat')}
+              onSelectRoom={handleSelectRoom}
+            />
+          ) : activeSection === 'threads' ? (
+            <ThreadsPage onBack={() => setActiveSection('chat')} />
           ) : activeSection === 'ai' ? (
             <AiChatWindow
               sessionId={activeSessionId}

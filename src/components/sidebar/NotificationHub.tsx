@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Dot, MessageSquare, AtSign, MoreHorizontal } from 'lucide-react'
+import { Inbox, MessageSquare, AtSign } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRoomStore } from '../../stores/roomStore'
+import type { Section } from '../layout/MenuRail'
 
-export function NotificationHub() {
-  const { t }     = useTranslation()
-  const navigate  = useNavigate()
+interface Props {
+  onSectionChange: (s: Section) => void
+}
+
+export function NotificationHub({ onSectionChange }: Props) {
+  const { t }    = useTranslation()
   const [tipKey, setTipKey] = useState<string | null>(null)
 
-  const totalUnread   = useRoomStore(s => s.rooms.reduce((sum, r) => sum + (r.unread_count ?? 0), 0))
-  const threadUnread  = useRoomStore(s => Object.values(s.threadUnread).reduce((sum, v) => sum + v, 0))
+  const totalUnread  = useRoomStore(s => s.rooms.reduce((sum, r) => sum + (r.unread_count ?? 0), 0))
+  const threadUnread = useRoomStore(s => Object.values(s.threadUnread).reduce((sum, v) => sum + v, 0))
 
   const showTip = (key: string) => {
     setTipKey(key)
@@ -32,29 +35,23 @@ export function NotificationHub() {
       )}
 
       <HubItem
-        icon={<Dot size={18} />}
+        icon={<Inbox size={15} />}
         label={t('navAllUnread')}
         badge={totalUnread > 0 ? fmtBadge(totalUnread) : null}
         badgeBg="#D85A30"
-        onClick={() => navigate('/all-unread')}
+        onClick={() => onSectionChange('all-unread')}
       />
       <HubItem
         icon={<MessageSquare size={15} />}
         label={t('navThreads')}
         badge={threadUnread > 0 ? fmtBadge(threadUnread) : null}
         badgeBg="#D4537E"
-        onClick={() => navigate('/threads')}
+        onClick={() => onSectionChange('threads')}
       />
       <HubItem
         icon={<AtSign size={15} />}
         label={t('navMentions')}
         onClick={() => showTip('mentions')}
-      />
-      <HubItem
-        icon={<MoreHorizontal size={15} />}
-        label={t('navMore')}
-        muted
-        onClick={() => showTip('more')}
       />
     </nav>
   )

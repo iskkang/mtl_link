@@ -13,7 +13,7 @@ import { ProfileMenu } from './ProfileMenu'
 export type Section =
   | 'chat' | 'members' | 'tasks' | 'requests'
   | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots' | 'ai'
-  | 'ratefinder'
+  | 'ratefinder' | 'all-unread' | 'threads'
   | 'settings' | 'profile'
 
 export const MOBILE_SECTIONS = new Set<Section>(['chat', 'members', 'tasks', 'requests'])

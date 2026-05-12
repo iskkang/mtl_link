@@ -10,7 +10,11 @@ const PRESENCE_COLOR: Record<string, string> = {
   offline: '#9CA3AF',
 }
 
-export function WorkspaceHeader() {
+interface Props {
+  onEditProfile?: () => void
+}
+
+export function WorkspaceHeader({ onEditProfile }: Props) {
   const { t } = useTranslation()
   const { profile } = useAuth()
   if (!profile) return null
@@ -70,6 +74,7 @@ export function WorkspaceHeader() {
 
         <button
           type="button"
+          onClick={onEditProfile}
           className="flex-shrink-0 p-1 rounded transition-colors"
           style={{ color: 'var(--side-mute)' }}
           aria-label={t('editProfile')}

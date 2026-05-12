@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { useRoomStore } from '../stores/roomStore'
 import type { RoomListItem } from '../types/chat'
 
-export function UnreadAllPage() {
+interface Props {
+  onBack:       () => void
+  onSelectRoom: (id: string) => void
+}
+
+export function UnreadAllPage({ onBack, onSelectRoom }: Props) {
   const { t }    = useTranslation()
-  const navigate = useNavigate()
   const { user } = useAuth()
 
   const rooms = useRoomStore(s => s.rooms)
@@ -27,7 +30,7 @@ export function UnreadAllPage() {
       >
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={onBack}
           className="p-1.5 rounded-lg"
           style={{ color: 'var(--ink-3)' }}
           onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
@@ -59,7 +62,7 @@ export function UnreadAllPage() {
                 <button
                   key={room.id}
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => onSelectRoom(room.id)}
                   className="flex items-center justify-between px-4 py-3 rounded-xl border text-left transition-colors"
                   style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}

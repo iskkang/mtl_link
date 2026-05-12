@@ -43,6 +43,7 @@ interface Props {
   activeSessionId:  string | null
   onSelectSession:  (id: string) => void
   aiSidebarVersion: number
+  onEditProfile?:   () => void
 }
 
 export function ChatSidebar({
@@ -52,6 +53,7 @@ export function ChatSidebar({
   received, created, done, onReload,
   calendarYear, calendarMonth, onCalPrevMonth, onCalNextMonth,
   activeSessionId, onSelectSession, aiSidebarVersion,
+  onEditProfile,
 }: Props) {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -84,8 +86,8 @@ export function ChatSidebar({
       {/* ── Chat section (new Slack-style layout) ── */}
       {activeSection === 'chat' && (
         <>
-          <WorkspaceHeader />
-          <NotificationHub />
+          <WorkspaceHeader onEditProfile={onEditProfile} />
+          <NotificationHub onSectionChange={onSectionChange} />
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             <NotificationPermissionCard />
             <div className="py-2">
