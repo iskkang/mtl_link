@@ -7,6 +7,17 @@ import { aiEvents } from '../../lib/aiEvents'
 import { AiQuickActions } from './AiQuickActions'
 import { AiQuickBar } from './AiQuickBar'
 
+// ── MINT 로고 컴포넌트 ──────────────────────────────────────────────────────
+const MintLogo = ({ size = 32 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="100,30 60,100 100,100" fill="#5eead4"/>
+    <polygon points="100,30 140,100 100,100" fill="#14b8a6"/>
+    <polygon points="60,100 100,170 100,100" fill="#0d9488"/>
+    <polygon points="140,100 100,170 100,100" fill="#134e4a"/>
+    <line x1="100" y1="30" x2="100" y2="170" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"/>
+  </svg>
+)
+
 interface AiMessage {
   id:      string
   role:    'user' | 'assistant'
@@ -24,6 +35,7 @@ interface Props {
 export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, onTitleChange }: Props) {
   const { t, i18n } = useTranslation()
   const { user, profile } = useAuth()
+
   const [messages,      setMessages]      = useState<AiMessage[]>([])
   const [sessionTitle,  setSessionTitle]  = useState('')
   const [draft,         setDraft]         = useState('')
@@ -37,10 +49,14 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
   const [saveCategory,  setSaveCategory]  = useState('general')
   const [savingKb,      setSavingKb]      = useState(false)
   const [kbToast,       setKbToast]       = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const menuRef   = useRef<HTMLDivElement>(null)
+  const [idleFocused,   setIdleFocused]   = useState(false)
 
-  // Reflect title renames made from the sidebar
+  const bottomRef  = useRef<HTMLDivElement>(null)
+  const menuRef    = useRef<HTMLDivElement>(null)
+  const idleTextareaRef   = useRef<HTMLTextAreaElement>(null)
+  const activeTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Reflect title renames from sidebar
   useEffect(() => {
     return aiEvents.onTitleChange((sid, newTitle) => {
       if (sid === sessionId) setSessionTitle(newTitle)
@@ -57,7 +73,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
 
-  // Load session messages when sessionId changes
+  // Load messages when sessionId changes
   useEffect(() => {
     if (!sessionId || !user) { setMessages([]); setSessionTitle(''); return }
     setFetching(true)
@@ -68,7 +84,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
-        const rows = data ?? []
+        const rows  = data ?? []
         const first = rows.find(r => r.session_title)
         setSessionTitle(first?.session_title ?? (rows[0]?.question ?? '').slice(0, 30))
         const msgs: AiMessage[] = []
@@ -81,7 +97,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
       })
   }, [sessionId, user])
 
-  // Scroll to bottom on new messages / loading change
+  // Scroll to bottom on new messages / loading
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
@@ -109,7 +125,6 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
       if (fnError) throw fnError
       if (data?.error) throw new Error(data.error)
       setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: data.answer }])
-      // Set title from first message
       if (!sessionTitle) {
         setSessionTitle(content.slice(0, 30))
         onTitleChange?.()
@@ -182,258 +197,382 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
 
   const hasMessages = messages.length > 0
 
+  // ── 공유 입력창 렌더러 ───────────────────────────────────────────────────
+  const renderInput = (variant: 'centered' | 'bottom') => {
+    const isCentered = variant === 'centered'
+    return (
+      <div
+        style={{
+          display: 'flex', alignItems: 'flex-end', gap: 10,
+          border: `1.5px solid ${isCentered ? (idleFocused ? '#14b8a6' : '#ccfbf1') : 'var(--line)'}`,
+          borderRadius: isCentered ? 16 : 14,
+          padding: isCentered ? '14px 16px' : '10px 14px',
+          background: 'var(--card)',
+          boxShadow: isCentered
+            ? (idleFocused
+                ? '0 4px 24px rgba(20,184,166,.22)'
+                : '0 4px 24px rgba(20,184,166,.10)')
+            : '0 -4px 16px rgba(0,0,0,.04)',
+          transition: 'border-color .2s, box-shadow .2s',
+        }}
+      >
+        <textarea
+          ref={isCentered ? idleTextareaRef : activeTextareaRef}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => isCentered && setIdleFocused(true)}
+          onBlur={() => isCentered && setIdleFocused(false)}
+          placeholder={t('aiTypeMessage')}
+          rows={1}
+          style={{
+            flex: 1, background: 'transparent', outline: 'none',
+            resize: 'none', maxHeight: 128,
+            color: 'var(--ink)', fontSize: 14, lineHeight: 1.6,
+            fontFamily: 'inherit',
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => void handleSend(draft)}
+          disabled={!draft.trim() || loading}
+          style={{
+            width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+            background: '#14b8a6', color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: 'none', cursor: 'pointer',
+            opacity: draft.trim() && !loading ? 1 : 0.4,
+            transition: 'opacity .15s, filter .15s',
+          }}
+          onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) e.currentTarget.style.filter = 'brightness(1.1)' }}
+          onMouseLeave={e => (e.currentTarget.style.filter = '')}
+        >
+          <Send size={15} />
+        </button>
+      </div>
+    )
+  }
+
+  // ── 타이핑 인디케이터 ─────────────────────────────────────────────────────
+  const TypingIndicator = () => (
+    <div className="flex justify-start">
+      <div
+        className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 text-sm"
+        style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
+      >
+        <MintLogo size={16} />
+      </div>
+      <div
+        className="px-4 py-3 rounded-2xl rounded-tl-sm border"
+        style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+      >
+        <div className="flex gap-1 items-center h-4">
+          {[0, 150, 300].map(delay => (
+            <span
+              key={delay}
+              className="w-1.5 h-1.5 rounded-full animate-bounce"
+              style={{ background: 'var(--ink-4)', animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  // ── 메시지 목록 ───────────────────────────────────────────────────────────
+  const MessageList = () => (
+    <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto w-full">
+      {messages.map(msg => (
+        <div
+          key={msg.id}
+          className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+        >
+          <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
+            {msg.role === 'assistant' && (
+              <div
+                className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5"
+                style={{ background: 'var(--blue-soft)' }}
+              >
+                <MintLogo size={16} />
+              </div>
+            )}
+            <div
+              className={`max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                msg.role === 'user' ? 'rounded-[18px] rounded-tr-[4px]' : 'rounded-[18px] rounded-tl-[4px]'
+              }`}
+              style={{
+                background: msg.role === 'user' ? '#14b8a6' : 'var(--card)',
+                color:      msg.role === 'user' ? 'white'   : 'var(--ink)',
+                border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
+              }}
+            >
+              {msg.content}
+            </div>
+          </div>
+
+          {/* 지식베이스 저장 버튼 — AI 메시지 전용 */}
+          {msg.role === 'assistant' && (
+            <div className="ml-9 mt-1">
+              {saveFormId === msg.id ? (
+                <div
+                  className="rounded-xl border p-3 flex flex-col gap-2 max-w-xs"
+                  style={{ background: 'var(--card)', borderColor: 'var(--brand)' }}
+                >
+                  <input
+                    autoFocus
+                    value={saveTitle}
+                    onChange={e => setSaveTitle(e.target.value)}
+                    placeholder="제목 입력…"
+                    className="px-2 py-1.5 rounded-lg text-xs outline-none border"
+                    style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                  />
+                  <select
+                    value={saveCategory}
+                    onChange={e => setSaveCategory(e.target.value)}
+                    className="px-2 py-1.5 rounded-lg text-xs outline-none border"
+                    style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
+                  >
+                    {(['general', 'hs', 'customs', 'message', 'quotation', 'tracking', 'claim'] as const).map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveToKnowledge(msg.content)}
+                      disabled={!saveTitle.trim() || savingKb}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                      style={{ background: 'var(--brand)' }}
+                    >
+                      {savingKb ? <Loader2 size={11} className="animate-spin mx-auto" /> : '저장'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSaveFormId(null); setSaveTitle('') }}
+                      className="p-1.5 rounded-lg"
+                      style={{ color: 'var(--ink-3)' }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setSaveFormId(msg.id); setSaveTitle('') }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                  style={{ color: 'var(--ink-4)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand)'; e.currentTarget.style.background = 'var(--blue-soft)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-4)'; e.currentTarget.style.background = 'transparent' }}
+                >
+                  <BookmarkPlus size={11} />
+                  {t('knowledgeSave')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {loading && <TypingIndicator />}
+      <div ref={bottomRef} />
+    </div>
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--chat-bg)' }}>
 
-      {/* Header — only when session has messages */}
-      {hasMessages && sessionId && (
-        <div
-          className="flex items-center justify-between px-4 h-14 border-b flex-shrink-0"
-          style={{ borderColor: 'var(--line)', background: 'var(--card)' }}
-        >
-          {editing ? (
-            <input
-              autoFocus
-              value={editValue}
-              onChange={e => setEditValue(e.target.value)}
-              onBlur={() => void handleSaveTitle()}
-              onKeyDown={e => { if (e.key === 'Enter') void handleSaveTitle() }}
-              className="flex-1 text-sm font-medium outline-none bg-transparent border-b mr-4"
-              style={{ color: 'var(--ink)', borderColor: 'var(--brand)' }}
-            />
-          ) : (
-            <span className="text-sm font-medium truncate flex-1 mr-2" style={{ color: 'var(--ink)' }}>
-              {sessionTitle}
-            </span>
-          )}
+      {/* CSS 애니메이션 */}
+      <style>{`
+        @keyframes mintFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .mint-fade-in  { animation: mintFadeIn .4s ease; }
+        .mint-fade-in-fast { animation: mintFadeIn .3s ease; }
 
-          <div className="relative flex-shrink-0" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(v => !v)}
-              className="p-2 rounded-lg transition-colors"
-              style={{ color: 'var(--ink-3)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <MoreHorizontal size={16} />
-            </button>
+        .mint-idle-card {
+          background: var(--card);
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          padding: 16px;
+          cursor: pointer;
+          text-align: left;
+          transition: border-color .2s, box-shadow .2s, transform .15s;
+        }
+        .mint-idle-card:hover {
+          border-color: #14b8a6;
+          box-shadow: 0 4px 16px rgba(20,184,166,.12);
+          transform: translateY(-1px);
+        }
+        .mint-idle-card:active { transform: translateY(0); }
+      `}</style>
 
-            {menuOpen && (
-              <div
-                className="absolute right-0 top-full mt-1 w-40 rounded-xl border shadow-lg z-50 overflow-hidden"
-                style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-              >
-                <button
-                  type="button"
-                  onClick={handleRenameClick}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left"
-                  style={{ color: 'var(--ink)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <Pencil size={13} />
-                  {t('aiRename')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDelete()}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left"
-                  style={{ color: '#EF4444' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <Trash2 size={13} />
-                  {t('aiDelete')}
-                </button>
-              </div>
-            )}
-          </div>
+      {/* ── 로딩 중 ───────────────────────────────────────────────────────── */}
+      {fetching && (
+        <div className="flex items-center justify-center flex-1">
+          <Loader2 size={20} className="animate-spin" style={{ color: '#14b8a6' }} />
         </div>
       )}
 
-      {/* Message area */}
-      <div className="flex-1 overflow-y-auto">
-        {fetching ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 size={20} className="animate-spin" style={{ color: 'var(--ink-4)' }} />
+      {/* ── IDLE 상태 ─────────────────────────────────────────────────────── */}
+      {!fetching && !hasMessages && (
+        <div
+          className="mint-fade-in flex flex-col items-center justify-center flex-1 overflow-y-auto"
+          style={{ padding: '40px 20px' }}
+        >
+          {/* 로고 + 인사 */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 10, marginBottom: 12,
+            }}>
+              <MintLogo size={40} />
+              <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-.5px' }}>
+                MINT
+              </span>
+            </div>
+            <p style={{ fontSize: 14, color: 'var(--ink-3)', margin: 0 }}>
+              {t('aiWelcomeSubtitle')}
+            </p>
           </div>
-        ) : !hasMessages ? (
+
+          {/* 중앙 입력창 */}
+          <div style={{ width: '100%', maxWidth: 600, marginBottom: 28 }}>
+            {renderInput('centered')}
+          </div>
+
+          {/* 기능 카드 */}
           <AiQuickActions
             onSelect={text => void handleSend(text)}
             onNavigate={onNavigate}
+            showHeader={false}
           />
-        ) : (
-          <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto w-full">
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-              >
-                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
-                  {msg.role === 'assistant' && (
-                    <div
-                      className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 text-sm"
-                      style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
-                    >
-                      🤖
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                      msg.role === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'
-                    }`}
-                    style={{
-                      background: msg.role === 'user' ? 'var(--brand)' : 'var(--card)',
-                      color:      msg.role === 'user' ? 'white'        : 'var(--ink)',
-                      border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
-                    }}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
+        </div>
+      )}
 
-                {/* Save to Knowledge button — AI messages only */}
-                {msg.role === 'assistant' && (
-                  <div className="ml-9 mt-1">
-                    {saveFormId === msg.id ? (
-                      <div
-                        className="rounded-xl border p-3 flex flex-col gap-2 max-w-xs"
-                        style={{ background: 'var(--card)', borderColor: 'var(--brand)' }}
-                      >
-                        <input
-                          autoFocus
-                          value={saveTitle}
-                          onChange={e => setSaveTitle(e.target.value)}
-                          placeholder="제목 입력…"
-                          className="px-2 py-1.5 rounded-lg text-xs outline-none border"
-                          style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                        />
-                        <select
-                          value={saveCategory}
-                          onChange={e => setSaveCategory(e.target.value)}
-                          className="px-2 py-1.5 rounded-lg text-xs outline-none border"
-                          style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)', color: 'var(--ink)' }}
-                        >
-                          {(['general', 'hs', 'customs', 'message', 'quotation', 'tracking', 'claim'] as const).map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void handleSaveToKnowledge(msg.content)}
-                            disabled={!saveTitle.trim() || savingKb}
-                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                            style={{ background: 'var(--brand)' }}
-                          >
-                            {savingKb ? <Loader2 size={11} className="animate-spin mx-auto" /> : '저장'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setSaveFormId(null); setSaveTitle('') }}
-                            className="p-1.5 rounded-lg"
-                            style={{ color: 'var(--ink-3)' }}
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setSaveFormId(msg.id); setSaveTitle('') }}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                        style={{ color: 'var(--ink-4)' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand)'; e.currentTarget.style.background = 'var(--blue-soft)' }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-4)'; e.currentTarget.style.background = 'transparent' }}
-                      >
-                        <BookmarkPlus size={11} />
-                        {t('knowledgeSave')}
-                      </button>
-                    )}
+      {/* ── ACTIVE 상태 ───────────────────────────────────────────────────── */}
+      {!fetching && hasMessages && (
+        <div className="mint-fade-in-fast flex flex-col h-full">
+
+          {/* 작은 헤더 */}
+          <div
+            style={{
+              height: 52, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0 16px',
+              borderBottom: '1px solid var(--line)',
+              background: 'var(--card)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              <MintLogo size={24} />
+              {editing ? (
+                <input
+                  autoFocus
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  onBlur={() => void handleSaveTitle()}
+                  onKeyDown={e => { if (e.key === 'Enter') void handleSaveTitle() }}
+                  style={{
+                    flex: 1, fontSize: 15, fontWeight: 600, outline: 'none',
+                    background: 'transparent', color: 'var(--ink)',
+                    borderBottom: '1.5px solid #14b8a6', marginRight: 8,
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: 15, fontWeight: 600, color: 'var(--ink)',
+                    flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {sessionTitle || 'MINT'}
+                </span>
+              )}
+            </div>
+
+            {sessionId && (
+              <div className="relative flex-shrink-0" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(v => !v)}
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ color: 'var(--ink-3)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+
+                {menuOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-1 w-40 rounded-xl border shadow-lg z-50 overflow-hidden"
+                    style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
+                  >
+                    <button
+                      type="button"
+                      onClick={handleRenameClick}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left"
+                      style={{ color: 'var(--ink)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <Pencil size={13} />
+                      {t('aiRename')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete()}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left"
+                      style={{ color: '#EF4444' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--side-row)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <Trash2 size={13} />
+                      {t('aiDelete')}
+                    </button>
                   </div>
                 )}
               </div>
-            ))}
-
-            {/* Typing indicator */}
-            {loading && (
-              <div className="flex justify-start">
-                <div
-                  className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 text-sm"
-                  style={{ background: 'var(--blue-soft)', color: 'var(--brand)' }}
-                >
-                  🤖
-                </div>
-                <div
-                  className="px-4 py-3 rounded-2xl rounded-tl-sm border"
-                  style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-                >
-                  <div className="flex gap-1 items-center h-4">
-                    {[0, 150, 300].map(delay => (
-                      <span
-                        key={delay}
-                        className="w-1.5 h-1.5 rounded-full animate-bounce"
-                        style={{ background: 'var(--ink-4)', animationDelay: `${delay}ms` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
             )}
-
-            <div ref={bottomRef} />
           </div>
-        )}
-      </div>
 
-      {/* Quick bar — only when messages exist */}
-      {hasMessages && (
-        <AiQuickBar onSelect={text => void handleSend(text)} onNavigate={onNavigate} />
-      )}
+          {/* 메시지 목록 */}
+          <div className="flex-1 overflow-y-auto">
+            <MessageList />
+          </div>
 
-      {/* KB saved toast */}
-      {kbToast && (
-        <div
-          className="mx-3 mb-2 flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-medium text-center"
-          style={{ background: '#22C55E20', color: '#22C55E' }}
-        >
-          {t('knowledgeSaved')}
-        </div>
-      )}
-
-      {/* Input */}
-      <div
-        className="flex-shrink-0 p-3 border-t"
-        style={{ borderColor: 'var(--line)', background: 'var(--card)' }}
-      >
-        <div
-          className="flex items-end gap-2 px-3 py-2 rounded-2xl border"
-          style={{ background: 'var(--chat-bg)', borderColor: 'var(--line)' }}
-        >
-          <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('aiTypeMessage')}
-            rows={1}
-            className="flex-1 bg-transparent text-sm outline-none resize-none max-h-32"
-            style={{ color: 'var(--ink)' }}
+          {/* 빠른 액션 바 */}
+          <AiQuickBar
+            onSelect={text => void handleSend(text)}
+            onNavigate={onNavigate}
           />
-          <button
-            type="button"
-            onClick={() => void handleSend(draft)}
-            disabled={!draft.trim() || loading}
-            className="p-1.5 rounded-xl flex-shrink-0 disabled:opacity-40 transition-all"
-            style={{ background: 'var(--brand)', color: 'white' }}
-            onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) e.currentTarget.style.filter = 'brightness(1.1)' }}
-            onMouseLeave={e => (e.currentTarget.style.filter = '')}
+
+          {/* 지식베이스 저장 완료 토스트 */}
+          {kbToast && (
+            <div
+              className="mx-3 mb-2 flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-medium text-center"
+              style={{ background: '#22C55E20', color: '#22C55E' }}
+            >
+              {t('knowledgeSaved')}
+            </div>
+          )}
+
+          {/* 하단 고정 입력창 */}
+          <div
+            style={{
+              flexShrink: 0,
+              padding: '12px 16px',
+              borderTop: '1px solid var(--line)',
+              background: 'var(--card)',
+            }}
           >
-            <Send size={14} />
-          </button>
+            {renderInput('bottom')}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

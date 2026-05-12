@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  onSelect:    (prompt: string) => void
-  onNavigate?: (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => void
+  onSelect:     (prompt: string) => void
+  onNavigate?:  (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => void
+  showHeader?:  boolean
 }
 
-export function AiQuickActions({ onSelect, onNavigate }: Props) {
+export function AiQuickActions({ onSelect, onNavigate, showHeader = true }: Props) {
   const { t } = useTranslation()
 
   const ACTIONS = [
@@ -53,6 +54,36 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
     },
   ]
 
+  const cardGrid = (
+    <div className="grid grid-cols-2 gap-3 w-full" style={{ maxWidth: showHeader ? 384 : 600 }}>
+      {ACTIONS.map(({ labelKey, subKey, icon, prompt, navigate }) => (
+        <button
+          key={labelKey}
+          type="button"
+          onPointerUp={(e) => {
+            e.preventDefault()
+            navigate ? onNavigate?.(navigate) : onSelect(prompt)
+          }}
+          className="flex flex-col items-start gap-1.5 p-3.5 rounded-2xl text-left
+                     transition-all duration-100 border
+                     bg-[var(--card)] border-[var(--line)]
+                     hover:border-[var(--brand)] hover:bg-[var(--blue-soft)]
+                     active:border-[var(--brand)] active:bg-[var(--blue-soft)]"
+        >
+          <span className="text-xl leading-none">{icon}</span>
+          <span className="text-[13px] font-semibold leading-snug" style={{ color: 'var(--ink)' }}>
+            {t(labelKey)}
+          </span>
+          <span className="text-[11px] leading-snug" style={{ color: 'var(--ink-4)' }}>
+            {t(subKey)}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+
+  if (!showHeader) return cardGrid
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 overflow-y-auto">
       {/* Welcome header */}
@@ -65,32 +96,7 @@ export function AiQuickActions({ onSelect, onNavigate }: Props) {
         </p>
       </div>
 
-      {/* Action grid */}
-      <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-        {ACTIONS.map(({ labelKey, subKey, icon, prompt, navigate }) => (
-          <button
-            key={labelKey}
-            type="button"
-            onPointerUp={(e) => {
-              e.preventDefault()
-              navigate ? onNavigate?.(navigate) : onSelect(prompt)
-            }}
-            className="flex flex-col items-start gap-1.5 p-3.5 rounded-2xl text-left
-                       transition-all duration-100 border
-                       bg-[var(--card)] border-[var(--line)]
-                       hover:border-[var(--brand)] hover:bg-[var(--blue-soft)]
-                       active:border-[var(--brand)] active:bg-[var(--blue-soft)]"
-          >
-            <span className="text-xl leading-none">{icon}</span>
-            <span className="text-[13px] font-semibold leading-snug" style={{ color: 'var(--ink)' }}>
-              {t(labelKey)}
-            </span>
-            <span className="text-[11px] leading-snug" style={{ color: 'var(--ink-4)' }}>
-              {t(subKey)}
-            </span>
-          </button>
-        ))}
-      </div>
+      {cardGrid}
     </div>
   )
 }
