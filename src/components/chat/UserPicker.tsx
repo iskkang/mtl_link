@@ -5,15 +5,16 @@ import { fetchActiveProfiles } from '../../services/profileService'
 import type { Profile } from '../../types/chat'
 
 interface Props {
-  mode:       'single' | 'multi'
-  selected:   string[]
-  onChange:   (ids: string[]) => void
-  excludeId?: string
+  mode:         'single' | 'multi'
+  selected:     string[]
+  onChange:     (ids: string[]) => void
+  excludeId?:   string
+  excludeIds?:  string[]
   onPickSingle?: (userId: string) => void
-  loadingId?: string | null
+  loadingId?:   string | null
 }
 
-export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, loadingId }: Props) {
+export function UserPicker({ mode, selected, onChange, excludeId, excludeIds, onPickSingle, loadingId }: Props) {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [fetching, setFetching] = useState(true)
   const [search,   setSearch]   = useState('')
@@ -27,14 +28,16 @@ export function UserPicker({ mode, selected, onChange, excludeId, onPickSingle, 
   }, [excludeId])
 
   const filtered = useMemo(() => {
+    const excluded = new Set(excludeIds ?? [])
     const q = search.trim().toLowerCase()
-    if (!q) return profiles
-    return profiles.filter(p =>
+    const base = excluded.size > 0 ? profiles.filter(p => !excluded.has(p.id)) : profiles
+    if (!q) return base
+    return base.filter(p =>
       p.name.toLowerCase().includes(q) ||
       p.department?.toLowerCase().includes(q) ||
       p.position?.toLowerCase().includes(q),
     )
-  }, [profiles, search])
+  }, [profiles, search, excludeIds])
 
   const toggle = (id: string) => {
     if (mode === 'single') {

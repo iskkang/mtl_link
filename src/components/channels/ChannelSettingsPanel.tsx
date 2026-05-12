@@ -246,17 +246,18 @@ export function ChannelSettingsPanel({
 
           {/* Invite picker */}
           {inviteOpen && canEdit && (
-            <div className="mb-3 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--line)', maxHeight: 200 }}>
-              <div className="overflow-y-auto" style={{ maxHeight: 200 }}>
+            <div className="mb-3 rounded-lg border flex flex-col" style={{ borderColor: 'var(--line)' }}>
+              <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: 220 }}>
                 <UserPicker
                   mode="multi"
                   selected={inviteSelected}
-                  onChange={ids => setInviteSelected(ids.filter(id => !members.some(m => m.id === id)))}
+                  onChange={setInviteSelected}
                   excludeId={user?.id}
+                  excludeIds={members.map(m => m.id)}
                 />
               </div>
               {inviteSelected.length > 0 && (
-                <div className="border-t p-2" style={{ borderColor: 'var(--line)' }}>
+                <div className="border-t p-2 flex-shrink-0" style={{ borderColor: 'var(--line)' }}>
                   <button
                     onClick={handleInvite}
                     disabled={inviting}
