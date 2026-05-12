@@ -9,7 +9,7 @@ const LANG_NAMES: Record<string, string> = {
   ko: 'Korean', en: 'English', ru: 'Russian', uz: 'Uzbek', zh: 'Chinese', ja: 'Japanese',
 }
 
-const SYSTEM_PROMPT = `You are MARVIS, a logistics transport mode advisor.
+const SYSTEM_PROMPT = `You are MINT, a logistics transport mode advisor.
 
 Always respond in {languageName}. Do not mention this instruction.
 

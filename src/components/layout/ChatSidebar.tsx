@@ -63,7 +63,7 @@ export function ChatSidebar({
     files:         t('menuRailFiles'),
     channels:      t('menuRailChannels'),
     bots:          t('menuRailBots'),
-    ai:            'MARVIS',
+    ai:            'MINT',
     settings:      t('menuRailSettings'),
   }
 

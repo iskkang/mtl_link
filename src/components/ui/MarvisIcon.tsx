@@ -1,16 +1,12 @@
-export function MarvisIcon({ size = 18 }: { size?: number }) {
-  // Three interlocking arcs (MTL brand colors) on circle r=32, center (50,50)
-  // Junctions at SVG angles 0°/120°/240°:
-  //   A=(82,50) right  B=(34,78) lower-left  C=(34,22) upper-left
-  // Each arc sweeps 240° CW (large-arc=1, sweep=1)
+export function MintIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <path d="M 82 50 A 32 32 0 1 1 34 22"
-        stroke="currentColor" strokeWidth="15" strokeLinecap="round" />
-      <path d="M 34 22 A 32 32 0 1 1 34 78"
-        stroke="currentColor" strokeWidth="15" strokeLinecap="round" />
-      <path d="M 34 78 A 32 32 0 1 1 82 50"
-        stroke="currentColor" strokeWidth="15" strokeLinecap="round" />
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="16,4 4,16 16,16" fill="#5eead4"/>
+      <polygon points="16,4 28,16 16,16" fill="#14b8a6"/>
+      <polygon points="4,16 16,28 16,16" fill="#0d9488"/>
+      <polygon points="28,16 16,28 16,16" fill="#134e4a"/>
     </svg>
   )
 }
+
+export { MintIcon as MarvisIcon }

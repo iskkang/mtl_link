@@ -15,7 +15,7 @@ import { StatusDot } from '../profile/StatusDot'
 import { StatusDropdown } from '../profile/StatusDropdown'
 import { LanguagePickerModal } from '../ui/LanguagePickerModal'
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
-import { MarvisIcon } from '../ui/MarvisIcon'
+import { MintIcon } from '../ui/MarvisIcon'
 import type { Section } from './MenuRail'
 
 interface Props {
@@ -31,7 +31,7 @@ const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] =
   { id: 'announcements', Icon: Megaphone,   labelKey: 'menuRailAnnouncements' },
   { id: 'files',         Icon: FolderOpen,  labelKey: 'menuRailFiles'         },
   { id: 'channels',      Icon: Hash,        labelKey: 'menuRailChannels'      },
-  { id: 'ai',            Icon: MarvisIcon,  labelKey: 'menuRailBots'          },
+  { id: 'ai',            Icon: MintIcon,    labelKey: 'menuRailBots'          },
   { id: 'ratefinder',    Icon: DollarSign,  labelKey: 'menuRailRates'         },
 ]
 
