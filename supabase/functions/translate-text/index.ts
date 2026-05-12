@@ -37,6 +37,12 @@ function extractTokens(text: string): string[] {
   // Korean 2 chars+
   const koMatches = text.match(/[가-힯]{2,}/g) ?? []
   for (const m of koMatches) tokens.add(m)
+  // CJK (Chinese/Japanese) 2 chars+
+  const cjkMatches = text.match(/[一-鿿぀-ヿㇰ-ㇿ]{2,}/g) ?? []
+  for (const m of cjkMatches) tokens.add(m)
+  // Cyrillic (Russian/Uzbek) 2 chars+
+  const cyrMatches = text.match(/[а-яёА-ЯЁ]{2,}/g) ?? []
+  for (const m of cyrMatches) tokens.add(m)
   return [...tokens]
 }
 
@@ -148,18 +154,35 @@ Deno.serve(async (req: Request) => {
       return `__M${idx}__`
     })
 
-    const baseSystemPrompt = `You are a translator. Translate the user's text from ${srcName} to ${tgtName}.
+    const baseSystemPrompt = `You are a professional translator for MTL Shipping Agency, an international logistics company specializing in ocean, air, and rail freight (Korea ↔ China ↔ Russia ↔ Central Asia ↔ Europe, including TCR/TSR routes). Translate from ${srcName} to ${tgtName}.
 
 Rules:
 - Output ONLY the translated text, nothing else
 - No explanations, no notes, no questions
-- Preserve: numbers, dates, names, codes (B/L, FCL, etc.) exactly
+- Preserve: numbers, dates, codes (B/L, FCL, ETD, ETA, CY, CFS, THC, TCR, TSR, HS codes, container numbers) exactly
 - Preserve @username tokens (format: @word) EXACTLY as-is — never translate or modify them
 - Preserve __M{N}__ placeholder tokens EXACTLY as-is — these are protected mention markers
-- Translate casual messages naturally too (greetings, questions, etc.)
-- NEVER respond with English explanations
-- NEVER ask for clarification
-- ALWAYS output the translation`
+- Translate casual messages naturally (greetings, questions, etc.)
+- NEVER respond with explanations or ask for clarification
+- ALWAYS output the translation
+
+Critical domain term overrides (ALWAYS use these over general dictionary meanings):
+- zh "箱子" = container/컨테이너 (logistics slang for 集装箱, NOT box/상자)
+- zh "拖车" = trailer/트레일러
+- zh "货代" = freight forwarder/포워더
+- zh "报关" = customs clearance/통관
+- zh "提单" = B/L (bill of lading/선하증권)
+- zh "运费"/"海运费" = ocean freight/해상운임
+- zh "司机" = driver/기사
+- zh "码头" = terminal/터미널
+- zh "堆场" = CY (Container Yard)
+- zh "装柜"/"装箱" = container stuffing/컨테이너 적입
+- zh "拆柜" = container devanning/컨테이너 적출
+- zh "开船" = vessel departure/출항
+- zh "到港" = vessel arrival/입항
+- zh "货主" = shipper/화주
+- zh "收货人" = consignee/수하인
+- zh "船公司" = carrier/선사`
 
     // Glossary matching — inject matched terms into system prompt
     const matches = await findGlossaryMatches(source_text)
