@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { AppRoutes } from './routes'
 import { InstallBanner } from './components/ui/InstallBanner'
+import { UploadProgressWidget } from './components/upload/UploadProgressWidget'
 
 export default function App() {
   useEffect(() => {
@@ -19,6 +20,7 @@ export default function App() {
           <AppRoutes />
           <InstallBanner />
         </BrowserRouter>
+        <UploadProgressWidget />
       </AuthProvider>
     </ThemeProvider>
   )

@@ -23,6 +23,7 @@ interface EmbedRequest {
   chunk_index: number
   chunk_total: number
   created_by:  string
+  upload_id?:  string
 }
 
 async function getEmbedding(text: string): Promise<number[]> {
@@ -124,7 +125,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body: EmbedRequest = await req.json()
-    const { title, category, content, source_file, chunk_index, chunk_total, created_by } = body
+    const { title, category, content, source_file, chunk_index, chunk_total, created_by, upload_id } = body
 
     if (!content?.trim()) {
       return Response.json({ error: '내용이 비어있습니다' }, { status: 400, headers: corsHeaders })
@@ -149,6 +150,7 @@ Deno.serve(async (req: Request) => {
         embedding,
         status:      'pending_review',
         created_by,
+        ...(upload_id ? { upload_id } : {}),
       })
       .select('id')
       .single()

@@ -3,6 +3,19 @@ import * as XLSX from 'xlsx'
 
 export type SupportedFileType = 'pdf' | 'docx' | 'xlsx' | 'xls' | 'txt' | 'csv'
 
+export interface ParseOptions {
+  signal?:     AbortSignal
+  onProgress?: (p: { current: number; total: number; message: string }) => void
+}
+
+function checkAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    const e = new Error('Upload cancelled')
+    e.name = 'UploadCancelledError'
+    throw e
+  }
+}
+
 export function getSupportedFileType(file: File): SupportedFileType | null {
   const name = file.name.toLowerCase()
   if (name.endsWith('.pdf'))                         return 'pdf'
@@ -13,7 +26,9 @@ export function getSupportedFileType(file: File): SupportedFileType | null {
   return null
 }
 
-export async function parsePdf(file: File): Promise<string> {
+export async function parsePdf(file: File, options: ParseOptions = {}): Promise<string> {
+  const { signal, onProgress } = options
+
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -22,11 +37,15 @@ export async function parsePdf(file: File): Promise<string> {
   ).toString()
 
   const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  checkAborted(signal)
 
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pageTexts: string[] = []
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    checkAborted(signal)
+    onProgress?.({ current: pageNum, total: pdf.numPages, message: `페이지 ${pageNum}/${pdf.numPages} 분석 중...` })
+
     const page = await pdf.getPage(pageNum)
     const content = await page.getTextContent()
 
@@ -141,7 +160,10 @@ export async function parseTxt(file: File): Promise<string> {
   return await file.text()
 }
 
-export async function parseDocument(file: File): Promise<{
+export async function parseDocument(
+  file: File,
+  options: ParseOptions = {},
+): Promise<{
   text:     string
   fileType: SupportedFileType
   chunks?:  string[]
@@ -149,25 +171,31 @@ export async function parseDocument(file: File): Promise<{
   const fileType = getSupportedFileType(file)
   if (!fileType) return null
 
+  checkAborted(options.signal)
+
   // Excel: contextual chunking (시트명 + 헤더 + Owner 보존)
   if (fileType === 'xlsx' || fileType === 'xls') {
     const chunks = await parseExcelWithContext(file)
+    checkAborted(options.signal)
     return { text: '', fileType, chunks }
   }
 
   let text = ''
   switch (fileType) {
     case 'pdf':
-      text = await parsePdf(file)
+      text = await parsePdf(file, options)
       break
     case 'docx':
+      checkAborted(options.signal)
       text = await parseDocx(file)
       break
     case 'txt':
     case 'csv':
+      checkAborted(options.signal)
       text = await parseTxt(file)
       break
   }
 
+  checkAborted(options.signal)
   return { text: text.trim(), fileType }
 }

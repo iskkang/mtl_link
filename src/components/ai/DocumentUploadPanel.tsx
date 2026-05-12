@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
-import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Upload, FileText, X, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
-import { embedDocumentFile, type EmbedProgress } from '../../services/embedKnowledgeService'
 import { getSupportedFileType } from '../../services/documentParser'
+import { startKnowledgeUpload } from '../../services/uploadPipeline'
+import { useUploadStore } from '../../stores/uploadStore'
 
 const SUPPORTED_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.xls', '.txt', '.csv']
 const ACCEPT = SUPPORTED_EXTENSIONS.join(',')
@@ -30,12 +31,25 @@ export function DocumentUploadPanel({ onComplete }: Props) {
   const [file,     setFile]     = useState<File | null>(null)
   const [title,    setTitle]    = useState('')
   const [category, setCategory] = useState('qa')
-  const [progress, setProgress] = useState<EmbedProgress | null>(null)
   const [error,    setError]    = useState<string | null>(null)
-  const [done,     setDone]     = useState(false)
   const [dragging, setDragging] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Track the uploadId we started, so we can fire onComplete when it finishes
+  const [myUploadId, setMyUploadId] = useState<string | null>(null)
+  const storePhase    = useUploadStore(s => s.phase)
+  const storeUploadId = useUploadStore(s => s.uploadId)
+  const isActive      = useUploadStore(s => s.active)
+
+  useEffect(() => {
+    if (!myUploadId) return
+    if (storeUploadId !== myUploadId) return
+    if (storePhase === 'done') {
+      onComplete?.()
+      setMyUploadId(null)
+    }
+  }, [storePhase, storeUploadId, myUploadId, onComplete])
 
   const handleFile = (f: File) => {
     const fileType = getSupportedFileType(f)
@@ -46,8 +60,6 @@ export function DocumentUploadPanel({ onComplete }: Props) {
     setFile(f)
     setTitle(f.name.replace(/\.[^/.]+$/, ''))
     setError(null)
-    setDone(false)
-    setProgress(null)
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -57,34 +69,29 @@ export function DocumentUploadPanel({ onComplete }: Props) {
     if (f) handleFile(f)
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!file || !title.trim() || !profile?.id) return
+    if (isActive) {
+      setError(t('uploadAnotherInProgress'))
+      return
+    }
     setError(null)
-    setDone(false)
 
-    const result = await embedDocumentFile({
+    void startKnowledgeUpload({
       file,
       title:    title.trim(),
       category,
       userId:   profile.id,
-      onProgress: setProgress,
     })
 
-    if (result.success) {
-      setDone(true)
-      setFile(null)
-      setTitle('')
-      setProgress(null)
-      onComplete?.()
-    } else {
-      const msg = result.error?.includes('SCAN_PDF')
-        ? 'PDF에서 텍스트를 추출할 수 없습니다.\n스캔(이미지) PDF는 지원하지 않습니다.\n텍스트로 저장된 PDF만 업로드 가능합니다.'
-        : (result.error ?? '업로드 중 오류가 발생했습니다')
-      setError(msg)
-    }
-  }
+    // Capture the uploadId the store just set synchronously
+    const id = useUploadStore.getState().uploadId
+    setMyUploadId(id)
 
-  const isUploading = progress?.status === 'parsing' || progress?.status === 'embedding'
+    // Reset form — pipeline continues in background
+    setFile(null)
+    setTitle('')
+  }
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -191,61 +198,22 @@ export function DocumentUploadPanel({ onComplete }: Props) {
         </div>
       )}
 
-      {/* Progress */}
-      {progress && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            {progress.status === 'done'
-              ? <CheckCircle size={16} style={{ color: '#22c55e' }} />
-              : <Loader2 size={16} className="animate-spin" style={{ color: 'var(--brand)' }} />
-            }
-            <span className="text-xs" style={{ color: 'var(--ink-2)' }}>
-              {progress.message}
-            </span>
-          </div>
-          {progress.total > 0 && progress.status === 'embedding' && (
-            <div
-              className="w-full h-1.5 rounded-full overflow-hidden"
-              style={{ background: 'var(--line)' }}
-            >
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width:      `${(progress.current / progress.total) * 100}%`,
-                  background: 'var(--brand)',
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Done */}
-      {done && (
-        <div
-          className="px-3 py-2 rounded-lg text-sm"
-          style={{ background: '#dcfce7', color: '#16a34a' }}
-        >
-          업로드 완료! 관리자 승인 후 AI가 참조합니다.
-        </div>
-      )}
-
       {/* Submit button */}
-      {file && !done && (
+      {file && (
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={!title.trim() || isUploading}
+          disabled={!title.trim() || isActive}
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
           style={{
-            background:  title.trim() && !isUploading ? 'var(--brand)' : 'transparent',
-            color:       title.trim() && !isUploading ? 'white' : 'var(--ink-3)',
-            border:      `1px solid ${title.trim() && !isUploading ? 'var(--brand)' : 'var(--line)'}`,
-            cursor:      title.trim() && !isUploading ? 'pointer' : 'not-allowed',
+            background:  title.trim() && !isActive ? 'var(--brand)' : 'transparent',
+            color:       title.trim() && !isActive ? 'white' : 'var(--ink-3)',
+            border:      `1px solid ${title.trim() && !isActive ? 'var(--brand)' : 'var(--line)'}`,
+            cursor:      title.trim() && !isActive ? 'pointer' : 'not-allowed',
           }}
         >
-          {isUploading
-            ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
+          {isActive
+            ? t('uploadInProgress')
             : <><Upload size={16} /> 업로드</>
           }
         </button>
