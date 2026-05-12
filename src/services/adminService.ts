@@ -70,6 +70,9 @@ export async function approveUser(userId: string): Promise<void> {
     .update({ status: 'active' })
     .eq('id', userId)
   if (error) throw error
+  supabase.functions.invoke('send-approval-notification', {
+    body: { userId, action: 'approve' },
+  }).catch(e => console.warn('[approveUser] notification email failed:', e))
 }
 
 export async function rejectUser(userId: string): Promise<void> {
@@ -78,4 +81,7 @@ export async function rejectUser(userId: string): Promise<void> {
     .update({ status: 'rejected' })
     .eq('id', userId)
   if (error) throw error
+  supabase.functions.invoke('send-approval-notification', {
+    body: { userId, action: 'reject' },
+  }).catch(e => console.warn('[rejectUser] notification email failed:', e))
 }

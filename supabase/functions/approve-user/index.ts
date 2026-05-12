@@ -81,6 +81,18 @@ Deno.serve(async (req: Request) => {
     return page('⚠️', '처리 실패', `DB 업데이트에 실패했습니다. (${res.status})`)
   }
 
+  // 신청자에게 결과 이메일 발송 (비동기, 실패해도 페이지 응답에 영향 없음)
+  const projectUrl2 = Deno.env.get('SUPABASE_URL') ?? ''
+  const serviceKey2 = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  fetch(`${projectUrl2}/functions/v1/send-approval-notification`, {
+    method:  'POST',
+    headers: {
+      'Authorization':  `Bearer ${serviceKey2}`,
+      'Content-Type':   'application/json',
+    },
+    body: JSON.stringify({ userId: uid, action }),
+  }).catch(e => console.warn('[approve-user] notification email failed:', e))
+
   if (action === 'reject') {
     return page('❌', '가입 거절 완료', '해당 사용자의 가입 신청이 거절됐습니다.')
   }
