@@ -11,6 +11,7 @@ import { useRoomStore }       from '../stores/roomStore'
 import { useRequestStore }    from '../stores/requestStore'
 import { useGlobalMessageMonitor } from '../hooks/useGlobalMessageMonitor'
 import { usePollingRefresh }  from '../hooks/usePollingRefresh'
+import { useDynamicFavicon }  from '../hooks/useDynamicFavicon'
 import type { Section }       from '../components/layout/MenuRail'
 
 const UnreadAllPage     = lazy(() => import('./UnreadAllPage').then(m => ({ default: m.UnreadAllPage })))
@@ -82,6 +83,7 @@ export default function ChatPage() {
   }, [activeSection])
 
   usePollingRefresh(selectedRoomId)
+  useDynamicFavicon()
 
   // Request count for MenuRail badge (Zustand — no duplicate subscription risk)
   const requestCount = useRequestStore(s => s.receivedCount)

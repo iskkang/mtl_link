@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
-import { LogOut, Sun, Moon, Bell, BellOff, KeyRound, UserRound, Settings2 } from 'lucide-react'
+import { LogOut, Sun, Moon, Bell, BellOff, KeyRound, UserRound, Settings2, Download } from 'lucide-react'
+import { InstallGuideModal } from '../install/InstallGuideModal'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -25,7 +26,8 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
   const { status, setStatus } = useUserStatus()
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
-  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifOpen,    setNotifOpen]    = useState(false)
+  const [installOpen,  setInstallOpen]  = useState(false)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -158,6 +160,11 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
       {/* Change password + Logout */}
       <div className="border-t py-1" style={{ borderColor: 'var(--line)' }}>
         <MenuRow
+          icon={<Download size={15} />}
+          label={t('installApp')}
+          onClick={() => { onClose(); setInstallOpen(true) }}
+        />
+        <MenuRow
           icon={<KeyRound size={15} />}
           label={t('morePw')}
           onClick={handleChangePw}
@@ -171,6 +178,7 @@ export function ProfileMenu({ notifEnabled, onToggleNotif, onClose, onEditProfil
       </div>
 
       {notifOpen && <NotificationSettingsModal onClose={() => setNotifOpen(false)} />}
+      <InstallGuideModal open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
   )
 }

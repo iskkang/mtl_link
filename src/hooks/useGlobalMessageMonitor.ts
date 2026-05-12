@@ -143,14 +143,30 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
             setShowPrompt(true)
           }
 
-          // 앱 활성 중 in-app 사운드 + 진동 (OS 배너는 SW가 담당, 여기선 효과만)
+          // 앱 활성 중 in-app 사운드 + 진동
           if (document.visibilityState === 'visible') {
             playNotificationBeep()
             if ('vibrate' in navigator) navigator.vibrate(200)
           }
 
-          // OS 알림은 SW push가 전담하므로 new Notification() 호출 제거.
-          // (SW push + new Notification() 이중 알림 문제 해결)
+          // 페이지가 숨겨진 상태(백그라운드)일 때 Notification API 직접 호출.
+          // SW push와 동일 tag를 써서 OS가 중복 제거.
+          // 중국 브라우저처럼 FCM/SW push가 차단된 환경에서도 알림 표시.
+          if (
+            document.visibilityState !== 'visible' &&
+            'Notification' in window &&
+            Notification.permission === 'granted'
+          ) {
+            try {
+              const senderName = room.members?.find(m => m.id === msg.sender_id)?.name ?? 'MTL Link'
+              new Notification(senderName, {
+                body:  (msg.content ?? '').slice(0, 100),
+                icon:  '/icons/icon-192x192.png',
+                badge: '/icons/icon-72x72.png',
+                tag:   `msg-${msg.room_id}`,
+              })
+            } catch (_) { /* 일부 브라우저에서 new Notification 생성 금지 */ }
+          }
           // in-app 업데이트(unread badge, 사이드바 정렬)는 위 로직으로 그대로 처리됨.
 
           // ── 스레드 답글: 내 메시지에 달린 답글이면 threadUnread 증가 ──
