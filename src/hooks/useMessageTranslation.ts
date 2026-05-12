@@ -10,7 +10,7 @@ const pending = new Set<string>()
 
 function shouldSkip(text: string): boolean {
   const t = text.trim()
-  if (t.length <= 2) return true
+  if (t.length === 0) return true
   if (/^[\p{Emoji}\s]+$/u.test(t)) return true
   if (/^[\d\s.,+\-()]+$/.test(t)) return true
   return false

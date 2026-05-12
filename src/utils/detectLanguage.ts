@@ -1,49 +1,56 @@
-import { franc } from 'franc-min'
-
-// ISO 639-3 → ISO 639-1 (supported app languages)
-const ISO3_TO_1: Record<string, string> = {
-  kor: 'ko',
-  eng: 'en',
-  rus: 'ru',
-  uzb: 'uz',
-  cmn: 'zh',
-  jpn: 'ja',
-}
-
-function detectByUnicode(text: string): string | null {
-  const koreanCount  = (text.match(/[가-힣ᄀ-ᇿ㄰-㆏]/g) ?? []).length
-  const chineseCount = (text.match(/[一-鿿]/g) ?? []).length
-  const japaneseCount = (text.match(/[぀-ヿ]/g) ?? []).length
-  const cyrillicCount = (text.match(/[Ѐ-ӿ]/g) ?? []).length
-  const latinCount   = (text.match(/[A-Za-z]/g) ?? []).length
-
-  const total = koreanCount + chineseCount + japaneseCount + cyrillicCount + latinCount
-  if (total === 0) return null
-
-  const threshold = total * 0.3
-
-  if (koreanCount  >= threshold && koreanCount  === Math.max(koreanCount, chineseCount, japaneseCount, cyrillicCount, latinCount)) return 'ko'
-  if (japaneseCount >= threshold && japaneseCount === Math.max(koreanCount, chineseCount, japaneseCount, cyrillicCount, latinCount)) return 'ja'
-  if (chineseCount >= threshold && chineseCount  === Math.max(koreanCount, chineseCount, japaneseCount, cyrillicCount, latinCount)) return 'zh'
-  if (cyrillicCount >= threshold) return 'ru'
-  // 라틴 계열(en/uz 등)은 franc에 위임
-  return null
-}
+export type LanguageCode = 'ko' | 'en' | 'zh' | 'ja' | 'ru' | 'uz' | 'und'
 
 /**
- * Detects language of text. Returns ISO 639-1 code for supported languages,
- * or null if undetermined / text is too short.
+ * Unicode-range-first language detection that works on texts as short as 1 char.
+ *
+ * Priority:
+ * 1. Hangul → ko
+ * 2. Hiragana/Katakana → ja
+ * 3. Cyrillic → ru
+ * 4. CJK Han only (no kana) → zh  ← key: 好的, 谢谢, 你好
+ * 5. Latin → en  (uz is Latin too; left for future refinement)
+ * 6. Otherwise → 'und'
  */
-export function detectLanguage(text: string): string | null {
-  if (!text || text.trim().length < 2) return null
+export function detectLanguage(text: string): LanguageCode | null {
+  if (!text) return null
+  const trimmed = text.trim()
+  if (trimmed.length === 0) return null
 
-  // 1. 유니코드 범위로 먼저 판별 (한/중/일/러 오감지 방지)
-  const unicodeResult = detectByUnicode(text)
-  if (unicodeResult) return unicodeResult
+  let hangul = 0
+  let hiragana = 0
+  let katakana = 0
+  let cjkHan = 0
+  let cyrillic = 0
+  let latin = 0
 
-  // 2. 라틴 계열은 franc으로 구분 (en / uz 등)
-  if (text.trim().length < 5) return null
-  const iso3 = franc(text, { minLength: 5 })
-  if (iso3 === 'und') return null
-  return ISO3_TO_1[iso3] ?? null
+  for (const ch of trimmed) {
+    const code = ch.codePointAt(0)
+    if (code === undefined) continue
+
+    if ((code >= 0xAC00 && code <= 0xD7A3) ||
+        (code >= 0x1100 && code <= 0x11FF) ||
+        (code >= 0x3130 && code <= 0x318F)) {
+      hangul++
+    } else if (code >= 0x3040 && code <= 0x309F) {
+      hiragana++
+    } else if (code >= 0x30A0 && code <= 0x30FF) {
+      katakana++
+    } else if ((code >= 0x4E00 && code <= 0x9FFF) ||
+               (code >= 0x3400 && code <= 0x4DBF)) {
+      cjkHan++
+    } else if (code >= 0x0400 && code <= 0x04FF) {
+      cyrillic++
+    } else if ((code >= 0x0041 && code <= 0x005A) ||
+               (code >= 0x0061 && code <= 0x007A)) {
+      latin++
+    }
+  }
+
+  if (hangul > 0)              return 'ko'
+  if (hiragana > 0 || katakana > 0) return 'ja'
+  if (cyrillic > 0)            return 'ru'
+  if (cjkHan > 0)              return 'zh'
+  if (latin > 0)               return 'en'
+
+  return null
 }
