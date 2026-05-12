@@ -90,13 +90,12 @@ export function ChannelSettingsPanel({
       // room_members에 추가
       await Promise.all(inviteSelected.map(uid => inviteToChannel(roomId, uid)))
 
-      // 채널에 시스템 메시지 전송
-      const BOT_ID   = '00000000-0000-0000-0000-000000000001'
+      // 채널에 시스템 메시지 전송 (sender_id = 현재 유저 → RLS 통과)
       const inviterName  = profile?.name ?? '관리자'
       const inviteeNames = (invitees ?? []).map(u => `${u.name}님`).join(', ')
       await supabase.from('messages').insert({
         room_id:      roomId,
-        sender_id:    BOT_ID,
+        sender_id:    user!.id,
         content:      `${inviterName}님이 ${inviteeNames}을(를) 채널에 초대했습니다.`,
         message_type: 'system',
       })
