@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="MINT">
+  <title>MINT</title>
+  <polygon points="100,20 50,100 100,100" fill="#5eead4"/>
+  <polygon points="100,20 150,100 100,100" fill="#14b8a6"/>
+  <polygon points="50,100 100,180 100,100" fill="#0d9488"/>
+  <polygon points="150,100 100,180 100,100" fill="#134e4a"/>
+  <line x1="100" y1="20" x2="100" y2="180" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+</svg>
