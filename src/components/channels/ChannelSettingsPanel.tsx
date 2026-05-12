@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { X, Trash2, LogOut, UserMinus } from 'lucide-react'
+import { X, Trash2, LogOut, UserMinus, UserPlus, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 import { Avatar } from '../ui/Avatar'
 import { UserPicker } from '../chat/UserPicker'
 import {
@@ -80,7 +81,26 @@ export function ChannelSettingsPanel({
     if (!inviteSelected.length) return
     setInviting(true)
     try {
+      // 초대할 멤버 이름 조회
+      const { data: invitees } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', inviteSelected)
+
+      // room_members에 추가
       await Promise.all(inviteSelected.map(uid => inviteToChannel(roomId, uid)))
+
+      // 채널에 시스템 메시지 전송
+      const BOT_ID   = '00000000-0000-0000-0000-000000000001'
+      const inviterName  = profile?.name ?? '관리자'
+      const inviteeNames = (invitees ?? []).map(u => `${u.name}님`).join(', ')
+      await supabase.from('messages').insert({
+        room_id:      roomId,
+        sender_id:    BOT_ID,
+        content:      `${inviterName}님이 ${inviteeNames}을(를) 채널에 초대했습니다.`,
+        message_type: 'system',
+      })
+
       const updated = await fetchChannelMembers(roomId)
       setMembers(updated)
       setInviteSelected([])
@@ -240,10 +260,14 @@ export function ChannelSettingsPanel({
                   <button
                     onClick={handleInvite}
                     disabled={inviting}
-                    className="w-full py-1.5 rounded-md text-xs font-semibold text-white disabled:opacity-40"
+                    className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md text-xs font-semibold text-white disabled:opacity-40"
                     style={{ background: 'var(--brand)' }}
                   >
-                    {inviting ? '…' : `${t('channelInvite')} (${inviteSelected.length})`}
+                    {inviting
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <UserPlus size={12} />
+                    }
+                    {inviting ? '초대 중...' : `${inviteSelected.length}명 초대하기`}
                   </button>
                 </div>
               )}
