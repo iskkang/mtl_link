@@ -27,12 +27,18 @@ interface RoomStore {
   resetUnread:          (roomId: string) => void
   applyLocalRead:       (roomId: string, lastReadAt: string) => void
   patchMember:          (userId: string, patch: Partial<RoomListItem['members'][number]>) => void
+
+  // 스레드 답글 미읽음 카운트 (key: root message ID)
+  threadUnread:           Record<string, number>
+  incrementThreadUnread:  (messageId: string) => void
+  resetThreadUnread:      (messageId: string) => void
 }
 
 export const useRoomStore = create<RoomStore>((set, _get) => ({
-  rooms:   [],
-  loading: false,
-  error:   null,
+  rooms:        [],
+  loading:      false,
+  error:        null,
+  threadUnread: {},
 
   reset:      ()      => set({ rooms: [], loading: false, error: null }),
   setRooms:   (rooms) => set({ rooms: sortByRecency(rooms) }),
@@ -108,6 +114,17 @@ export const useRoomStore = create<RoomStore>((set, _get) => ({
       ),
     })),
   })),
+
+  incrementThreadUnread: (messageId) => set(s => ({
+    threadUnread: { ...s.threadUnread, [messageId]: (s.threadUnread[messageId] ?? 0) + 1 },
+  })),
+
+  resetThreadUnread: (messageId) => set(s => {
+    if (!s.threadUnread[messageId]) return {}
+    const next = { ...s.threadUnread }
+    delete next[messageId]
+    return { threadUnread: next }
+  }),
 }))
 
 // 인증 상태 변경 시 스토어 초기화

@@ -27,6 +27,7 @@ import { useMessageStore } from '../../stores/messageStore'
 import { editMessage, softDeleteMessage } from '../../services/messageService'
 import { toggleReaction } from '../../services/reactionService'
 import type { MessageWithSender, RoomListItem } from '../../types/chat'
+import { useRoomStore } from '../../stores/roomStore'
 
 interface Props {
   message:            MessageWithSender
@@ -69,6 +70,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { upsertMessage, setReactions } = useMessageStore()
+  const threadUnread = useRoomStore(s => s.threadUnread[message.id] ?? 0)
 
   const [hovered,       setHovered]       = useState(false)
   const [menuOpen,      setMenuOpen]      = useState(false)
@@ -507,6 +509,15 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           >
             <MessageSquare size={11} className="flex-shrink-0" />
             {t('threadReplies', { count: message.thread_reply_count })}
+            {threadUnread > 0 && (
+              <span
+                className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 rounded-full px-1 text-[10px] font-bold text-white leading-none"
+                style={{ background: '#ef4444' }}
+                title={t('threadNewReplies', { count: threadUnread })}
+              >
+                {threadUnread}
+              </span>
+            )}
           </button>
         )}
 

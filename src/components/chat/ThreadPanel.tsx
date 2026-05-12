@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRoomStore } from '../../stores/roomStore'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useThreadMessages } from '../../hooks/useThreadMessages'
@@ -27,6 +28,12 @@ export function ThreadPanel({ roomId, rootMessageId, currentUserId, members, tar
   const { t } = useTranslation()
   const { profile } = useAuth()
   const { rootMessage, replies, loading, sendReply, sendFileReply } = useThreadMessages(rootMessageId)
+  const resetThreadUnread = useRoomStore(s => s.resetThreadUnread)
+
+  // 스레드 열릴 때 미읽음 카운트 초기화
+  useEffect(() => {
+    resetThreadUnread(rootMessageId)
+  }, [rootMessageId, resetThreadUnread])
 
   const [draft,         setDraft]         = useState('')
   const [replyTo,       setReplyTo]       = useState<MessageWithSender | null>(null)

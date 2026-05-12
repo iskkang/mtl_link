@@ -432,6 +432,8 @@ const resources = {
       // ── 스레드 ───────────────────────────────────────────────────────────────
       threadTitle:          '스레드',
       threadReplies:        '답글 {{count}}개',
+      threadReplyNotif:     '님이 답글을 달았습니다',
+      threadNewReplies:     '새 답글 {{count}}개',
       threadNoReplies:      '아직 답글이 없습니다',
       threadInputPlaceholder: '스레드에 답글 작성…',
       threadOpenThread:     '답글 달기',
@@ -1016,6 +1018,8 @@ const resources = {
       // ── Thread ───────────────────────────────────────────────────────────────
       threadTitle:          'Thread',
       threadReplies:        '{{count}} replies',
+      threadReplyNotif:     'replied to your message',
+      threadNewReplies:     '{{count}} new replies',
       threadNoReplies:      'No replies yet',
       threadInputPlaceholder: 'Reply in thread…',
       threadOpenThread:     'Reply in thread',
@@ -1597,6 +1601,8 @@ const resources = {
       // ── Тред ─────────────────────────────────────────────────────────────────
       threadTitle:          'Тред',
       threadReplies:        '{{count}} ответов',
+      threadReplyNotif:     'ответил на ваше сообщение',
+      threadNewReplies:     '{{count}} новых ответов',
       threadNoReplies:      'Пока нет ответов',
       threadInputPlaceholder: 'Ответить в треде…',
       threadOpenThread:     'Ответить в треде',
@@ -2178,6 +2184,8 @@ const resources = {
       // ── Mavzu ─────────────────────────────────────────────────────────────────
       threadTitle:          'Mavzu',
       threadReplies:        '{{count}} javob',
+      threadReplyNotif:     'xabaringizga javob berdi',
+      threadNewReplies:     '{{count}} yangi javob',
       threadNoReplies:      'Hali javob yo\'q',
       threadInputPlaceholder: 'Mavzuda javob yozing…',
       threadOpenThread:     'Mavzuda javob berish',
@@ -2759,6 +2767,8 @@ const resources = {
       // ── 话题 ─────────────────────────────────────────────────────────────────
       threadTitle:          '话题',
       threadReplies:        '{{count}} 条回复',
+      threadReplyNotif:     '回复了您的消息',
+      threadNewReplies:     '{{count}} 条新回复',
       threadNoReplies:      '暂无回复',
       threadInputPlaceholder: '在话题中回复…',
       threadOpenThread:     '在话题中回复',
@@ -3340,6 +3350,8 @@ const resources = {
       // ── スレッド ──────────────────────────────────────────────────────────────
       threadTitle:          'スレッド',
       threadReplies:        '返信 {{count}} 件',
+      threadReplyNotif:     'があなたのメッセージに返信しました',
+      threadNewReplies:     '新着返信 {{count}} 件',
       threadNoReplies:      'まだ返信はありません',
       threadInputPlaceholder: 'スレッドに返信…',
       threadOpenThread:     'スレッドで返信',

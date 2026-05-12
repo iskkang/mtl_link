@@ -31,7 +31,7 @@ interface Options {
 }
 
 export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }: Options) {
-  const { incrementUnread } = useRoomStore()
+  const { incrementUnread, incrementThreadUnread } = useRoomStore()
   const rooms = useRoomStore(s => s.rooms)
 
   // Stable refs so the effect closure always reads latest values
@@ -152,6 +152,21 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
           // OS 알림은 SW push가 전담하므로 new Notification() 호출 제거.
           // (SW push + new Notification() 이중 알림 문제 해결)
           // in-app 업데이트(unread badge, 사이드바 정렬)는 위 로직으로 그대로 처리됨.
+
+          // ── 스레드 답글: 내 메시지에 달린 답글이면 threadUnread 증가 ──
+          if (msg.thread_root_id) {
+            const rootId = msg.thread_root_id as string
+            supabase
+              .from('messages')
+              .select('sender_id')
+              .eq('id', rootId)
+              .single()
+              .then(({ data: rootMsg }) => {
+                if (rootMsg?.sender_id === userIdRef.current) {
+                  incrementThreadUnread(rootId)
+                }
+              })
+          }
         },
       )
       .subscribe((_status, err) => {
@@ -159,7 +174,7 @@ export function useGlobalMessageMonitor({ userId, currentRoomId, onSelectRoom }:
       })
 
     return () => { channel.unsubscribe() }
-  }, [userId, incrementUnread]) // only re-subscribe when userId changes
+  }, [userId, incrementUnread, incrementThreadUnread]) // only re-subscribe when userId changes
 
   return { notifEnabled, toggleNotif, showPrompt, requestPermission, dismissPrompt }
 }
