@@ -12,7 +12,6 @@ import {
   fetchChannelMembers,
   deleteRoom,
   leaveRoom,
-  fetchRooms,
 } from '../../services/roomService'
 import { useRoomStore } from '../../stores/roomStore'
 
@@ -34,7 +33,7 @@ export function ChannelSettingsPanel({
   const { t } = useTranslation()
   const { user, profile } = useAuth()
   const isAdmin = profile?.is_admin === true
-  const setRooms = useRoomStore(s => s.setRooms)
+  const upsertRoom = useRoomStore(s => s.upsertRoom)
 
   const [name,        setName]        = useState(roomName)
   const [desc,        setDesc]        = useState(roomDesc ?? '')
@@ -58,8 +57,9 @@ export function ChannelSettingsPanel({
     setSaveError(null)
     try {
       await updateChannel(roomId, { name: trimName, description: desc.trim() || null })
-      const rooms = await fetchRooms()
-      setRooms(rooms)
+      const current = useRoomStore.getState().rooms.find(r => r.id === roomId)
+      if (current) upsertRoom({ ...current, name: trimName, description: desc.trim() || null })
+      onClose()
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Error')
     } finally {
