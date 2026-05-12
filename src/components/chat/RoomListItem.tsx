@@ -62,7 +62,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-1">
           <span
-            className="text-headline-2 truncate"
+            className="text-[13px] font-medium truncate"
             style={{ color: isSelected ? 'var(--side-active-text)' : 'var(--side-text)' }}
           >
             {displayName}
@@ -80,7 +80,7 @@ export function RoomListItemView({ room, isSelected, currentUserId, onClick }: P
 
         <div className="flex items-center justify-between mt-0.5 gap-1">
           <p
-            className="text-subtitle-2 truncate"
+            className="text-[12px] truncate"
             style={{
               color:      isSelected ? 'var(--side-active-text-sub)' : 'var(--side-mute)',
               fontWeight: unread > 0 ? 500 : 400,

@@ -105,10 +105,10 @@ export function ChatHeader({
           <div className="flex items-center gap-2.5">
             <img src="/mtl-logo.png" alt="MTL" className="h-8 w-auto object-contain" />
             <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+              <p className="text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>
                 MTL Shipping Agency
               </p>
-              <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('companySubtitle')}</p>
+              <p className="text-[11px]" style={{ color: 'var(--ink-3)' }}>{t('companySubtitle')}</p>
             </div>
           </div>
         )}

@@ -53,7 +53,7 @@ export function ChannelsPanel({ onSelectRoom, onEnterRoom }: Props) {
     <div className="flex flex-col flex-1 min-h-0">
       {/* 헤더 */}
       <div className="px-4 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--line)' }}>
-        <h2 className="font-semibold text-base" style={{ color: 'var(--ink-1)' }}>
+        <h2 className="font-semibold text-[13px]" style={{ color: 'var(--ink-1)' }}>
           {t('channelBrowseTitle')}
         </h2>
         <button
@@ -81,7 +81,7 @@ export function ChannelsPanel({ onSelectRoom, onEnterRoom }: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder={t('channelSearch')}
-            className="flex-1 bg-transparent text-sm outline-none"
+            className="flex-1 bg-transparent text-[13px] outline-none"
             style={{ color: 'var(--side-text)' }}
           />
         </div>
@@ -98,7 +98,7 @@ export function ChannelsPanel({ onSelectRoom, onEnterRoom }: Props) {
         {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center h-40 gap-2">
             <Hash size={28} style={{ color: 'var(--side-mute)' }} />
-            <p className="text-sm" style={{ color: 'var(--side-mute)' }}>{t('channelEmpty')}</p>
+            <p className="text-[13px]" style={{ color: 'var(--side-mute)' }}>{t('channelEmpty')}</p>
           </div>
         )}
 
@@ -120,11 +120,11 @@ export function ChannelsPanel({ onSelectRoom, onEnterRoom }: Props) {
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" style={{ color: 'var(--side-text)' }}>
+              <p className="text-[13px] font-medium truncate" style={{ color: 'var(--side-text)' }}>
                 {ch.name}
               </p>
               {ch.description && (
-                <p className="text-xs truncate" style={{ color: 'var(--side-mute)' }}>
+                <p className="text-[11px] truncate" style={{ color: 'var(--side-mute)' }}>
                   {ch.description}
                 </p>
               )}

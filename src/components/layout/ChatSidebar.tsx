@@ -109,7 +109,7 @@ export function ChatSidebar({
                 type="text"
                 placeholder={t('searchChat')}
                 readOnly
-                className="flex-1 bg-transparent text-sm outline-none cursor-default"
+                className="flex-1 bg-transparent text-[13px] outline-none cursor-default"
                 style={{ color: 'var(--side-text)' }}
               />
             </div>
@@ -291,13 +291,13 @@ function ComingSoon({
           <Icon size={22} style={{ color: 'var(--side-mute)' }} />
         </div>
       )}
-      <h3 className="text-sm font-semibold" style={{ color: 'var(--side-text)' }}>
+      <h3 className="text-[13px] font-semibold" style={{ color: 'var(--side-text)' }}>
         {label}
       </h3>
-      <p className="text-xs font-medium" style={{ color: 'var(--side-mute)' }}>
+      <p className="text-[11px] font-medium" style={{ color: 'var(--side-mute)' }}>
         {t('placeholderTitle')}
       </p>
-      <p className="text-xs" style={{ color: 'var(--side-mute)', opacity: 0.6 }}>
+      <p className="text-[11px]" style={{ color: 'var(--side-mute)', opacity: 0.6 }}>
         {t('placeholderSubtitle')}
       </p>
       <Button
@@ -324,10 +324,10 @@ function EmptyRoomList({ onNewChat, t }: { onNewChat: () => void; t: (k: string)
       >
         <MessageSquare size={28} style={{ color: 'var(--side-mute)' }} />
       </div>
-      <p className="text-sm font-medium mb-1" style={{ color: 'var(--side-mute)' }}>
+      <p className="text-[13px] font-medium mb-1" style={{ color: 'var(--side-mute)' }}>
         {t('noRooms')}
       </p>
-      <p className="text-xs mb-5 leading-relaxed whitespace-pre-line" style={{ color: 'var(--side-mute)', opacity: 0.7 }}>
+      <p className="text-[11px] mb-5 leading-relaxed whitespace-pre-line" style={{ color: 'var(--side-mute)', opacity: 0.7 }}>
         {t('noRoomsDesc')}
       </p>
       <button

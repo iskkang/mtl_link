@@ -65,7 +65,7 @@ export function FriendsList({ onSelectFriend }: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder={t('searchFriends')}
-            className="flex-1 bg-transparent text-sm outline-none"
+            className="flex-1 bg-transparent text-[13px] outline-none"
             style={{ color: 'var(--side-text)' }}
           />
         </div>
