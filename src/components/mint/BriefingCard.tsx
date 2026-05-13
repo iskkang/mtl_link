@@ -35,7 +35,9 @@ export interface BriefingPayload {
   items: BriefingItem[]
 }
 
-export async function updateBriefingItem(
+// Reserved for Tasks 3-5: dismiss, complete, pin interactions
+// @ts-expect-error — used by event handlers in future tasks
+async function updateBriefingItem(
   messageId: string,
   itemIndex: number,
   patch: Partial<BriefingItem>,
