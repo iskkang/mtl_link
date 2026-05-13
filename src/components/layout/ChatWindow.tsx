@@ -36,7 +36,6 @@ import { pinMessage, unpinMessage, PIN_MAX } from '../../services/pinMessage'
 import { AiQuickActions }       from '../ai/AiQuickActions'
 import { AiQuickBar }          from '../ai/AiQuickBar'
 import { MintEmptyState }      from '../mint/MintEmptyState'
-import { MintQuickActionChips } from '../mint/MintQuickActionChips'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender } from '../../types/chat'
 import type { PresenceStatus } from '../profile/StatusDot'
@@ -428,9 +427,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 roomId={roomId ?? ''}
                 isBotTyping={isBotTyping}
               />
-            )}
-            {room.room_type === 'mint_dm' && messages.length > 0 && (
-              <MintQuickActionChips onChipClick={handleQuickAction} />
             )}
             {isBotRoom && room.room_type !== 'mint_dm' && room.room_type !== 'channel' && messages.length > 0 && (
               <AiQuickBar onSelect={handleQuickAction} onNavigate={onAiNavigate} />
