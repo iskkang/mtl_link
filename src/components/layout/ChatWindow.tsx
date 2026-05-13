@@ -403,7 +403,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 userName={profile?.name ?? ''}
                 onCardClick={handleQuickAction}
               />
-            ) : isBotRoom && !loading && messages.length === 0 ? (
+            ) : isBotRoom && room.room_type !== 'channel' && room.room_type !== 'mint_dm' && !loading && messages.length === 0 ? (
               <AiQuickActions onSelect={handleQuickAction} onNavigate={onAiNavigate} />
             ) : (
               <MessageList
@@ -431,7 +431,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
             {room.room_type === 'mint_dm' && messages.length > 0 && (
               <MintQuickActionChips onChipClick={handleQuickAction} />
             )}
-            {isBotRoom && room.room_type !== 'mint_dm' && messages.length > 0 && (
+            {isBotRoom && room.room_type !== 'mint_dm' && room.room_type !== 'channel' && messages.length > 0 && (
               <AiQuickBar onSelect={handleQuickAction} onNavigate={onAiNavigate} />
             )}
             {globalOpen && (
