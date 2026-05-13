@@ -5,7 +5,7 @@ import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
 import { createDirectRoom, fetchRooms } from '../services/roomService'
 import { BOT_USER_ID }        from '../constants/bot'
-import { aiEvents }           from '../lib/aiEvents'
+import { aiEvents, chatEvents } from '../lib/aiEvents'
 import { useAuth }            from '../hooks/useAuth'
 import { useRoomStore }       from '../stores/roomStore'
 import { useRequestStore }    from '../stores/requestStore'
@@ -81,6 +81,15 @@ export default function ChatPage() {
       if (activeSection === 'ai') setActiveAiView(view as AiView)
     })
   }, [activeSection])
+
+  useEffect(() => {
+    return chatEvents.onNavigateToMessage((roomId, messageId) => {
+      setSelectedRoomId(roomId)
+      setShowChat(true)
+      setHighlightMessageId(messageId)
+      setActiveSection('chat')
+    })
+  }, [])
 
   usePollingRefresh(selectedRoomId)
   useDynamicFavicon()

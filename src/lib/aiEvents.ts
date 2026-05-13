@@ -14,3 +14,15 @@ export const aiEvents = {
   onNavigate:      (fn: NavigateHandler) => { navigateHandlers.add(fn); return () => { navigateHandlers.delete(fn) } },
   emitNavigate:    (view: string) => navigateHandlers.forEach(fn => fn(view)),
 }
+
+type NavigateToMessageHandler = (roomId: string, messageId: string) => void
+const navigateToMessageHandlers = new Set<NavigateToMessageHandler>()
+
+export const chatEvents = {
+  onNavigateToMessage: (fn: NavigateToMessageHandler) => {
+    navigateToMessageHandlers.add(fn)
+    return () => { navigateToMessageHandlers.delete(fn) }
+  },
+  emitNavigateToMessage: (roomId: string, messageId: string) =>
+    navigateToMessageHandlers.forEach(fn => fn(roomId, messageId)),
+}
