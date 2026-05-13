@@ -28,6 +28,7 @@ import { editMessage, softDeleteMessage } from '../../services/messageService'
 import { toggleReaction } from '../../services/reactionService'
 import type { MessageWithSender, RoomListItem } from '../../types/chat'
 import { useRoomStore } from '../../stores/roomStore'
+import { BriefingCard, type BriefingPayload } from '../mint/BriefingCard'
 
 interface Props {
   message:            MessageWithSender
@@ -217,6 +218,34 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       ...message,
       deleted_at: new Date().toISOString(),
     })
+  }
+
+  if (message.message_type === 'mint_briefing' && message.payload) {
+    return (
+      <div className={`flex items-end gap-2 px-2 md:px-3 ${isContinuation ? 'mb-0.5' : 'mb-2'}`}>
+        <div className="w-9 flex-shrink-0 self-end mb-0.5">
+          {!isContinuation && (
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center border"
+              style={{ background: '#f0fdfa', borderColor: '#ccfbf1' }}
+            >
+              <img src="/mint-logo-avatar.svg" alt="MINT" className="w-7 h-7" />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-start">
+          {!isContinuation && (
+            <span className="text-[11px] font-semibold mb-1 ml-1 flex items-center gap-1" style={{ color: 'var(--brand)' }}>
+              MINT
+              <span className="text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: 'var(--brand)', color: 'white', lineHeight: 1 }}>
+                AI
+              </span>
+            </span>
+          )}
+          <BriefingCard payload={message.payload as unknown as BriefingPayload} />
+        </div>
+      </div>
+    )
   }
 
   return (
