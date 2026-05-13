@@ -246,7 +246,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated, initialTab }: Props
                     )}
                   </span>
                 </div>
-                <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                   <UserPicker
                     mode="multi"
                     selected={selected}
@@ -320,7 +320,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated, initialTab }: Props
                   <span style={{ color: 'var(--ink-4)' }}> — 2명 이상</span>
                 </span>
               </div>
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 <UserPicker
                   mode="multi"
                   selected={selected}

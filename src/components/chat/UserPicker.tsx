@@ -64,7 +64,7 @@ export function UserPicker({ mode, selected, onChange, excludeId, excludeIds, on
   }
 
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* 검색 */}
       <div className="px-4 pb-2">
         <div
