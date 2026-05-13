@@ -30,7 +30,7 @@ ALTER TABLE offboarding_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin can view offboarding logs" ON offboarding_logs;
 CREATE POLICY "Admin can view offboarding logs" ON offboarding_logs
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
 -- 3. 퇴사 처리 trigger
