@@ -35,8 +35,6 @@ export interface BriefingPayload {
   items: BriefingItem[]
 }
 
-// Reserved for Tasks 3-5: dismiss, complete, pin interactions
-// @ts-expect-error — used by event handlers in future tasks
 async function updateBriefingItem(
   messageId: string,
   itemIndex: number,
@@ -101,6 +99,32 @@ export function BriefingCard({
       .eq('id', payload.briefing_id)
   }
 
+  const handleDismiss = async (idx: number) => {
+    _setItems(prev => prev.map((it, i) => i === idx ? { ...it, dismissed: true } : it))
+    await updateBriefingItem(_messageId, idx, { dismissed: true })
+  }
+
+  const handleComplete = async (idx: number) => {
+    const next = !items[idx].completed
+    _setItems(prev => prev.map((it, i) => i === idx ? { ...it, completed: next } : it))
+    await updateBriefingItem(_messageId, idx, { completed: next })
+  }
+
+  const handlePin = async (idx: number) => {
+    const next = !items[idx].pinned
+    _setItems(prev => prev.map((it, i) => i === idx ? { ...it, pinned: next } : it))
+    await updateBriefingItem(_messageId, idx, { pinned: next })
+  }
+
+  const visibleItems = items
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item }) => !item.dismissed)
+
+  const sortedItems = [
+    ...visibleItems.filter(({ item }) => item.pinned),
+    ...visibleItems.filter(({ item }) => !item.pinned),
+  ]
+
   return (
     <div className="max-w-[540px]">
       <div className="flex items-center gap-2 mb-1">
@@ -118,7 +142,7 @@ export function BriefingCard({
       </div>
 
       <div className="flex flex-col gap-2">
-        {items.map((item, idx) => {
+        {sortedItems.map(({ item, idx }) => {
           const cfg = CATEGORY_CONFIG[item.category]
           const borderClass = item.category === 'alert' ? 'border-red-200' : 'border-black/[0.08]'
 
@@ -127,7 +151,15 @@ export function BriefingCard({
               key={idx}
               className={`bg-white border-[0.5px] ${borderClass} rounded-[10px] p-3 shadow-sm`}
             >
+              {/* 상단 행: 핀 + 카테고리 배지 + 마감일 */}
               <div className="flex items-center gap-1.5 mb-2">
+                <button
+                  onClick={() => handlePin(idx)}
+                  className="flex-shrink-0 p-0.5 transition-colors"
+                  aria-label={t('briefingPin')}
+                >
+                  <_Pin size={12} color={item.pinned ? '#14b8a6' : '#cbd5e1'} />
+                </button>
                 <span
                   className="text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                   style={{ background: cfg.bg, color: cfg.fg }}
@@ -141,21 +173,49 @@ export function BriefingCard({
                   </span>
                 )}
               </div>
-              <div className="text-[13px] font-medium text-[#0f172a] mb-1">
-                {item.title}
+              {/* 제목 행: 체크박스 + 완료 스타일 */}
+              <div className="flex items-start gap-2 mb-1">
+                <button
+                  onClick={() => handleComplete(idx)}
+                  className="mt-0.5 flex-shrink-0"
+                  aria-label={t('briefingComplete')}
+                >
+                  {item.completed
+                    ? <_CheckCircle2 size={14} color="#14b8a6" />
+                    : <_Circle size={14} color="#cbd5e1" />}
+                </button>
+                <div
+                  className="text-[13px] font-medium"
+                  style={{
+                    color:          item.completed ? '#94a3b8' : '#0f172a',
+                    textDecoration: item.completed ? 'line-through' : 'none',
+                  }}
+                >
+                  {item.title}
+                </div>
               </div>
-              <div className="text-[12px] text-[#64748b] mb-2.5 leading-[1.5]">
+              <div className="text-[12px] text-[#64748b] mb-2.5 leading-[1.5] pl-[22px]">
                 {item.description}
               </div>
-              {item.source_room_id && item.source_message_id && (
+              {/* 하단 행: 채팅 보기 + X */}
+              <div className="flex items-center justify-end gap-2 pl-[22px]">
+                {item.source_room_id && item.source_message_id && (
+                  <button
+                    onClick={() => handleViewChat(item)}
+                    className="inline-flex items-center gap-1 text-[11px] text-[#0d9488] font-medium hover:underline"
+                  >
+                    {t('briefingViewChat')}
+                    <ArrowRight size={12} />
+                  </button>
+                )}
                 <button
-                  onClick={() => handleViewChat(item)}
-                  className="inline-flex items-center gap-1 text-[11px] text-[#0d9488] font-medium hover:underline"
+                  onClick={() => handleDismiss(idx)}
+                  className="p-0.5 text-[#cbd5e1] hover:text-[#ef4444] transition-colors"
+                  aria-label={t('briefingDismiss')}
                 >
-                  {t('briefingViewChat')}
-                  <ArrowRight size={12} />
+                  <_X size={12} />
                 </button>
-              )}
+              </div>
             </div>
           )
         })}
