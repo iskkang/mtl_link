@@ -85,3 +85,17 @@ export async function rejectUser(userId: string): Promise<void> {
     body: { userId, action: 'reject' },
   }).catch(e => console.warn('[rejectUser] notification email failed:', e))
 }
+
+// ─── 퇴사 처리 ───────────────────────────────────────────────────────────────
+
+export async function deactivateUser(userId: string, deactivatedBy: string): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      deactivated_at: new Date().toISOString(),
+      deactivated_by: deactivatedBy,
+      status:         'inactive',
+    })
+    .eq('id', userId)
+  if (error) throw error
+}

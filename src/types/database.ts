@@ -36,6 +36,8 @@ export type Database = {
           is_bot:               boolean
           must_change_password: boolean
           preferred_language:   SupportedLanguage
+          deactivated_at:       string | null
+          deactivated_by:       string | null
           created_at:           string
           updated_at:           string
         }
@@ -55,6 +57,8 @@ export type Database = {
           is_bot?:               boolean
           must_change_password?: boolean
           preferred_language?:   SupportedLanguage
+          deactivated_at?:       string | null
+          deactivated_by?:       string | null
           created_at?:           string
           updated_at?:           string
         }
@@ -74,6 +78,8 @@ export type Database = {
           is_bot?:               boolean
           must_change_password?: boolean
           preferred_language?:   SupportedLanguage
+          deactivated_at?:       string | null
+          deactivated_by?:       string | null
           created_at?:           string
           updated_at?:           string
         }

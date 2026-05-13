@@ -7,6 +7,7 @@ export async function fetchActiveProfiles(excludeId?: string): Promise<Profile[]
     .select('*')
     .eq('status', 'active')
     .eq('is_bot', false)
+    .is('deactivated_at', null)
     .order('name')
 
   if (excludeId) query = query.neq('id', excludeId)

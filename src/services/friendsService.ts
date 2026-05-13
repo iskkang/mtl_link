@@ -22,6 +22,7 @@ export async function fetchFriends(): Promise<FriendProfile[]> {
     .from('profiles')
     .select('id, name, avatar_url, avatar_color, department, position, email, preferred_language, is_bot, presence_status, status_message')
     .eq('status', 'active')
+    .is('deactivated_at', null)
     .neq('id', user.id)
     .order('name')
 

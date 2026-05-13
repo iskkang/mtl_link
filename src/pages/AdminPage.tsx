@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  UserPlus, MessageSquare, Sun, Moon,
+  UserPlus, UserMinus, MessageSquare, Sun, Moon,
   ShieldCheck, ShieldOff, UserX, UserCheck,
   Copy, Check, X, Search, ChevronDown,
 } from 'lucide-react'
@@ -16,6 +16,7 @@ import {
   setUserAdmin,
   approveUser,
   rejectUser,
+  deactivateUser,
   type CreateUserInput,
   type CreateUserResult,
 } from '../services/adminService'
@@ -33,7 +34,7 @@ export default function AdminPage() {
   const [loading,     setLoading]     = useState(true)
   const [search,      setSearch]      = useState('')
   const [addOpen,     setAddOpen]     = useState(false)
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'pending' | 'rejected'>('all')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'pending' | 'rejected' | 'deactivated'>('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,7 +51,10 @@ export default function AdminPage() {
       p.email.toLowerCase().includes(q) ||
       (p.department ?? '').toLowerCase().includes(q) ||
       (p.position ?? '').toLowerCase().includes(q)
-    const matchStatus = filterStatus === 'all' || p.status === filterStatus
+    const matchStatus =
+      filterStatus === 'all'         ? true :
+      filterStatus === 'deactivated' ? !!p.deactivated_at :
+      p.status === filterStatus
     return matchQuery && matchStatus
   })
 
@@ -83,6 +87,26 @@ export default function AdminPage() {
     setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: 'rejected' } : x))
     try { await rejectUser(p.id) }
     catch { setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status } : x)) }
+  }
+
+  const handleDeactivate = async (p: Profile) => {
+    const confirmed = window.confirm(
+      `${p.name}님을 퇴사 처리하시겠습니까?\n\n` +
+      `• 모든 채널에서 자동 제거됩니다\n` +
+      `• MINT가 최근 14일 미완료 사안을 각 채널에 알립니다\n` +
+      `• 이 작업은 즉시 적용됩니다`,
+    )
+    if (!confirmed) return
+    if (!user) return
+
+    const now = new Date().toISOString()
+    setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: 'inactive' as const, deactivated_at: now } : x))
+    try {
+      await deactivateUser(p.id, user.id)
+    } catch {
+      setProfiles(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status, deactivated_at: p.deactivated_at } : x))
+      window.alert('퇴사 처리에 실패했습니다. 다시 시도해 주세요.')
+    }
   }
 
   return (
@@ -181,6 +205,7 @@ export default function AdminPage() {
               <option value="inactive">비활성</option>
               <option value="pending">승인 대기</option>
               <option value="rejected">거절됨</option>
+              <option value="deactivated">퇴사</option>
             </select>
             <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 dark:text-[#8696a0]" />
           </div>
@@ -230,6 +255,7 @@ export default function AdminPage() {
                     onAdminToggle={handleAdminToggle}
                     onApprove={handleApprove}
                     onReject={handleReject}
+                    onDeactivate={handleDeactivate}
                   />
                 ))}
               </tbody>
@@ -257,7 +283,7 @@ export default function AdminPage() {
 
 function EmployeeRow({
   profile: p, isSelf,
-  onStatusToggle, onAdminToggle, onApprove, onReject,
+  onStatusToggle, onAdminToggle, onApprove, onReject, onDeactivate,
 }: {
   profile:        Profile
   isSelf:         boolean
@@ -265,13 +291,25 @@ function EmployeeRow({
   onAdminToggle:  (p: Profile) => void
   onApprove:      (p: Profile) => void
   onReject:       (p: Profile) => void
+  onDeactivate:   (p: Profile) => void
 }) {
-  const isActive   = p.status === 'active'
-  const isPending  = p.status === 'pending'
-  const isRejected = p.status === 'rejected'
-  const dimmed     = !isActive && !isPending
+  const isActive      = p.status === 'active'
+  const isPending     = p.status === 'pending'
+  const isRejected    = p.status === 'rejected'
+  const isDeactivated = !!p.deactivated_at
+  const dimmed        = !isActive && !isPending
 
   const statusBadge = () => {
+    if (isDeactivated) return (
+      <div>
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-surface-hover text-gray-500 dark:text-[#8696a0]">
+          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />퇴사
+        </span>
+        <p className="text-[10px] text-gray-400 dark:text-[#8696a0] mt-0.5">
+          {new Date(p.deactivated_at!).toLocaleDateString('ko-KR')}
+        </p>
+      </div>
+    )
     if (isActive)   return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />재직</span>
     if (isPending)  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />대기</span>
     if (isRejected) return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400"><span className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400" />거절</span>
@@ -321,8 +359,9 @@ function EmployeeRow({
       {/* 작업 */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
-          {/* 승인 대기 / 거절 상태: 승인·거절 버튼 */}
-          {(isPending || isRejected) ? (
+          {/* 퇴사 처리된 사용자: 아무 액션 없음 */}
+          {isDeactivated ? null : (isPending || isRejected) ? (
+            /* 승인 대기 / 거절 상태: 승인·거절 버튼 */
             <>
               <ActionIconBtn title="승인" onClick={() => onApprove(p)}>
                 <UserCheck size={14} className="text-emerald-500 dark:text-emerald-400" />
@@ -334,6 +373,7 @@ function EmployeeRow({
               )}
             </>
           ) : (
+            /* 활성 / 비활성 상태 */
             <>
               <ActionIconBtn
                 title={isActive ? '비활성화' : '복귀'}
@@ -349,6 +389,14 @@ function EmployeeRow({
               >
                 {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
               </ActionIconBtn>
+              {isActive && !isSelf && (
+                <ActionIconBtn
+                  title="퇴사 처리"
+                  onClick={() => onDeactivate(p)}
+                >
+                  <UserMinus size={14} className="text-red-400 dark:text-red-400" />
+                </ActionIconBtn>
+              )}
             </>
           )}
         </div>
