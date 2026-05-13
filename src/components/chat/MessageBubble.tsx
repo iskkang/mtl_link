@@ -242,7 +242,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               </span>
             </span>
           )}
-          <BriefingCard payload={message.payload as unknown as BriefingPayload} />
+          <BriefingCard payload={message.payload as unknown as BriefingPayload} messageId={message.id} />
         </div>
       </div>
     )

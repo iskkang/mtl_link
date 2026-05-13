@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 import {
   Clock, ClipboardCheck, HelpCircle, AlertTriangle,
   ArrowRight, ThumbsUp, ThumbsDown,
+  // reserved for Tasks 3-5:
+  Pin as _Pin, X as _X, Circle as _Circle, CheckCircle2 as _CheckCircle2,
+  Trash2 as _Trash2, CalendarPlus as _CalendarPlus,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { chatEvents } from '../../lib/aiEvents'
@@ -17,6 +20,9 @@ interface BriefingItem {
   source_room_name: string | null
   due_at: string | null
   priority: 'high' | 'medium' | 'low'
+  completed?: boolean
+  pinned?: boolean
+  dismissed?: boolean
 }
 
 export interface BriefingPayload {
@@ -27,6 +33,26 @@ export interface BriefingPayload {
   summary: string
   message_count: number
   items: BriefingItem[]
+}
+
+export async function updateBriefingItem(
+  messageId: string,
+  itemIndex: number,
+  patch: Partial<BriefingItem>,
+) {
+  const { data: msg } = await supabase
+    .from('messages')
+    .select('payload')
+    .eq('id', messageId)
+    .single()
+  if (!msg) return
+  const existing = msg.payload as Record<string, unknown>
+  const updatedItems = [...((existing.items as BriefingItem[]) ?? [])]
+  updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...patch }
+  await (supabase as any)
+    .from('messages')
+    .update({ payload: { ...existing, items: updatedItems } })
+    .eq('id', messageId)
 }
 
 const CATEGORY_CONFIG = {
@@ -45,9 +71,17 @@ function formatDueAt(iso: string): string {
   return `${date.getMonth() + 1}/${date.getDate()}까지`
 }
 
-export function BriefingCard({ payload }: { payload: BriefingPayload }) {
+export function BriefingCard({
+  payload,
+  messageId: _messageId,
+}: {
+  payload: BriefingPayload
+  messageId: string
+}) {
   const { t } = useTranslation()
   const [feedback, setFeedback] = useState<1 | -1 | null>(null)
+  const [items, _setItems] = useState<BriefingItem[]>(payload.items)
+  const [_deleted, _setDeleted] = useState(false)
   const isWeekly = (payload.briefing_type ?? 'daily') === 'weekly'
 
   const handleViewChat = (item: BriefingItem) => {
@@ -82,15 +116,14 @@ export function BriefingCard({ payload }: { payload: BriefingPayload }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        {payload.items.map((item, idx) => {
+        {items.map((item, idx) => {
           const cfg = CATEGORY_CONFIG[item.category]
           const borderClass = item.category === 'alert' ? 'border-red-200' : 'border-black/[0.08]'
 
           return (
             <div
               key={idx}
-              onClick={() => handleViewChat(item)}
-              className={`bg-white border-[0.5px] ${borderClass} rounded-[10px] p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
+              className={`bg-white border-[0.5px] ${borderClass} rounded-[10px] p-3 shadow-sm`}
             >
               <div className="flex items-center gap-1.5 mb-2">
                 <span
@@ -113,10 +146,13 @@ export function BriefingCard({ payload }: { payload: BriefingPayload }) {
                 {item.description}
               </div>
               {item.source_room_id && item.source_message_id && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-[#0d9488] font-medium">
+                <button
+                  onClick={() => handleViewChat(item)}
+                  className="inline-flex items-center gap-1 text-[11px] text-[#0d9488] font-medium hover:underline"
+                >
                   {t('briefingViewChat')}
                   <ArrowRight size={12} />
-                </span>
+                </button>
               )}
             </div>
           )
