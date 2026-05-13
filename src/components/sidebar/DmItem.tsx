@@ -36,16 +36,25 @@ export function DmItem({ room, currentUserId, selectedRoomId, onSelect }: Props)
     >
       <div className="flex items-center gap-2 min-w-0">
         {/* 8px rounded square avatar */}
-        <div
-          className="w-[22px] h-[22px] flex-shrink-0 flex items-center justify-center
-                     text-white font-semibold text-[10px]"
-          style={{
-            background:   avatar.avatarColor ?? '#7F77DD',
-            borderRadius: '6px',
-          }}
-        >
-          {getInitials(avatar.name)}
-        </div>
+        {avatar.avatarUrl ? (
+          <div
+            className="w-[22px] h-[22px] flex-shrink-0 flex items-center justify-center"
+            style={{ background: '#f0fdfa', border: '1px solid #ccfbf1', borderRadius: '6px' }}
+          >
+            <img src={avatar.avatarUrl} alt={avatar.name} className="w-[16px] h-[16px]" />
+          </div>
+        ) : (
+          <div
+            className="w-[22px] h-[22px] flex-shrink-0 flex items-center justify-center
+                       text-white font-semibold text-[10px]"
+            style={{
+              background:   avatar.avatarColor ?? '#7F77DD',
+              borderRadius: '6px',
+            }}
+          >
+            {getInitials(avatar.name)}
+          </div>
+        )}
         <span
           className="text-[13px] truncate"
           style={{ fontWeight: isSelected || unread > 0 ? 600 : 400 }}
