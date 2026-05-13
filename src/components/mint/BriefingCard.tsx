@@ -53,7 +53,8 @@ export function BriefingCard({ payload }: { payload: BriefingPayload }) {
     chatEvents.emitNavigateToMessage(item.source_room_id, item.source_message_id)
   }
 
-  const handleFeedback = async (score: 1 | -1) => {
+  const handleFeedback = async (e: React.MouseEvent, score: 1 | -1) => {
+    e.stopPropagation()
     if (feedback !== null) return
     setFeedback(score)
     await (supabase as any)
@@ -113,17 +114,10 @@ export function BriefingCard({ payload }: { payload: BriefingPayload }) {
         })}
       </div>
 
-      <div className="mt-[14px] pt-3 border-t border-black/[0.08] flex justify-between items-center">
-        <button
-          disabled
-          className="inline-flex items-center gap-1 text-[12px] text-[#94a3b8] font-medium cursor-not-allowed"
-        >
-          {t('briefingViewAll')}
-          <ArrowRight size={12} />
-        </button>
+      <div className="mt-[14px] pt-3 border-t border-black/[0.08] flex justify-end items-center">
         <div className="flex gap-1.5">
           <button
-            onClick={() => handleFeedback(1)}
+            onClick={e => handleFeedback(e, 1)}
             disabled={feedback !== null}
             className={`w-6 h-6 flex items-center justify-center border-[0.5px] border-[#ccfbf1] rounded-md transition-colors ${
               feedback === 1 ? 'bg-[#f0fdfa] text-[#0d9488]' : 'text-[#64748b] hover:text-[#0d9488]'
@@ -133,7 +127,7 @@ export function BriefingCard({ payload }: { payload: BriefingPayload }) {
             <ThumbsUp size={13} />
           </button>
           <button
-            onClick={() => handleFeedback(-1)}
+            onClick={e => handleFeedback(e, -1)}
             disabled={feedback !== null}
             className={`w-6 h-6 flex items-center justify-center border-[0.5px] border-[#ccfbf1] rounded-md transition-colors ${
               feedback === -1 ? 'bg-red-50 text-red-600' : 'text-[#64748b] hover:text-red-600'
