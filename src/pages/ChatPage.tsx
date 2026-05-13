@@ -173,20 +173,6 @@ export default function ChatPage() {
       }
       return
     }
-    if (s === 'ai') {
-      try {
-        const roomId = await getOrCreateMintDmRoom()
-        const updatedRooms = await fetchRooms()
-        useRoomStore.getState().setRooms(updatedRooms)
-        useRoomStore.getState().resetUnread(roomId)
-        setSelectedRoomId(roomId)
-        setShowChat(true)
-        setActiveSection('chat')
-      } catch (err) {
-        console.error('MINT 방 진입 실패:', err)
-      }
-      return
-    }
     setActiveSection(s)
   }
 
