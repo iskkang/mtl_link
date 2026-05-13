@@ -131,6 +131,21 @@ export function BriefingCard({
     }
   }
 
+  const handleDeleteBriefing = async () => {
+    _setDeleted(true)
+    try {
+      await supabase.from('messages').delete().eq('id', _messageId)
+      await (supabase as any)
+        .from('ai_briefings')
+        .delete()
+        .eq('delivered_message_id', _messageId)
+    } catch {
+      _setDeleted(false)
+    }
+  }
+
+  if (_deleted) return null
+
   const visibleItems = items
     .map((item, idx) => ({ item, idx }))
     .filter(({ item }) => !item.dismissed)
@@ -151,6 +166,13 @@ export function BriefingCard({
         <span className="text-[14px] text-[#0f172a] leading-[1.5] font-medium">
           {payload.greeting}
         </span>
+        <button
+          onClick={handleDeleteBriefing}
+          className="ml-auto p-1 text-[#cbd5e1] hover:text-[#ef4444] transition-colors flex-shrink-0"
+          aria-label={t('briefingDelete')}
+        >
+          <_Trash2 size={14} />
+        </button>
       </div>
       <div className="text-[12px] text-[#64748b] mb-[14px]">
         {payload.summary}
