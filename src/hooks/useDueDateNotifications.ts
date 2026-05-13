@@ -24,6 +24,7 @@ export function useDueDateNotifications(items: ActionItem[]) {
   itemsRef.current = items
 
   useEffect(() => {
+    if (typeof Notification === 'undefined') return
     if (Notification.permission !== 'granted') return
 
     const check = () => {
