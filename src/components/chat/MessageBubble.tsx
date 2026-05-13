@@ -386,7 +386,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                   ? (searchQuery ? highlightText(message.content ?? '', searchQuery) : message.content)
                   : translatedText && parseMentionsAndLinks(translatedText, message.mentions ?? [], members, currentUserId).map((part, i) =>
                       isMentionPart(part)
-                        ? <span key={i} className="font-medium cursor-default" style={{ color: 'var(--brand)' }}>@{part.name}</span>
+                        ? <span key={i} className="inline-block px-1 py-px mx-0.5 text-[0.8em] font-semibold rounded cursor-default" style={{ background: part.isSelf ? 'rgba(124,58,237,0.12)' : '#f0fdfa', color: part.isSelf ? '#7C3AED' : '#0d9488' }}>@{part.name}</span>
                         : typeof part === 'string'
                           ? <span key={i}>{part}</span>
                           : <a key={i} href={part.href} target="_blank" rel="noopener noreferrer" className="underline break-all" style={{ color: 'var(--brand)' }}>{part.href}</a>
@@ -404,8 +404,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                           ? (
                             <span
                               key={i}
-                              className="font-medium cursor-default"
-                              style={{ color: 'var(--brand)' }}
+                              className="inline-block px-1 py-px mx-0.5 text-[0.8em] font-semibold rounded cursor-default"
+                              style={{ background: part.isSelf ? 'rgba(124,58,237,0.12)' : '#f0fdfa', color: part.isSelf ? '#7C3AED' : '#0d9488' }}
                             >
                               @{part.name}
                             </span>

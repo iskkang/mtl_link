@@ -90,6 +90,21 @@ export async function sendTextMessage(
       reply_message: replyMessage ?? null,
     })
 
+    // mentions 테이블 INSERT (read tracking용, 실패해도 전송에 영향 없음)
+    if (mentions && mentions.length > 0) {
+      // deno-lint-ignore no-explicit-any -- mentions table not yet in generated types
+      ;(supabase as any).from('mentions').insert(
+        mentions.map((uid: string) => ({
+          message_id:        data.id,
+          mentioned_user_id: uid,
+          mentioner_id:      user.id,
+          room_id:           roomId,
+        }))
+      ).then(({ error }: { error: unknown }) => {
+        if (error) console.error('[mentions] insert failed:', error)
+      })
+    }
+
     // 푸시 알림 (실패해도 메시지 전송에 영향 없음)
     supabase.functions.invoke('send-push-notification', {
       body: { roomId, senderId: user.id, body: trimmed.slice(0, 100), mentions: mentions ?? [] },

@@ -18,6 +18,7 @@ import { NotificationHub } from '../sidebar/NotificationHub'
 import { CollapsibleSection } from '../sidebar/CollapsibleSection'
 import { ChannelItem } from '../sidebar/ChannelItem'
 import { DmItem } from '../sidebar/DmItem'
+import { MentionsView } from '../mentions/MentionsView'
 import type { Section } from './MenuRail'
 import type { ActionItem } from '../../services/actionItemService'
 
@@ -69,6 +70,7 @@ export function ChatSidebar({
     channels:      t('menuRailChannels'),
     bots:          t('menuRailBots'),
     ai:            'MINT',
+    mentions:      t('navMentions'),
   }
 
   const title = SECTION_TITLE[activeSection] ?? activeSection
@@ -225,6 +227,13 @@ export function ChatSidebar({
               onSectionChange('chat')
             }}
           />
+        </div>
+      )}
+
+      {/* ── Mentions section ── */}
+      {activeSection === 'mentions' && (
+        <div className="flex flex-col flex-1 min-h-0">
+          <MentionsView onNavigated={() => onSectionChange('chat')} />
         </div>
       )}
 
