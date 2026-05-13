@@ -83,7 +83,7 @@ export function MenuRail({
         <div className="flex flex-col items-center gap-0.5 w-full">
           <RailBtn
             Icon={MintIcon}
-            label={t('menuRailBots')}
+            label="MINT+"
             active={activeSection === 'ai'}
             onClick={() => onSectionChange('ai')}
           />

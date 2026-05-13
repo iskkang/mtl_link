@@ -451,7 +451,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
             }}>
               <MintLogo size={40} />
               <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-.5px' }}>
-                MINT
+                MINT+
               </span>
             </div>
             <p style={{ fontSize: 14, color: 'var(--ink-3)', margin: 0 }}>
