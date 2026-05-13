@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
 
       const locale    = getLocale(user.preferred_language)
       const formatted = msgs
-        .map(m => `[${m.id}] (${m.room_name}, ${m.sender_name}, ${m.created_at}) ${m.content}`)
+        .map(m => `[${m.id}] (room_id:${m.room_id} | room_name:${m.room_name}, ${m.sender_name}, ${m.created_at}) ${m.content}`)
         .join('\n')
 
       const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -135,8 +135,18 @@ Deno.serve(async (req: Request) => {
         choices: { message: { content: string } }[]
         usage?: { total_tokens: number }
       }
-      const parsed = JSON.parse(aiData.choices[0].message.content) as { items: BriefingItem[] }
-      const items  = parsed.items ?? []
+      const parsed   = JSON.parse(aiData.choices[0].message.content) as { items: BriefingItem[] }
+      const rawItems = parsed.items ?? []
+
+      // Resolve source_room_id to UUID regardless of what GPT returned
+      const items = rawItems.map(item => {
+        const sourceMsg = msgs.find(m => m.id === item.source_message_id)
+        return {
+          ...item,
+          source_room_id:   sourceMsg?.room_id   ?? item.source_room_id,
+          source_room_name: sourceMsg?.room_name ?? item.source_room_name,
+        }
+      })
 
       if (items.length === 0) {
         results.push({ user_id: user.id, status: 'no_items' })
