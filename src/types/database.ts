@@ -92,7 +92,7 @@ export type Database = {
       rooms: {
         Row: {
           id:                           string
-          room_type:                    'direct' | 'group' | 'channel'
+          room_type:                    'direct' | 'group' | 'channel' | 'mint_dm'
           name:                         string | null
           created_by:                   string | null
           last_message:                 string | null
@@ -108,7 +108,7 @@ export type Database = {
         }
         Insert: {
           id?:                           string
-          room_type:                     'direct' | 'group' | 'channel'
+          room_type:                     'direct' | 'group' | 'channel' | 'mint_dm'
           name?:                         string | null
           created_by?:                   string | null
           last_message?:                 string | null
@@ -124,7 +124,7 @@ export type Database = {
         }
         Update: {
           id?:                           string
-          room_type?:                    'direct' | 'group' | 'channel'
+          room_type?:                    'direct' | 'group' | 'channel' | 'mint_dm'
           name?:                         string | null
           created_by?:                   string | null
           last_message?:                 string | null
