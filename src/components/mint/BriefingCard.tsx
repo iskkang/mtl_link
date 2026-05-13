@@ -100,20 +100,35 @@ export function BriefingCard({
   }
 
   const handleDismiss = async (idx: number) => {
-    _setItems(prev => prev.map((it, i) => i === idx ? { ...it, dismissed: true } : it))
-    await updateBriefingItem(_messageId, idx, { dismissed: true })
+    const prev = items
+    _setItems(items.map((it, i) => i === idx ? { ...it, dismissed: true } : it))
+    try {
+      await updateBriefingItem(_messageId, idx, { dismissed: true })
+    } catch {
+      _setItems(prev)
+    }
   }
 
   const handleComplete = async (idx: number) => {
     const next = !items[idx].completed
-    _setItems(prev => prev.map((it, i) => i === idx ? { ...it, completed: next } : it))
-    await updateBriefingItem(_messageId, idx, { completed: next })
+    const prev = items
+    _setItems(items.map((it, i) => i === idx ? { ...it, completed: next } : it))
+    try {
+      await updateBriefingItem(_messageId, idx, { completed: next })
+    } catch {
+      _setItems(prev)
+    }
   }
 
   const handlePin = async (idx: number) => {
     const next = !items[idx].pinned
-    _setItems(prev => prev.map((it, i) => i === idx ? { ...it, pinned: next } : it))
-    await updateBriefingItem(_messageId, idx, { pinned: next })
+    const prev = items
+    _setItems(items.map((it, i) => i === idx ? { ...it, pinned: next } : it))
+    try {
+      await updateBriefingItem(_messageId, idx, { pinned: next })
+    } catch {
+      _setItems(prev)
+    }
   }
 
   const visibleItems = items
