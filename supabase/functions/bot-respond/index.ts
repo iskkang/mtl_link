@@ -35,13 +35,33 @@ Company context: International freight forwarding company handling FCL/LCL, cust
 function detectSummaryCommand(content: string): { isSummary: boolean; range: 'today' | 'week' } {
   const text = content.toLowerCase()
   const isSummary =
-    text.includes('요약') ||
-    text.includes('summary') ||
-    text.includes('summarize')
+    // Korean
+    text.includes('요약') || text.includes('정리') ||
+    // English
+    text.includes('summary') || text.includes('summarize') ||
+    // Japanese
+    text.includes('まとめ') || text.includes('要約') ||
+    // Chinese
+    text.includes('总结') || text.includes('總結') ||
+    // Russian
+    text.includes('резюме') || text.includes('сводка') ||
+    // Uzbek
+    text.includes('qisqacha') || text.includes('xulosa')
   const range: 'today' | 'week' =
-    (text.includes('이번 주') || text.includes('주간') || text.includes('week'))
-      ? 'week'
-      : 'today'
+    (
+      // Korean
+      text.includes('이번 주') || text.includes('주간') ||
+      // English
+      text.includes('week') ||
+      // Japanese
+      text.includes('週間') || text.includes('今週') ||
+      // Chinese
+      text.includes('本周') || text.includes('本週') ||
+      // Russian
+      text.includes('неделю') || text.includes('недел') ||
+      // Uzbek
+      text.includes('hafta')
+    ) ? 'week' : 'today'
   return { isSummary, range }
 }
 

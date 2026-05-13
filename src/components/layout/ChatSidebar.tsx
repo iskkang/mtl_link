@@ -75,7 +75,15 @@ export function ChatSidebar({
 
   // Split rooms into channels and DMs for the new chat section layout
   const channelRooms = rooms.filter(r => r.room_type === 'channel')
-  const dmRooms      = rooms.filter(r => r.room_type !== 'channel')
+  const dmRooms = rooms.filter(r => {
+    if (r.room_type === 'channel') return false
+    // Exclude legacy bot direct DMs from sidebar (MINT appears only as mint_dm)
+    if (r.room_type === 'direct') {
+      const other = r.members.find(m => m.id !== (user?.id ?? ''))
+      return !other?.is_bot
+    }
+    return true
+  })
 
   return (
     <div

@@ -97,6 +97,15 @@ export default function ChatPage() {
     })
   }, [])
 
+  // Ensure mint_dm room exists for this user so it appears in sidebar
+  useEffect(() => {
+    if (!user?.id) return
+    getOrCreateMintDmRoom()
+      .then(() => fetchRooms())
+      .then(rooms => useRoomStore.getState().setRooms(rooms))
+      .catch(err => console.error('[mint_dm] ensure failed:', err))
+  }, [user?.id])
+
   usePollingRefresh(selectedRoomId)
   useDynamicFavicon()
 
@@ -114,6 +123,7 @@ export default function ChatPage() {
     setSelectedRoomId(id)
     setShowChat(true)
     setActiveSection('chat')
+    setHighlightMessageId(null)
   }
 
   const handleRoomCreated = (roomId: string) => {

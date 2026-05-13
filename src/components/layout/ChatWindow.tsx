@@ -33,8 +33,10 @@ import { PinnedMessagesPanel } from '../chat/PinnedMessagesPanel'
 import { usePinnedMessages } from '../../hooks/usePinnedMessages'
 import { ChannelSettingsPanel } from '../channels/ChannelSettingsPanel'
 import { pinMessage, unpinMessage, PIN_MAX } from '../../services/pinMessage'
-import { AiQuickActions } from '../ai/AiQuickActions'
-import { AiQuickBar }     from '../ai/AiQuickBar'
+import { AiQuickActions }       from '../ai/AiQuickActions'
+import { AiQuickBar }          from '../ai/AiQuickBar'
+import { MintEmptyState }      from '../mint/MintEmptyState'
+import { MintQuickActionChips } from '../mint/MintQuickActionChips'
 import { useAnnouncement } from '../../hooks/useAnnouncement'
 import type { MessageWithSender } from '../../types/chat'
 import type { PresenceStatus } from '../profile/StatusDot'
@@ -53,7 +55,7 @@ interface Props {
 export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, highlightMessageId, notifEnabled, onToggleNotif, onAiNavigate }: Props) {
   const { t } = useTranslation()
   const { mode } = useTheme()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const isDesktop = useIsDesktop()
   const room = useRoomStore(s => s.rooms.find(r => r.id === roomId) ?? null)
   const { removeRoom } = useRoomStore()
@@ -396,7 +398,12 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 {t('autoTranslateBanner')}
               </div>
             )}
-            {isBotRoom && !loading && messages.length === 0 ? (
+            {room.room_type === 'mint_dm' && !loading && messages.length === 0 ? (
+              <MintEmptyState
+                userName={profile?.name ?? ''}
+                onCardClick={handleQuickAction}
+              />
+            ) : isBotRoom && !loading && messages.length === 0 ? (
               <AiQuickActions onSelect={handleQuickAction} onNavigate={onAiNavigate} />
             ) : (
               <MessageList
@@ -421,7 +428,10 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
                 isBotTyping={isBotTyping}
               />
             )}
-            {isBotRoom && messages.length > 0 && (
+            {room.room_type === 'mint_dm' && messages.length > 0 && (
+              <MintQuickActionChips onChipClick={handleQuickAction} />
+            )}
+            {isBotRoom && room.room_type !== 'mint_dm' && messages.length > 0 && (
               <AiQuickBar onSelect={handleQuickAction} onNavigate={onAiNavigate} />
             )}
             {globalOpen && (
