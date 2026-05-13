@@ -144,6 +144,38 @@ export function BriefingCard({
     }
   }
 
+  const handleAddToCalendar = (item: BriefingItem) => {
+    const title   = encodeURIComponent(`[MTL] ${item.title}`)
+    const details = encodeURIComponent(item.description)
+    const date    = item.due_at
+      ? new Date(item.due_at).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+      : new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${date}/${date}&details=${details}`
+    window.open(url, '_blank')
+  }
+
+  const handleDownloadICS = (item: BriefingItem) => {
+    const date = item.due_at
+      ? new Date(item.due_at).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+      : new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      `SUMMARY:[MTL] ${item.title}`,
+      `DESCRIPTION:${item.description}`,
+      `DTSTART:${date}`,
+      `DTEND:${date}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n')
+    const blob = new Blob([ics], { type: 'text/calendar' })
+    const a    = document.createElement('a')
+    a.href     = URL.createObjectURL(blob)
+    a.download = `${item.title}.ics`
+    a.click()
+  }
+
   if (_deleted) return null
 
   const visibleItems = items
@@ -234,24 +266,48 @@ export function BriefingCard({
               <div className="text-[12px] text-[#64748b] mb-2.5 leading-[1.5] pl-[22px]">
                 {item.description}
               </div>
-              {/* 하단 행: 채팅 보기 + X */}
-              <div className="flex items-center justify-end gap-2 pl-[22px]">
-                {item.source_room_id && item.source_message_id && (
+              {/* 하단 행: 캘린더(deadline만) + 채팅 보기 + X */}
+              <div className="flex items-center justify-between pl-[22px]">
+                <div className="flex gap-1">
+                  {item.category === 'deadline' && (
+                    <>
+                      <button
+                        onClick={() => handleAddToCalendar(item)}
+                        className="inline-flex items-center gap-0.5 text-[10px] text-[#64748b] hover:text-[#0d9488] transition-colors"
+                        title={t('briefingCalendar')}
+                      >
+                        <_CalendarPlus size={11} />
+                        Google
+                      </button>
+                      <button
+                        onClick={() => handleDownloadICS(item)}
+                        className="inline-flex items-center gap-0.5 text-[10px] text-[#64748b] hover:text-[#0d9488] transition-colors"
+                        title="ICS"
+                      >
+                        <_CalendarPlus size={11} />
+                        ICS
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {item.source_room_id && item.source_message_id && (
+                    <button
+                      onClick={() => handleViewChat(item)}
+                      className="inline-flex items-center gap-1 text-[11px] text-[#0d9488] font-medium hover:underline"
+                    >
+                      {t('briefingViewChat')}
+                      <ArrowRight size={12} />
+                    </button>
+                  )}
                   <button
-                    onClick={() => handleViewChat(item)}
-                    className="inline-flex items-center gap-1 text-[11px] text-[#0d9488] font-medium hover:underline"
+                    onClick={() => handleDismiss(idx)}
+                    className="p-0.5 text-[#cbd5e1] hover:text-[#ef4444] transition-colors"
+                    aria-label={t('briefingDismiss')}
                   >
-                    {t('briefingViewChat')}
-                    <ArrowRight size={12} />
+                    <_X size={12} />
                   </button>
-                )}
-                <button
-                  onClick={() => handleDismiss(idx)}
-                  className="p-0.5 text-[#cbd5e1] hover:text-[#ef4444] transition-colors"
-                  aria-label={t('briefingDismiss')}
-                >
-                  <_X size={12} />
-                </button>
+                </div>
               </div>
             </div>
           )
