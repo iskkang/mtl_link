@@ -327,6 +327,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         pinnedCount={pinnedCount}
         onTogglePinPanel={() => setPinPanelOpen(o => !o)}
         onToggleChannelSettings={isChannel ? () => setChannelSettingsOpen(o => !o) : undefined}
+        roomId={roomId ?? undefined}
       />
 
       {/* ── 공지 배너 ─────────────────────────────────── */}

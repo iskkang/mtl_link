@@ -1,9 +1,11 @@
+import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, Globe, ChevronDown, Search, Pin, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '../ui/Avatar'
 import { ChatHeaderMenu } from './ChatHeaderMenu'
 import { StatusDot } from '../profile/StatusDot'
 import { getLangName } from '../../lib/langFlags'
+import { ChannelMembersPopover } from './ChannelMembersPopover'
 import type { PresenceStatus } from '../profile/StatusDot'
 
 interface Props {
@@ -34,6 +36,7 @@ interface Props {
   pinnedCount?:    number
   onTogglePinPanel?:       () => void
   onToggleChannelSettings?: () => void
+  roomId?: string
 }
 
 export function ChatHeader({
@@ -43,9 +46,27 @@ export function ChatHeader({
   effectivePeerLang, onOpenTranslation,
   searchOpen, onToggleSearch,
   notifEnabled, onToggleNotif, isAnnouncement, isChannel, onLeave, onDelete,
-  pinnedCount, onTogglePinPanel, onToggleChannelSettings,
+  pinnedCount, onTogglePinPanel, onToggleChannelSettings, roomId,
 }: Props) {
   const { t } = useTranslation()
+  const [membersOpen, setMembersOpen] = useState(false)
+  const membersContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!membersOpen) return
+    const onMouseDown = (e: MouseEvent) => {
+      if (membersContainerRef.current && !membersContainerRef.current.contains(e.target as Node)) {
+        setMembersOpen(false)
+      }
+    }
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setMembersOpen(false) }
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [membersOpen])
 
   return (
     <header
@@ -96,9 +117,24 @@ export function ChatHeader({
               <p className="text-[13px] font-semibold truncate leading-tight" style={{ color: 'var(--ink)' }}>
                 {displayName}
               </p>
-              <p className="text-[11px] leading-tight mt-0.5 truncate" style={{ color: 'var(--ink-3)' }}>
-                {peerStatusMessage || headerSubtitle}
-              </p>
+              {isChannel && roomId ? (
+                <div ref={membersContainerRef} className="relative">
+                  <button
+                    onClick={() => setMembersOpen(o => !o)}
+                    className="text-[11px] leading-tight mt-0.5 truncate max-w-full text-left"
+                    style={{ color: 'var(--ink-3)', textDecoration: membersOpen ? 'underline' : undefined }}
+                    onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                    onMouseLeave={e => (e.currentTarget.style.textDecoration = membersOpen ? 'underline' : 'none')}
+                  >
+                    {headerSubtitle}
+                  </button>
+                  {membersOpen && <ChannelMembersPopover roomId={roomId} />}
+                </div>
+              ) : (
+                <p className="text-[11px] leading-tight mt-0.5 truncate" style={{ color: 'var(--ink-3)' }}>
+                  {peerStatusMessage || headerSubtitle}
+                </p>
+              )}
             </div>
           </div>
         ) : (
