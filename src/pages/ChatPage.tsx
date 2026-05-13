@@ -3,7 +3,7 @@ import { AppLayout }          from '../components/layout/AppLayout'
 import { ChatWindow }         from '../components/layout/ChatWindow'
 import { NewRoomModal }       from '../components/chat/NewRoomModal'
 import { NotificationPrompt } from '../components/ui/NotificationPrompt'
-import { createDirectRoom, fetchRooms } from '../services/roomService'
+import { createDirectRoom, fetchRooms, getOrCreateMintDmRoom } from '../services/roomService'
 import { BOT_USER_ID }        from '../constants/bot'
 import { aiEvents, chatEvents } from '../lib/aiEvents'
 import { useAuth }            from '../hooks/useAuth'
@@ -62,8 +62,14 @@ export default function ChatPage() {
   // Reset AI view when the selected room changes
   useEffect(() => { setActiveAiView('chat') }, [selectedRoomId])
 
-  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => setActiveAiView(view)
-  const handleAiBack     = () => setActiveAiView('chat')
+  const handleAiNavigate = (view: 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'tracking') => {
+    setActiveAiView(view)
+    setActiveSection('ai')
+  }
+  const handleAiBack = () => {
+    setActiveAiView('chat')
+    setActiveSection('chat')
+  }
 
   const handleAiSessionDelete      = () => { setActiveSessionId(null); setAiSidebarVersion(v => v + 1) }
   const handleAiSessionTitleChange = () => setAiSidebarVersion(v => v + 1)
@@ -124,8 +130,7 @@ export default function ChatPage() {
         useRoomStore.getState().resetUnread(roomId)
         setSelectedRoomId(roomId)
         setShowChat(true)
-        setActiveAiView('chat')
-        // activeSection은 'ai' 그대로 유지
+        setActiveSection('chat')
       } else {
         handleSelectRoom(roomId)
       }
@@ -155,6 +160,20 @@ export default function ChatPage() {
         handleSelectRoom(roomId)
       } catch (err) {
         console.error('봇 방 생성 실패:', err)
+      }
+      return
+    }
+    if (s === 'ai') {
+      try {
+        const roomId = await getOrCreateMintDmRoom()
+        const updatedRooms = await fetchRooms()
+        useRoomStore.getState().setRooms(updatedRooms)
+        useRoomStore.getState().resetUnread(roomId)
+        setSelectedRoomId(roomId)
+        setShowChat(true)
+        setActiveSection('chat')
+      } catch (err) {
+        console.error('MINT 방 진입 실패:', err)
       }
       return
     }
