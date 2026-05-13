@@ -40,6 +40,17 @@ export function Avatar({ name, avatarUrl, avatarColor, size = 'md', className = 
   const bg = avatarColor ?? colorFor(name)
 
   if (is_bot) {
+    if (avatarUrl) {
+      const imgSize = size === 'xs' ? 'w-4 h-4' : size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-8 h-8' : 'w-7 h-7'
+      return (
+        <div
+          className={`${sizeClass} rounded-lg flex items-center justify-center flex-shrink-0 border ${className}`}
+          style={{ background: '#f0fdfa', borderColor: '#ccfbf1' }}
+        >
+          <img src={avatarUrl} alt={name} className={imgSize} />
+        </div>
+      )
+    }
     return (
       <div
         className={`${sizeClass} rounded-full flex items-center justify-center flex-shrink-0 ${className}`}
