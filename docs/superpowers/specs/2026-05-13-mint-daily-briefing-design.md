@@ -317,16 +317,18 @@ import { BOT_USER_ID } from '../../constants/bot'
 
 ### i18n 추가 키 (8개 × 6언어)
 
+**중요:** i18next `keySeparator` 기본값이 `.`이므로 점 표기법 사용 불가. camelCase 키 사용.
+
 | 키 | ko | en | zh | ja | ru | uz |
 |----|-----|-----|-----|-----|-----|-----|
-| `briefing.category.deadline` | 마감 | Deadline | 截止 | 締切 | Срок | Muddat |
-| `briefing.category.action` | 할일 | Action | 待办 | やること | Задача | Vazifa |
-| `briefing.category.pending` | 회신 대기 | Pending | 等待回复 | 返信待ち | Ожидание | Kutilmoqda |
-| `briefing.category.alert` | 리스크 | Alert | 风险 | リスク | Риск | Xavf |
-| `briefing.viewChat` | 채팅 보기 | View chat | 查看聊天 | チャットを見る | Открыть | Chatni ko'rish |
-| `briefing.viewAll` | 전체 일정 보기 | View all | 查看全部 | すべて見る | Все события | Hammasini ko'rish |
-| `briefing.privacy` | 본인 관련 메시지(DM·멘션·본인 발신)만 분석합니다 | Only your accessible messages are analyzed | 仅分析您可访问的消息 | 自分宛のメッセージのみ分析します | Анализируются только ваши сообщения | Faqat siz kira oladigan xabarlar tahlil qilinadi |
-| `briefing.learnMore` | 자세히 | Learn more | 详情 | 詳細 | Подробнее | Batafsil |
+| `briefingDeadline` | 마감 | Deadline | 截止 | 締切 | Срок | Muddat |
+| `briefingAction` | 할일 | Action | 待办 | やること | Задача | Vazifa |
+| `briefingPending` | 회신 대기 | Pending | 等待回复 | 返信待ち | Ожидание | Kutilmoqda |
+| `briefingAlert` | 리스크 | Alert | 风险 | リスク | Риск | Xavf |
+| `briefingViewChat` | 채팅 보기 | View chat | 查看聊天 | チャットを見る | Открыть | Chatni ko'rish |
+| `briefingViewAll` | 전체 일정 보기 | View all | 查看全部 | すべて見る | Все события | Hammasini ko'rish |
+| `briefingPrivacy` | 본인 관련 메시지(DM·멘션·본인 발신)만 분석합니다 | Only your accessible messages are analyzed | 仅分析您可访问的消息 | 自分宛のメッセージのみ分析します | Анализируются только ваши сообщения | Faqat siz kira oladigan xabarlar tahlil qilinadi |
+| `briefingLearnMore` | 자세히 | Learn more | 详情 | 詳細 | Подробнее | Batafsil |
 
 ### TypeScript 타입 업데이트
 
