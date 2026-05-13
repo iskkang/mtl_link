@@ -177,6 +177,13 @@ export async function createDirectRoom(targetUserId: string): Promise<string> {
   return data as string
 }
 
+/** MINT DM 방 — 없으면 생성, 있으면 기존 반환 */
+export async function getOrCreateMintDmRoom(): Promise<string> {
+  const { data, error } = await supabase.rpc('get_or_create_mint_dm_room')
+  if (error) throw error
+  return data as string
+}
+
 /** 그룹 채팅 생성 */
 export async function createGroupRoom(name: string, memberIds: string[]): Promise<string> {
   const { data, error } = await supabase.rpc('create_group_room', {
@@ -341,7 +348,7 @@ export async function deleteRoom(roomId: string): Promise<void> {
 
 /** DM: 상대방 이름, 그룹: 방 이름 */
 export function getRoomDisplayName(room: RoomListItem, currentUserId: string): string {
-  if (room.room_type === 'direct') {
+  if (room.room_type === 'direct' || room.room_type === 'mint_dm') {
     const other = room.members.find(m => m.id !== currentUserId)
     return other?.name ?? '알 수 없음'
   }
@@ -352,7 +359,7 @@ export function getRoomAvatarInfo(
   room: RoomListItem,
   currentUserId: string,
 ): { name: string; avatarUrl: string | null; avatarColor?: string | null } {
-  if (room.room_type === 'direct') {
+  if (room.room_type === 'direct' || room.room_type === 'mint_dm') {
     const other = room.members.find(m => m.id !== currentUserId)
     return { name: other?.name ?? '?', avatarUrl: other?.avatar_url ?? null, avatarColor: other?.avatar_color ?? null }
   }

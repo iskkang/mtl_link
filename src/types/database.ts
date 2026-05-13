@@ -959,6 +959,10 @@ export type Database = {
         Args: { p_target_user_id: string }
         Returns: string
       }
+      get_or_create_mint_dm_room: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       create_group_room: {
         Args: { p_name: string; p_member_ids: string[] }
         Returns: string
