@@ -54,6 +54,7 @@ export async function sendTextMessage(
     forwarded_from_user_id:     null,
     forwarded_from_user_name:   null,
     forwarded_from_message_id:  null,
+    payload:                    null,
     sender:                     null,
     attachments:                [],
     reply_message:              replyMessage ?? null,

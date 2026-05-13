@@ -205,8 +205,9 @@ export type Database = {
           id:                   string
           room_id:              string
           sender_id:            string | null
-          message_type:         'text' | 'image' | 'file' | 'link' | 'system' | 'voice_translated' | 'text_translated'
+          message_type:         'text' | 'image' | 'file' | 'link' | 'system' | 'voice_translated' | 'text_translated' | 'mint_briefing'
           content:              string | null
+          payload:              Json | null
           content_original:     string | null
           source_language:      SupportedLanguage | null
           target_language:      SupportedLanguage | null
@@ -229,8 +230,9 @@ export type Database = {
           id?:                   string
           room_id:               string
           sender_id?:            string | null
-          message_type?:         'text' | 'image' | 'file' | 'link' | 'system' | 'voice_translated' | 'text_translated'
+          message_type?:         'text' | 'image' | 'file' | 'link' | 'system' | 'voice_translated' | 'text_translated' | 'mint_briefing'
           content?:              string | null
+          payload?:              Json | null
           content_original?:     string | null
           source_language?:      SupportedLanguage | null
           target_language?:      SupportedLanguage | null
@@ -253,8 +255,9 @@ export type Database = {
           id?:                   string
           room_id?:              string
           sender_id?:            string | null
-          message_type?:         'text' | 'image' | 'file' | 'link' | 'system' | 'voice_translated' | 'text_translated'
+          message_type?:         'text' | 'image' | 'file' | 'link' | 'system' | 'voice_translated' | 'text_translated' | 'mint_briefing'
           content?:              string | null
+          payload?:              Json | null
           content_original?:     string | null
           source_language?:      SupportedLanguage | null
           target_language?:      SupportedLanguage | null
