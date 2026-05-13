@@ -134,7 +134,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
   const avatarInfo    = room ? getRoomAvatarInfo(room, currentUserId) : null
   const isChannel     = room?.room_type === 'channel'
   const isGroup       = room?.room_type === 'group' || isChannel
-  const isDirect      = !!room && room.room_type === 'direct'
+  const isDirect      = !!room && (room.room_type === 'direct' || room.room_type === 'mint_dm')
   const memberCount   = room?.members.length ?? 0
   const isOwner       = !!room && room.created_by === currentUserId
 
