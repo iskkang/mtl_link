@@ -21,6 +21,7 @@ interface BriefingItem {
 
 export interface BriefingPayload {
   briefing_id: string
+  briefing_type?: 'daily' | 'weekly'
   locale: string
   greeting: string
   summary: string
@@ -47,6 +48,7 @@ function formatDueAt(iso: string): string {
 export function BriefingCard({ payload }: { payload: BriefingPayload }) {
   const { t } = useTranslation()
   const [feedback, setFeedback] = useState<1 | -1 | null>(null)
+  const isWeekly = (payload.briefing_type ?? 'daily') === 'weekly'
 
   const handleViewChat = (item: BriefingItem) => {
     if (!item.source_room_id || !item.source_message_id) return
@@ -65,8 +67,15 @@ export function BriefingCard({ payload }: { payload: BriefingPayload }) {
 
   return (
     <div className="max-w-[540px]">
-      <div className="text-[14px] text-[#0f172a] leading-[1.5] mb-1 font-medium">
-        {payload.greeting}
+      <div className="flex items-center gap-2 mb-1">
+        {isWeekly && (
+          <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex-shrink-0">
+            {t('briefingWeeklyLabel')}
+          </span>
+        )}
+        <span className="text-[14px] text-[#0f172a] leading-[1.5] font-medium">
+          {payload.greeting}
+        </span>
       </div>
       <div className="text-[12px] text-[#64748b] mb-[14px]">
         {payload.summary}

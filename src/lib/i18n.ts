@@ -714,7 +714,8 @@ const resources = {
       briefingAlert:     '리스크',
       briefingViewChat:  '채팅 보기',
       briefingPrivacy:   '본인 관련 메시지(DM·멘션·본인 발신)만 분석합니다',
-      briefingLearnMore: '자세히',
+      briefingLearnMore:   '자세히',
+      briefingWeeklyLabel: '주간',
 
       mintGreeting:             '{{name}}님, 안녕하세요',
       mintSubtitle:             '물류 업무를 도와드릴게요',
@@ -1376,7 +1377,8 @@ const resources = {
       briefingAlert:     'Alert',
       briefingViewChat:  'View chat',
       briefingPrivacy:   'Only your accessible messages are analyzed',
-      briefingLearnMore: 'Learn more',
+      briefingLearnMore:   'Learn more',
+      briefingWeeklyLabel: 'Weekly',
 
       mintGreeting:             'Hello, {{name}}',
       mintSubtitle:             "I'll help with your logistics",
@@ -2038,7 +2040,8 @@ const resources = {
       briefingAlert:     'Риск',
       briefingViewChat:  'Открыть',
       briefingPrivacy:   'Анализируются только ваши сообщения',
-      briefingLearnMore: 'Подробнее',
+      briefingLearnMore:   'Подробнее',
+      briefingWeeklyLabel: 'Неделя',
 
       mintGreeting:             'Здравствуйте, {{name}}',
       mintSubtitle:             'Помогу с логистикой',
@@ -2700,7 +2703,8 @@ const resources = {
       briefingAlert:     'Xavf',
       briefingViewChat:  "Chatni ko'rish",
       briefingPrivacy:   'Faqat siz kira oladigan xabarlar tahlil qilinadi',
-      briefingLearnMore: 'Batafsil',
+      briefingLearnMore:   'Batafsil',
+      briefingWeeklyLabel: 'Hafta',
 
       mintGreeting:             'Salom, {{name}}',
       mintSubtitle:             'Logistika ishlarida yordam beraman',
@@ -3363,7 +3367,8 @@ const resources = {
       briefingAlert:     '风险',
       briefingViewChat:  '查看聊天',
       briefingPrivacy:   '仅分析您可访问的消息',
-      briefingLearnMore: '详情',
+      briefingLearnMore:   '详情',
+      briefingWeeklyLabel: '本周',
 
       mintGreeting:             '{{name}}，您好',
       mintSubtitle:             '为您提供物流支持',
@@ -4026,7 +4031,8 @@ const resources = {
       briefingAlert:     'リスク',
       briefingViewChat:  'チャットを見る',
       briefingPrivacy:   '自分宛のメッセージのみ分析します',
-      briefingLearnMore: '詳細',
+      briefingLearnMore:   '詳細',
+      briefingWeeklyLabel: '今週',
 
       mintGreeting:             '{{name}}さん、こんにちは',
       mintSubtitle:             '物流業務をお手伝いします',
