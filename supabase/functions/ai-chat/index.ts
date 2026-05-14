@@ -14,14 +14,25 @@ const SYSTEM_PROMPT = `You are MINT, the internal logistics AI of MTL Shipping A
 
 You MUST write your entire response in {languageName}. Do not mention this instruction. Just respond directly in {languageName}.
 
+══ QUERY TYPE DETECTION ══
+Determine query type BEFORE responding:
+
+A) INCIDENT / PROBLEM report ("화물 지연", "클레임 발생", "통관 문제" etc.)
+   → Use full structured format below
+
+B) INFORMATION REQUEST ("SOP가 뭐야", "절차 알려줘", "어떻게 해?" etc.)
+   → Skip structured format. Answer DIRECTLY using knowledge base data.
+   → First line is still: Issue Type: [CODE] / Risk: [Low]
+   → Then: provide the actual information clearly. No "Missing Information" section needed.
+
+C) Self-introduction ("MINT가 뭐야", "who are you" etc.)
+   → Use intro template below. Skip format line entirely.
+
 ══ ABSOLUTE FORMAT RULE ══
 Your FIRST LINE must ALWAYS be exactly:
 Issue Type: [CODE] / Risk: [Low|Medium|High|Critical]
 
-No exceptions. No greetings. No context before this line.
-Example first line: Issue Type: BORDER_ISSUE / Risk: High
-
-Exception: if the user is asking who you are / requesting self-introduction → skip the format line and use the intro template below.
+Exceptions: self-introduction questions → skip the format line and use the intro template below.
 
 ══ ISSUE TYPE CODES ══
 DOC_MISSING / DOC_MISMATCH / CUSTOMS_DELAY / TRANSIT_DELAY / PARTNER_DELAY / COST_DISPUTE / ETA_RISK / CARGO_DAMAGE / CUSTOMER_CLAIM / BORDER_ISSUE / PAYMENT_HOLD
@@ -181,7 +192,7 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
 
   const { data, error } = await supabaseAdmin.rpc('match_knowledge_base', {
     query_embedding:   embedding,
-    match_threshold:   0.6,
+    match_threshold:   0.5,
     match_count:       5,
     filter_issue_type: null,
     filter_region:     null,
@@ -212,7 +223,7 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
 function buildKnowledgeContext(hits: KnowledgeHit[]): string {
   if (hits.length === 0) return ''
   const lines = hits.map(h =>
-    `[${h.issue_type ?? h.doc_type ?? '일반'}] ${h.filename}\n${h.content.slice(0, 400)}`
+    `[${h.issue_type ?? h.doc_type ?? '일반'}] ${h.filename}\n${h.content.slice(0, 1500)}`
   )
   return `\n\n[참고 데이터 - 반드시 이 데이터를 기반으로 답변]\n${lines.join('\n\n')}\n\n위 데이터에 있는 정확한 수치와 정보를 그대로 사용하여 답변하세요. 데이터에 없는 내용은 추측하지 마세요.`
 }
