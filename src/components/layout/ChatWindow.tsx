@@ -7,7 +7,7 @@ import { useMessages } from '../../hooks/useMessages'
 import { useMessageSearch } from '../../hooks/useMessageSearch'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
 import { useRoomStore } from '../../stores/roomStore'
-import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom, getOrCreateMintDmRoom, fetchRooms } from '../../services/roomService'
+import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
 import { sendFileMessage } from '../../services/messageService'
 import { getLangName } from '../../lib/langFlags'
 import { validateFiles } from '../../lib/fileValidation'
@@ -283,21 +283,16 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
 
   const handleLeave = async () => {
     if (!roomId) return
-    const wasMintDm = room?.room_type === 'mint_dm'
-    await leaveRoom(roomId)
-    removeRoom(roomId)
 
-    if (wasMintDm) {
-      // mint_dm은 나가기 후 즉시 새 방 재생성 → 방 목록 갱신 완료 후 navigate
-      try {
-        await getOrCreateMintDmRoom()
-        const updated = await fetchRooms()
-        useRoomStore.getState().setRooms(updated)
-      } catch (err) {
-        console.error('[mint_dm] rejoin failed:', err)
-      }
+    if (room?.room_type === 'mint_dm') {
+      // mint_dm은 실제로 방을 나가지 않음 → 그냥 목록으로 이동
+      // DB 멤버십 유지 = MINT가 항상 DM 목록에 남아 있음
+      onLeaveOrDelete?.(t('directLeaveToast'))
+      return
     }
 
+    await leaveRoom(roomId)
+    removeRoom(roomId)
     onLeaveOrDelete?.(isDirect ? t('directLeaveToast') : t('leaveRoomToast'))
   }
 
