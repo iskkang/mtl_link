@@ -6,6 +6,7 @@ interface MessageStore {
   messagesByRoom:  Record<string, MessageWithSender[]>
   loadingByRoom:   Record<string, boolean>
   hasMoreByRoom:   Record<string, boolean>
+  hiddenByRoom:    Record<string, Set<string>>
 
   fetchMessages:        (roomId: string, before?: string) => Promise<void>
   upsertMessage:        (roomId: string, msg: MessageWithSender) => void
@@ -15,6 +16,8 @@ interface MessageStore {
   setTranslation:      (roomId: string, messageId: string, text: string) => void
   setReactions:        (roomId: string, messageId: string, reactions: { emoji: string; user_id: string }[]) => void
   patchSender:         (userId: string, patch: Partial<NonNullable<MessageWithSender['sender']>>) => void
+  setHiddenIds:        (roomId: string, ids: string[]) => void
+  hideMessage:         (roomId: string, messageId: string) => void
 }
 
 export const MSG_SELECT = `
@@ -69,6 +72,7 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
   messagesByRoom: {},
   loadingByRoom:  {},
   hasMoreByRoom:  {},
+  hiddenByRoom:   {},
 
   // ─── 메시지 불러오기 ────────────────────────────────────────
   fetchMessages: async (roomId, before) => {
@@ -208,6 +212,17 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     const next = [...list]
     next[idx] = { ...next[idx], reactions }
     return { messagesByRoom: { ...s.messagesByRoom, [roomId]: next } }
+  }),
+
+  setHiddenIds: (roomId, ids) => set(s => ({
+    hiddenByRoom: { ...s.hiddenByRoom, [roomId]: new Set(ids) },
+  })),
+
+  hideMessage: (roomId, messageId) => set(s => {
+    const prev = s.hiddenByRoom[roomId] ?? new Set<string>()
+    const next  = new Set(prev)
+    next.add(messageId)
+    return { hiddenByRoom: { ...s.hiddenByRoom, [roomId]: next } }
   }),
 
   patchSender: (userId, patch) => set(s => ({

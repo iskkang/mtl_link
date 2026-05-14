@@ -33,6 +33,23 @@ export function useMessages(roomId: string | null) {
     if (!store.messagesByRoom[roomId]) {
       store.fetchMessages(roomId)
         .then(async () => {
+          // 나에게만 삭제된 메시지 ID 로드
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const msgs = useMessageStore.getState().messagesByRoom[roomId]
+            const msgIds = (msgs ?? []).map(m => m.id).filter(Boolean)
+            if (msgIds.length > 0) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { data: hides } = await (supabase as any)
+                .from('message_hides')
+                .select('message_id')
+                .eq('user_id', user.id)
+                .in('message_id', msgIds)
+              if (hides && hides.length > 0) {
+                useMessageStore.getState().setHiddenIds(roomId, (hides as { message_id: string }[]).map(h => h.message_id))
+              }
+            }
+          }
           // DB의 rooms.last_message가 null인 경우 로드된 메시지로 동기화
           const msgs = useMessageStore.getState().messagesByRoom[roomId]
           if (!msgs?.length) return

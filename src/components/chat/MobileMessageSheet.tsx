@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, MessageSquare, CornerUpLeft, Forward, Pin, PinOff } from 'lucide-react'
+import { Copy, CheckSquare, Clock, CheckCheck, Pencil, Trash2, EyeOff, MessageSquare, CornerUpLeft, Forward, Pin, PinOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { MessageActions, MessageActionContext } from './messageActions'
 import { QuickEmojiPicker } from './QuickEmojiPicker'
@@ -14,7 +14,7 @@ export function MobileMessageSheet({
   isOwn, canEdit, needsResponse, responseReceived,
   onCopy, onCreateTask, onOpenThread,
   onMarkFollowup, onUnmarkRequest, onMarkReceived,
-  onEdit, onDelete, onReact, onReply, onForward, onPin, onUnpin,
+  onEdit, onDelete, onHideForMe, onReact, onReply, onForward, onPin, onUnpin,
   isPinned, isMyPin,
 }: Props) {
   const { t } = useTranslation()
@@ -106,6 +106,14 @@ export function MobileMessageSheet({
                 title={!canEdit ? t('msgEditExpired') : undefined}
               />
               <SheetRow icon={Trash2} label={t('msgDelete')} onClick={act(onDelete)} danger />
+            </>
+          )}
+
+          {/* 나에게만 삭제 (상대방 메시지) */}
+          {!isOwn && onHideForMe && (
+            <>
+              <div className="mx-4 my-1 border-t" style={{ borderColor: 'var(--line)' }} />
+              <SheetRow icon={EyeOff} label={t('msgHideForMe')} onClick={act(onHideForMe)} danger />
             </>
           )}
         </div>

@@ -24,7 +24,7 @@ import { formatMessageTime, formatFullDateTime } from '../../lib/date'
 import { useAuth } from '../../hooks/useAuth'
 import { useMessageTranslation } from '../../hooks/useMessageTranslation'
 import { useMessageStore } from '../../stores/messageStore'
-import { editMessage, softDeleteMessage } from '../../services/messageService'
+import { editMessage, softDeleteMessage, hideMessageForMe } from '../../services/messageService'
 import { toggleReaction } from '../../services/reactionService'
 import type { MessageWithSender, RoomListItem } from '../../types/chat'
 import { useRoomStore } from '../../stores/roomStore'
@@ -164,7 +164,9 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
 
   const readStatus = useReadStatus(message, isGroup, members, currentUserId)
 
-  if (message.deleted_at) {
+  const isHiddenForMe = useMessageStore(s => s.hiddenByRoom[message.room_id!]?.has(message.id) ?? false)
+
+  if (message.deleted_at || isHiddenForMe) {
     return (
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1 px-2 md:px-3`}>
         <span className="text-xs italic px-3 py-1.5" style={{ color: 'var(--ink-4)' }}>
@@ -218,6 +220,13 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       ...message,
       deleted_at: new Date().toISOString(),
     })
+  }
+
+  // 나에게만 삭제
+  const handleHideForMe = async () => {
+    if (!message.room_id) return
+    await hideMessageForMe(message.id)
+    useMessageStore.getState().hideMessage(message.room_id, message.id)
   }
 
   if (message.message_type === 'mint_briefing' && message.payload) {
@@ -490,6 +499,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
                 onMarkReceived={isOwn ? handleMarkReceived : undefined}
                 onEdit={isOwn ? () => setEditing(true) : undefined}
                 onDelete={isOwn ? () => setDeleteOpen(true) : undefined}
+                onHideForMe={!isOwn ? handleHideForMe : undefined}
                 onReact={handleReact}
                 onReply={onReply}
                 onForward={onForward}

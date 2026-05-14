@@ -135,6 +135,16 @@ export async function softDeleteMessage(messageId: string): Promise<void> {
   if (error) throw error
 }
 
+export async function hideMessageForMe(messageId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('message_hides')
+    .upsert({ message_id: messageId, user_id: user.id }, { onConflict: 'message_id,user_id' })
+  if (error) throw error
+}
+
 // ─── 파일 메시지 ─────────────────────────────────────────────────
 
 export async function sendFileMessage(

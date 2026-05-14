@@ -8,6 +8,7 @@ export interface MessageActions {
   onMarkReceived?:  () => void
   onEdit?:          () => void
   onDelete?:        () => void
+  onHideForMe?:     () => void
   onReact?:         (emoji: string) => void
   onReply?:         () => void
   onForward?:       () => void
