@@ -58,6 +58,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
   const menuRef    = useRef<HTMLDivElement>(null)
   const idleTextareaRef   = useRef<HTMLTextAreaElement>(null)
   const activeTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const justCreatedSessionRef = useRef<string | null>(null)
 
   // Reflect title renames from sidebar
   useEffect(() => {
@@ -79,6 +80,14 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
   // Load messages when sessionId changes
   useEffect(() => {
     if (!sessionId || !user) { setMessages([]); setSessionTitle(''); return }
+
+    // 방금 로컬에서 새로 만든 세션이면 DB fetch 스킵
+    // (사용자 메시지는 이미 로컬 state에 있고, 응답은 곧 도착할 예정)
+    if (justCreatedSessionRef.current === sessionId) {
+      justCreatedSessionRef.current = null
+      return
+    }
+
     setFetching(true)
     void supabase
       .from('ai_conversations')
@@ -110,7 +119,10 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
     if (!content || loading || !user) return
 
     const sid = sessionId ?? crypto.randomUUID()
-    if (!sessionId) onNewSession(sid)
+    if (!sessionId) {
+      justCreatedSessionRef.current = sid
+      onNewSession(sid)
+    }
 
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content }])
     setDraft('')
