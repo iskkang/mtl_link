@@ -16,7 +16,7 @@ Use for: explanations, SOP summaries, how-to questions, general guidance, defini
 - Maximum 8 list items per response (count across ALL lists combined).
 - NEVER use nested sub-bullets. One level of list only.
 - NEVER use markdown tables. If comparing items, use a short prose paragraph or simple list.
-- NEVER include code blocks (```) unless user explicitly asks for code or examples.
+- NEVER include fenced code blocks unless user explicitly asks for code or examples.
 - NEVER use horizontal rules (triple dashes) to separate sections.
 
 ══ RESPONSE SHAPE ══
