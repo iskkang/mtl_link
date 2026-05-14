@@ -7,7 +7,7 @@ import { useMessages } from '../../hooks/useMessages'
 import { useMessageSearch } from '../../hooks/useMessageSearch'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
 import { useRoomStore } from '../../stores/roomStore'
-import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom } from '../../services/roomService'
+import { getRoomDisplayName, getRoomAvatarInfo, leaveRoom, deleteRoom, getOrCreateMintDmRoom, fetchRooms } from '../../services/roomService'
 import { sendFileMessage } from '../../services/messageService'
 import { getLangName } from '../../lib/langFlags'
 import { validateFiles } from '../../lib/fileValidation'
@@ -283,9 +283,17 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
 
   const handleLeave = async () => {
     if (!roomId) return
+    const wasMintDm = room?.room_type === 'mint_dm'
     await leaveRoom(roomId)
     removeRoom(roomId)
     onLeaveOrDelete?.(isDirect ? t('directLeaveToast') : t('leaveRoomToast'))
+    if (wasMintDm) {
+      // 나간 후 MINT DM 방 즉시 재생성 → DM 목록에 계속 표시
+      getOrCreateMintDmRoom()
+        .then(() => fetchRooms())
+        .then(rooms => useRoomStore.getState().setRooms(rooms))
+        .catch(err => console.error('[mint_dm] rejoin failed:', err))
+    }
   }
 
   const handleDelete = async () => {
@@ -321,7 +329,6 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         onToggleNotif={onToggleNotif}
         isAnnouncement={room?.is_announcement}
         isChannel={isChannel}
-        isMintDm={room?.room_type === 'mint_dm'}
         onLeave={() => setLeaveOpen(true)}
         onDelete={() => setDeleteOpen(true)}
         pinnedCount={pinnedCount}
