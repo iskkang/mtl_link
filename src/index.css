@@ -306,6 +306,11 @@ body, .chat-panel, .chat-header, .composer-panel,
 .menu-rail-scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* ── ai-markdown: MINT 마크다운 렌더 스타일 (MINT+ 및 MINT DM 공유) ── */
+.ai-markdown {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 .ai-markdown > *:first-child { margin-top: 0 !important; }
 .ai-markdown > *:last-child  { margin-bottom: 0 !important; }
 .ai-markdown p { margin: 0 0 0.85em; }
@@ -338,7 +343,7 @@ body, .chat-panel, .chat-header, .composer-panel,
 }
 .ai-markdown pre {
   background: var(--chat-bg); border: 1px solid var(--line);
-  border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0.75em 0;
+  border-radius: 8px; padding: 12px 14px; overflow-x: auto; max-width: 100%; margin: 0.75em 0;
 }
 .ai-markdown pre code { background: none; border: none; padding: 0; font-size: 0.875em; }
 
@@ -349,10 +354,16 @@ body, .chat-panel, .chat-header, .composer-panel,
 .ai-markdown blockquote p { margin: 0; }
 
 .ai-markdown table {
-  border-collapse: collapse; width: 100%; font-size: 0.9em; margin: 0.85em 0;
+  display: block; overflow-x: auto; max-width: 100%;
+  border-collapse: collapse; font-size: 0.9em; margin: 0.85em 0;
+  white-space: nowrap;
 }
 .ai-markdown th, .ai-markdown td {
   border: 1px solid var(--line); padding: 7px 12px; text-align: left;
+  white-space: normal;
 }
 .ai-markdown th { background: var(--chat-bg); font-weight: 600; }
 .ai-markdown tr:nth-child(even) td { background: var(--chat-bg); }
+
+.ai-markdown p,
+.ai-markdown li { overflow-wrap: anywhere; }

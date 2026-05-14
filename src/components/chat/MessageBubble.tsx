@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useLongPress } from '../../hooks/useLongPress'
 import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
@@ -409,7 +410,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
               {message.content && (
                 message.sender?.is_bot ? (
                   <div className="ai-markdown" style={{ fontSize: 14, lineHeight: 1.7 }}>
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                   </div>
                 ) : (
                   <span>

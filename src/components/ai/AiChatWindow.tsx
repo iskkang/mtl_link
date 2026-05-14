@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Send, Loader2, MoreHorizontal, Pencil, Trash2, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
@@ -348,7 +349,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
                   className="ai-markdown pl-1"
                   style={{ color: 'var(--ink)', fontSize: 15, lineHeight: 1.75 }}
                 >
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
               </div>
             )
