@@ -57,8 +57,11 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
           const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200
           const isOwnMsg   = lastMsg?.sender_id === currentUserId
           const isBotMsg   = lastMsg?.sender?.is_bot === true
+                          || lastMsg?.sender_id === '00000000-0000-0000-0000-000000000001'
           if (nearBottom || isOwnMsg || isBotMsg) {
-            bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+            requestAnimationFrame(() => {
+              bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+            })
           }
         }
       }
