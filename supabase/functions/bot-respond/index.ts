@@ -58,7 +58,7 @@ async function searchKnowledgeBase(
       .map(d => `[${d.filename}]\n${d.content}`)
       .join('\n\n---\n\n')
 
-    return `\n\n══ INTERNAL REFERENCE (do not quote section headers or filenames to the user; use this as background knowledge only) ══\n${context}\n══ END REFERENCE ══`
+    return `\n\n[참고 데이터 - 반드시 이 데이터를 기반으로 답변하되, 파일명이나 헤더는 사용자에게 노출하지 마세요]\n${context}\n\n위 데이터에 있는 정확한 수치와 정보를 그대로 사용하세요. 데이터에 없는 내용은 추측하지 마세요.`
 
   } catch (e) {
     console.warn('[RAG] search error:', e)
