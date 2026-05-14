@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Send, Loader2, MoreHorizontal, Pencil, Trash2, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
@@ -315,18 +316,24 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
             )}
             {msg.role === 'assistant' && isMintIntroResponse(msg.content) ? (
               <MintIntroCard />
-            ) : (
+            ) : msg.role === 'user' ? (
               <div
-                className={`max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === 'user' ? 'rounded-[18px] rounded-tr-[4px]' : 'rounded-[18px] rounded-tl-[4px]'
-                }`}
-                style={{
-                  background: msg.role === 'user' ? '#14b8a6' : 'var(--card)',
-                  color:      msg.role === 'user' ? 'white'   : 'var(--ink)',
-                  border:     msg.role === 'assistant' ? '1px solid var(--line)' : 'none',
-                }}
+                className="max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap rounded-[18px] rounded-tr-[4px]"
+                style={{ background: '#14b8a6', color: 'white' }}
               >
                 {msg.content}
+              </div>
+            ) : (
+              <div
+                className="w-full px-4 py-3 text-sm leading-relaxed rounded-[18px] rounded-tl-[4px] ai-markdown"
+                style={{
+                  background:  'var(--card)',
+                  color:       'var(--ink)',
+                  border:      '1px solid var(--line)',
+                  overflowX:   'auto',
+                }}
+              >
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             )}
           </div>
@@ -428,6 +435,47 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
           transform: translateY(-1px);
         }
         .mint-idle-card:active { transform: translateY(0); }
+
+        /* ── Markdown 렌더 스타일 ── */
+        .ai-markdown p   { margin: 0 0 0.6em; }
+        .ai-markdown p:last-child { margin-bottom: 0; }
+        .ai-markdown h1,.ai-markdown h2,.ai-markdown h3,.ai-markdown h4 {
+          font-weight: 700; margin: 0.9em 0 0.4em; line-height: 1.3;
+        }
+        .ai-markdown h1 { font-size: 1.1em; }
+        .ai-markdown h2 { font-size: 1.05em; }
+        .ai-markdown h3 { font-size: 1em; }
+        .ai-markdown strong { font-weight: 700; }
+        .ai-markdown em    { font-style: italic; }
+        .ai-markdown hr    { border: none; border-top: 1px solid var(--line); margin: 0.8em 0; }
+        .ai-markdown ul,.ai-markdown ol { padding-left: 1.4em; margin: 0.4em 0; }
+        .ai-markdown li   { margin: 0.2em 0; }
+        .ai-markdown code {
+          font-family: monospace; font-size: 0.88em;
+          background: var(--chat-bg); border: 1px solid var(--line);
+          border-radius: 4px; padding: 0.1em 0.35em;
+        }
+        .ai-markdown pre  {
+          background: var(--chat-bg); border: 1px solid var(--line);
+          border-radius: 8px; padding: 10px 12px; overflow-x: auto;
+          margin: 0.5em 0;
+        }
+        .ai-markdown pre code { background: none; border: none; padding: 0; font-size: 0.85em; }
+        .ai-markdown blockquote {
+          border-left: 3px solid #14b8a6; margin: 0.5em 0;
+          padding: 0.3em 0 0.3em 0.8em; color: var(--ink-3);
+        }
+        /* 표 스타일 */
+        .ai-markdown table {
+          border-collapse: collapse; width: 100%; font-size: 0.85em; margin: 0.6em 0;
+        }
+        .ai-markdown th,.ai-markdown td {
+          border: 1px solid var(--line); padding: 5px 10px; text-align: left;
+        }
+        .ai-markdown th {
+          background: var(--chat-bg); font-weight: 600;
+        }
+        .ai-markdown tr:nth-child(even) td { background: var(--chat-bg); }
       `}</style>
 
       {/* ── 로딩 중 ───────────────────────────────────────────────────────── */}
