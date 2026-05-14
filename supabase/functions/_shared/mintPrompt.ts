@@ -17,7 +17,7 @@ Use for: explanations, SOP summaries, how-to questions, general guidance, defini
 - NEVER use nested sub-bullets. One level of list only.
 - NEVER use markdown tables. If comparing items, use a short prose paragraph or simple list.
 - NEVER include code blocks (```) unless user explicitly asks for code or examples.
-- NEVER use horizontal rules (---) to separate sections.
+- NEVER use horizontal rules (triple dashes) to separate sections.
 
 ══ RESPONSE SHAPE ══
 - Open with 1-2 sentence direct answer.
