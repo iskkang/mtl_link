@@ -101,9 +101,10 @@ interface AiChatRequest {
 }
 
 interface KnowledgeHit {
-  title:    string
-  category: string | null
-  content:  string
+  filename:   string
+  doc_type:   string | null
+  issue_type: string | null
+  content:    string
 }
 
 // ── 키워드 매칭 (폴백 / 임베딩 없는 기존 항목용) ──────────────────────────
@@ -120,8 +121,9 @@ function extractSearchTerms(text: string): string[] {
 async function findRelevantKnowledge(question: string): Promise<KnowledgeHit[]> {
   const { data, error } = await supabaseAdmin
     .from('knowledge_base')
-    .select('title, category, content')
+    .select('filename, doc_type, issue_type, content')
     .eq('status', 'verified')
+    .not('embedding', 'is', null)
     .limit(20)
 
   if (error) {
@@ -134,7 +136,7 @@ async function findRelevantKnowledge(question: string): Promise<KnowledgeHit[]> 
 
   const terms = extractSearchTerms(question).map(t => t.toLowerCase())
   const relevant = items.filter(item => {
-    const hay = `${item.title} ${item.category ?? ''} ${item.content}`.toLowerCase()
+    const hay = `${item.filename} ${item.doc_type ?? ''} ${item.issue_type ?? ''} ${item.content}`.toLowerCase()
     return terms.some(t => hay.includes(t))
   })
 
@@ -177,10 +179,12 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
     return findRelevantKnowledge(question)
   }
 
-  const { data, error } = await supabaseAdmin.rpc('match_knowledge', {
-    query_embedding: embedding,
-    match_threshold:  0.6,
-    match_count:      5,
+  const { data, error } = await supabaseAdmin.rpc('match_knowledge_base', {
+    query_embedding:   embedding,
+    match_threshold:   0.6,
+    match_count:       5,
+    filter_issue_type: null,
+    filter_region:     null,
   })
 
   if (error) {
@@ -195,12 +199,12 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
 
   console.log(
     `[knowledge] 벡터 검색 hits=${(data as unknown[]).length}`,
-    (data as { title: string; similarity: number }[])
-      .map(d => `${d.title}(${d.similarity.toFixed(2)})`),
+    (data as { filename: string; similarity: number }[])
+      .map(d => `${d.filename}(${d.similarity.toFixed(2)})`),
   )
 
-  return (data as { title: string; category: string | null; content: string }[])
-    .map(item => ({ title: item.title, category: item.category, content: item.content }))
+  return (data as { filename: string; doc_type: string | null; issue_type: string | null; content: string }[])
+    .map(item => ({ filename: item.filename, doc_type: item.doc_type, issue_type: item.issue_type, content: item.content }))
 }
 
 // ── 시스템 프롬프트 주입 ───────────────────────────────────────────────────
@@ -208,7 +212,7 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
 function buildKnowledgeContext(hits: KnowledgeHit[]): string {
   if (hits.length === 0) return ''
   const lines = hits.map(h =>
-    `[${h.category ?? '일반'}] ${h.title}\n${h.content.slice(0, 400)}`
+    `[${h.issue_type ?? h.doc_type ?? '일반'}] ${h.filename}\n${h.content.slice(0, 400)}`
   )
   return `\n\n[참고 데이터 - 반드시 이 데이터를 기반으로 답변]\n${lines.join('\n\n')}\n\n위 데이터에 있는 정확한 수치와 정보를 그대로 사용하여 답변하세요. 데이터에 없는 내용은 추측하지 마세요.`
 }
