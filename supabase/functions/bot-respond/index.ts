@@ -361,7 +361,7 @@ Deno.serve(async (req: Request) => {
       + ragContext  // RAG 검색 결과 주입
 
     // 7. Claude 호출
-    const botReply = await callClaude(anthropicKey, systemPrompt, contextMessages, 800)
+    const botReply = await callClaude(anthropicKey, systemPrompt, contextMessages, 500)
 
     // 8. 봇 메시지 INSERT
     const { error: insertError } = await db.from('messages').insert({
