@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useRequestStore } from '../stores/requestStore'
 import { useRoomStore } from '../stores/roomStore'
-import { fetchRooms } from '../services/roomService'
+import { fetchRooms, getOrCreateMintDmRoom } from '../services/roomService'
 import { useAuth } from './useAuth'
 
 const POLLING_INTERVAL = 30_000
@@ -17,9 +17,11 @@ export function usePollingRefresh(selectedRoomId: string | null = null) {
   useEffect(() => {
     if (!user) return
 
-    const refresh = () => {
+    const refresh = async () => {
       if (document.hidden) return
       void useRequestStore.getState().loadCounts()
+      // mint_dm 멤버십 보장 후 방 목록 갱신 (나갔거나 누락된 경우 자동 복구)
+      try { await getOrCreateMintDmRoom() } catch { /* 실패해도 방 목록은 갱신 */ }
       fetchRooms()
         .then(rooms => {
           useRoomStore.getState().setRooms(rooms)
