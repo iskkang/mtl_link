@@ -126,26 +126,34 @@ async function findRelevantKnowledge(question: string): Promise<KnowledgeHit[]> 
   const terms = extractSearchTerms(question)
   if (terms.length === 0) return []
 
-  // DB 레벨 ILIKE 필터 — 전체 테이블이 아닌 관련 항목만 가져옴
-  const orFilter = terms.flatMap(t => [
-    `filename.ilike.%${t}%`,
-    `content.ilike.%${t}%`,
-    `issue_type.ilike.%${t}%`,
-  ]).join(',')
+  const seen = new Set<string>()
+  const results: KnowledgeHit[] = []
 
-  const { data, error } = await supabaseAdmin
-    .from('knowledge_base')
-    .select('filename, doc_type, issue_type, content')
-    .not('content', 'is', null)
-    .or(orFilter)
-    .limit(5)
-
-  if (error) {
-    console.error('[knowledge] fetch error:', error.message)
-    return []
+  // 1단계: filename ILIKE 검색 (빠르고 정확)
+  for (const term of terms.slice(0, 5)) {
+    const { data } = await supabaseAdmin
+      .from('knowledge_base')
+      .select('filename, doc_type, issue_type, content')
+      .ilike('filename', `%${term}%`)
+      .limit(3)
+    for (const row of data ?? []) {
+      if (!seen.has(row.filename)) { seen.add(row.filename); results.push(row as KnowledgeHit) }
+    }
   }
+  if (results.length > 0) return results.slice(0, 5)
 
-  return (data ?? []) as KnowledgeHit[]
+  // 2단계: content ILIKE 검색 (fallback)
+  for (const term of terms.slice(0, 3)) {
+    const { data } = await supabaseAdmin
+      .from('knowledge_base')
+      .select('filename, doc_type, issue_type, content')
+      .ilike('content', `%${term}%`)
+      .limit(3)
+    for (const row of data ?? []) {
+      if (!seen.has(row.filename)) { seen.add(row.filename); results.push(row as KnowledgeHit) }
+    }
+  }
+  return results.slice(0, 5)
 }
 
 // ── 벡터 검색 (주 경로) ────────────────────────────────────────────────────
