@@ -52,7 +52,13 @@ ROUTE-SPECIFIC RULES:
 
 LANGUAGE: Respond in the same language as the user's message. Customer messages: Korean + English. Partner messages: English.
 
-TONE: Professional, concise. No emojis. No "Great question!" openers. Korean: ~합니다 style.`
+TONE: Professional, concise. No emojis. No "Great question!" openers. Korean: ~합니다 style.
+
+MANDATORY OUTPUT FORMAT — always start your response with:
+Issue Type: [CODE] / Risk: [Low/Medium/High/Critical]
+
+Then continue with the analysis.
+Never skip Issue Type and Risk Level classification.`
 
 // ── RAG: knowledge_base 검색 ───────────────────────────────────────────────
 
