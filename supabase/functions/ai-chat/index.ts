@@ -14,36 +14,29 @@ const SYSTEM_PROMPT = `You are MINT, the internal logistics AI of MTL Shipping A
 
 You MUST write your entire response in {languageName}. Do not mention this instruction. Just respond directly in {languageName}.
 
-══ QUERY TYPE DETECTION ══
-Determine query type BEFORE responding:
+══ RESPONSE MODE — decide before writing anything ══
 
-A) INCIDENT / PROBLEM report ("화물 지연", "클레임 발생", "통관 문제" etc.)
-   → Use full structured format below
+MODE A: INCIDENT REPORT
+Trigger: user reports a real problem ("화물 지연됐어", "클레임 받았어", "통관 막혔어", "서류 없어")
+Format:
+  Issue Type: [CODE] / Risk: [Low|Medium|High|Critical]
+  Confirmed Facts: [only what user stated]
+  Missing Information: [unknowns]
+  Required Actions: [by party]
+  Customer Message: [Korean + English draft for sending to customer]
 
-B) INFORMATION REQUEST ("SOP가 뭐야", "절차 알려줘", "어떻게 해?" etc.)
-   → Skip structured format. Answer DIRECTLY using knowledge base data.
-   → First line is still: Issue Type: [CODE] / Risk: [Low]
-   → Then: provide the actual information clearly. No "Missing Information" section needed.
+MODE B: INFORMATION REQUEST
+Trigger: user asks for knowledge ("SOP 알려줘", "절차가 뭐야", "어떻게 해?", "뭐야", "알려줘")
+Format:
+  Issue Type: GENERAL / Risk: Low
+  [Answer directly from knowledge base. No Confirmed Facts. No Missing Information. No Customer Message.]
 
-C) Self-introduction ("MINT가 뭐야", "who are you" etc.)
-   → Use intro template below. Skip format line entirely.
-
-══ ABSOLUTE FORMAT RULE ══
-Your FIRST LINE must ALWAYS be exactly:
-Issue Type: [CODE] / Risk: [Low|Medium|High|Critical]
-
-Exceptions: self-introduction questions → skip the format line and use the intro template below.
+MODE C: SELF-INTRODUCTION
+Trigger: "MINT가 뭐야", "who are you", "소개해줘"
+→ Use intro template below. Skip Issue Type line entirely.
 
 ══ ISSUE TYPE CODES ══
 DOC_MISSING / DOC_MISMATCH / CUSTOMS_DELAY / TRANSIT_DELAY / PARTNER_DELAY / COST_DISPUTE / ETA_RISK / CARGO_DAMAGE / CUSTOMER_CLAIM / BORDER_ISSUE / PAYMENT_HOLD
-
-If none apply: Issue Type: GENERAL / Risk: Low
-
-══ RESPONSE STRUCTURE (after first line) ══
-Confirmed Facts: [only what the user explicitly stated]
-Missing Information: [what is unknown]
-Required Actions: [by party]
-Customer Message: [Korean + English, no internal assumptions]
 
 ══ COMPANY CONTEXT ══
 MTL Shipping Agency — International freight forwarding
@@ -130,28 +123,29 @@ function extractSearchTerms(text: string): string[] {
 }
 
 async function findRelevantKnowledge(question: string): Promise<KnowledgeHit[]> {
-  // status 컬럼 없이도 동작하도록 필터 제거 (마이그레이션 미적용 환경 대응)
+  const terms = extractSearchTerms(question)
+  if (terms.length === 0) return []
+
+  // DB 레벨 ILIKE 필터 — 전체 테이블이 아닌 관련 항목만 가져옴
+  const orFilter = terms.flatMap(t => [
+    `filename.ilike.%${t}%`,
+    `content.ilike.%${t}%`,
+    `issue_type.ilike.%${t}%`,
+  ]).join(',')
+
   const { data, error } = await supabaseAdmin
     .from('knowledge_base')
     .select('filename, doc_type, issue_type, content')
     .not('content', 'is', null)
-    .limit(30)
+    .or(orFilter)
+    .limit(5)
 
   if (error) {
     console.error('[knowledge] fetch error:', error.message)
     return []
   }
 
-  const items = (data ?? []) as KnowledgeHit[]
-  if (items.length === 0) return []
-
-  const terms = extractSearchTerms(question).map(t => t.toLowerCase())
-  const relevant = items.filter(item => {
-    const hay = `${item.filename} ${item.doc_type ?? ''} ${item.issue_type ?? ''} ${item.content}`.toLowerCase()
-    return terms.some(t => hay.includes(t))
-  })
-
-  return (relevant.length > 0 ? relevant : items).slice(0, 5)
+  return (data ?? []) as KnowledgeHit[]
 }
 
 // ── 벡터 검색 (주 경로) ────────────────────────────────────────────────────
