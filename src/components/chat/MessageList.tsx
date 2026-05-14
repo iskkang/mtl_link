@@ -50,11 +50,14 @@ export function MessageList({ messages, loading, hasMore, currentUserId, isGroup
         // 초기 로드(방 전환 포함): isOwn 조건 없이 무조건 최신 메시지로 이동
         bottomRef.current?.scrollIntoView()
       } else {
-        // Realtime 새 메시지: nearBottom이거나 내 메시지일 때만 스크롤
+        // Realtime 새 메시지: nearBottom이거나 내 메시지이거나 봇 메시지일 때 스크롤
         const container = containerRef.current
         if (container) {
+          const lastMsg    = messages[messages.length - 1]
           const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200
-          if (nearBottom || messages[messages.length - 1]?.sender_id === currentUserId) {
+          const isOwnMsg   = lastMsg?.sender_id === currentUserId
+          const isBotMsg   = lastMsg?.sender?.is_bot === true
+          if (nearBottom || isOwnMsg || isBotMsg) {
             bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
           }
         }

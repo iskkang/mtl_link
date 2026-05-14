@@ -299,48 +299,52 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
 
   // ── 메시지 목록 ───────────────────────────────────────────────────────────
   const MessageList = () => (
-    <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto w-full">
+    <div className="flex flex-col gap-6 p-4 max-w-3xl mx-auto w-full">
       {messages.map(msg => (
         <div
           key={msg.id}
           className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
         >
-          <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
-            {msg.role === 'assistant' && !isMintIntroResponse(msg.content) && (
-              <div
-                className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2 mt-0.5"
-                style={{ background: 'var(--blue-soft)' }}
-              >
-                <MintLogo size={16} />
-              </div>
-            )}
-            {msg.role === 'assistant' && isMintIntroResponse(msg.content) ? (
+          {/* 사용자 메시지: 버블 */}
+          {msg.role === 'user' && (
+            <div
+              className="max-w-[75%] px-4 py-2.5 leading-relaxed whitespace-pre-wrap rounded-[18px] rounded-tr-[4px]"
+              style={{ background: '#14b8a6', color: 'white', fontSize: 15 }}
+            >
+              {msg.content}
+            </div>
+          )}
+
+          {/* AI 응답: ChatGPT/Claude 스타일 — 버블 없음, 전체 너비 */}
+          {msg.role === 'assistant' && (
+            isMintIntroResponse(msg.content) ? (
               <MintIntroCard />
-            ) : msg.role === 'user' ? (
-              <div
-                className="max-w-[75%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap rounded-[18px] rounded-tr-[4px]"
-                style={{ background: '#14b8a6', color: 'white' }}
-              >
-                {msg.content}
-              </div>
             ) : (
-              <div
-                className="w-full px-4 py-3 text-sm leading-relaxed rounded-[18px] rounded-tl-[4px] ai-markdown"
-                style={{
-                  background:  'var(--card)',
-                  color:       'var(--ink)',
-                  border:      '1px solid var(--line)',
-                  overflowX:   'auto',
-                }}
-              >
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <div className="w-full">
+                {/* MINT 라벨 */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'var(--blue-soft)' }}
+                  >
+                    <MintLogo size={14} />
+                  </div>
+                  <span className="text-xs font-semibold" style={{ color: '#14b8a6' }}>MINT</span>
+                </div>
+                {/* 응답 본문 — 버블 없음 */}
+                <div
+                  className="ai-markdown pl-1"
+                  style={{ color: 'var(--ink)', fontSize: 15, lineHeight: 1.75 }}
+                >
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
               </div>
-            )}
-          </div>
+            )
+          )}
 
           {/* 지식베이스 저장 버튼 — AI 메시지 전용 (자기소개 카드 제외) */}
           {msg.role === 'assistant' && !isMintIntroResponse(msg.content) && (
-            <div className="ml-9 mt-1">
+            <div className="mt-2 pl-1">
               {saveFormId === msg.id ? (
                 <div
                   className="rounded-xl border p-3 flex flex-col gap-2 max-w-xs"
