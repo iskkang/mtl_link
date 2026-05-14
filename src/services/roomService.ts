@@ -348,7 +348,11 @@ export async function deleteRoom(roomId: string): Promise<void> {
 
 /** DM: 상대방 이름, 그룹: 방 이름 */
 export function getRoomDisplayName(room: RoomListItem, currentUserId: string): string {
-  if (room.room_type === 'direct' || room.room_type === 'mint_dm') {
+  if (room.room_type === 'mint_dm') {
+    const bot = room.members.find(m => m.is_bot)
+    return bot?.name ?? 'MINT'
+  }
+  if (room.room_type === 'direct') {
     const other = room.members.find(m => m.id !== currentUserId)
     return other?.name ?? '알 수 없음'
   }
@@ -359,7 +363,11 @@ export function getRoomAvatarInfo(
   room: RoomListItem,
   currentUserId: string,
 ): { name: string; avatarUrl: string | null; avatarColor?: string | null } {
-  if (room.room_type === 'direct' || room.room_type === 'mint_dm') {
+  if (room.room_type === 'mint_dm') {
+    const bot = room.members.find(m => m.is_bot)
+    return { name: bot?.name ?? 'MINT', avatarUrl: bot?.avatar_url ?? null, avatarColor: bot?.avatar_color ?? null }
+  }
+  if (room.room_type === 'direct') {
     const other = room.members.find(m => m.id !== currentUserId)
     return { name: other?.name ?? '?', avatarUrl: other?.avatar_url ?? null, avatarColor: other?.avatar_color ?? null }
   }
