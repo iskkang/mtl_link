@@ -452,57 +452,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
         }
         .mint-idle-card:active { transform: translateY(0); }
 
-        /* ── Markdown 렌더 스타일 ── */
-        .ai-markdown > *:first-child { margin-top: 0 !important; }
-        .ai-markdown > *:last-child { margin-bottom: 0 !important; }
-        .ai-markdown p { margin: 0 0 0.85em; }
-        .ai-markdown p:last-child { margin-bottom: 0; }
-
-        .ai-markdown h1, .ai-markdown h2, .ai-markdown h3, .ai-markdown h4 {
-          font-weight: 700; line-height: 1.3; color: var(--ink);
-        }
-        .ai-markdown h1 { font-size: 1.35em; margin: 1.2em 0 0.5em; }
-        .ai-markdown h2 { font-size: 1.18em; margin: 1.1em 0 0.45em; }
-        .ai-markdown h3 { font-size: 1.05em; margin: 1em 0 0.4em; }
-        .ai-markdown h4 { font-size: 0.95em; margin: 0.9em 0 0.35em; color: var(--ink-3); }
-        .ai-markdown h1:first-child,
-        .ai-markdown h2:first-child,
-        .ai-markdown h3:first-child { margin-top: 0; }
-
-        .ai-markdown strong { font-weight: 700; color: var(--ink); }
-        .ai-markdown em { font-style: italic; }
-        .ai-markdown hr { border: none; border-top: 1px solid var(--line); margin: 1.2em 0; }
-
-        .ai-markdown ul, .ai-markdown ol { padding-left: 1.5em; margin: 0.5em 0 0.85em; }
-        .ai-markdown li { margin: 0.35em 0; line-height: 1.7; }
-        .ai-markdown li > p { margin: 0.2em 0; }
-        .ai-markdown li > ul, .ai-markdown li > ol { margin: 0.3em 0; }
-
-        .ai-markdown code {
-          font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.875em;
-          background: var(--chat-bg); border: 1px solid var(--line);
-          border-radius: 4px; padding: 0.1em 0.4em;
-        }
-        .ai-markdown pre {
-          background: var(--chat-bg); border: 1px solid var(--line);
-          border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0.75em 0;
-        }
-        .ai-markdown pre code { background: none; border: none; padding: 0; font-size: 0.875em; }
-
-        .ai-markdown blockquote {
-          border-left: 3px solid #14b8a6; margin: 0.75em 0;
-          padding: 0.4em 0 0.4em 1em; color: var(--ink-3);
-        }
-        .ai-markdown blockquote p { margin: 0; }
-
-        .ai-markdown table {
-          border-collapse: collapse; width: 100%; font-size: 0.9em; margin: 0.85em 0;
-        }
-        .ai-markdown th, .ai-markdown td {
-          border: 1px solid var(--line); padding: 7px 12px; text-align: left;
-        }
-        .ai-markdown th { background: var(--chat-bg); font-weight: 600; }
-        .ai-markdown tr:nth-child(even) td { background: var(--chat-bg); }
+        /* .ai-markdown styles → src/index.css (글로벌) */
       `}</style>
 
       {/* ── 로딩 중 ───────────────────────────────────────────────────────── */}

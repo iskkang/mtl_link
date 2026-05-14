@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { useLongPress } from '../../hooks/useLongPress'
 import { FollowupBadge } from './FollowupBadge'
 import { MobileMessageSheet } from './MobileMessageSheet'
@@ -285,7 +286,7 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
       )}
 
 
-      <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col ${message.sender?.is_bot ? 'max-w-[92%]' : 'max-w-[85%] md:max-w-[70%]'} ${isOwn ? 'items-end' : 'items-start'}`}>
 
         {/* 발신자 이름 (그룹방, 첫 메시지) */}
         {(showSenderInfo || message.sender?.is_bot) && !isOwn && !isContinuation && message.sender && (
@@ -302,7 +303,8 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
         {/* 말풍선 */}
         <div
           className={`
-            relative pl-3 pr-7 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words message-bubble
+            relative rounded-2xl text-sm leading-relaxed break-words message-bubble
+            ${message.sender?.is_bot ? 'pl-3.5 pr-8 py-3 whitespace-normal' : 'pl-3 pr-7 py-2.5 whitespace-pre-wrap'}
             ${isFailed ? 'ring-2 ring-red-400 dark:ring-red-600' : isCurrentResult ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' : ''}
             ${isSending ? 'opacity-60' : ''}
           `}
@@ -405,35 +407,41 @@ export function MessageBubble({ message, isOwn, showSenderInfo, prevMessage, onR
           ) : (
             <>
               {message.content && (
-                <span>
-                  {searchQuery
-                    ? highlightText(message.content, searchQuery)
-                    : parseMentionsAndLinks(message.content, message.mentions ?? [], members, currentUserId).map((part, i) =>
-                        isMentionPart(part)
-                          ? (
-                            <span
-                              key={i}
-                              className="inline-block px-1 py-px mx-0.5 text-[0.8em] font-semibold rounded cursor-default"
-                              style={{ background: part.isSelf ? 'rgba(124,58,237,0.12)' : '#f0fdfa', color: part.isSelf ? '#7C3AED' : '#0d9488' }}
-                            >
-                              @{part.name}
-                            </span>
-                          )
-                          : typeof part === 'string'
-                            ? <span key={i}>{!isOwn && keywords.length ? highlightKeywords(part, keywords) : part}</span>
-                            : (
-                              <a
+                message.sender?.is_bot ? (
+                  <div className="ai-markdown" style={{ fontSize: 14, lineHeight: 1.7 }}>
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <span>
+                    {searchQuery
+                      ? highlightText(message.content, searchQuery)
+                      : parseMentionsAndLinks(message.content, message.mentions ?? [], members, currentUserId).map((part, i) =>
+                          isMentionPart(part)
+                            ? (
+                              <span
                                 key={i}
-                                href={part.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline break-all" style={{ color: 'var(--brand)' }}
+                                className="inline-block px-1 py-px mx-0.5 text-[0.8em] font-semibold rounded cursor-default"
+                                style={{ background: part.isSelf ? 'rgba(124,58,237,0.12)' : '#f0fdfa', color: part.isSelf ? '#7C3AED' : '#0d9488' }}
                               >
-                                {part.href}
-                              </a>
-                            ),
-                      )}
-                </span>
+                                @{part.name}
+                              </span>
+                            )
+                            : typeof part === 'string'
+                              ? <span key={i}>{!isOwn && keywords.length ? highlightKeywords(part, keywords) : part}</span>
+                              : (
+                                <a
+                                  key={i}
+                                  href={part.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline break-all" style={{ color: 'var(--brand)' }}
+                                >
+                                  {part.href}
+                                </a>
+                              ),
+                        )}
+                  </span>
+                )
               )}
               {isTranslating && (
                 <span className="ml-1.5 inline-flex items-center gap-1 text-[10px]" style={{ color: 'var(--ink-4)' }}>
