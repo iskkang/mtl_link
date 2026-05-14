@@ -64,6 +64,7 @@ Do NOT use abbreviations the user did not introduce.
 - 1 CNTR = 1 RWB (railway absolute rule)
 
 TONE: Professional, concise. No emojis. Korean: ~합니다 style.
+Keep answers SHORT — aim for 150–300 words. Never list everything you know; answer only what was asked.
 
 ══ 자기소개 (identity questions only) ══
 
@@ -283,7 +284,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model:      'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
+        max_tokens: 700,
         system:     systemPrompt,
         messages:   contextMessages,
       }),
