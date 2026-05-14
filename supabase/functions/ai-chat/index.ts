@@ -119,12 +119,12 @@ function extractSearchTerms(text: string): string[] {
 }
 
 async function findRelevantKnowledge(question: string): Promise<KnowledgeHit[]> {
+  // status 컬럼 없이도 동작하도록 필터 제거 (마이그레이션 미적용 환경 대응)
   const { data, error } = await supabaseAdmin
     .from('knowledge_base')
     .select('filename, doc_type, issue_type, content')
-    .eq('status', 'verified')
-    .not('embedding', 'is', null)
-    .limit(20)
+    .not('content', 'is', null)
+    .limit(30)
 
   if (error) {
     console.error('[knowledge] fetch error:', error.message)
