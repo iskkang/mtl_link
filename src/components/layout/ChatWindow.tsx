@@ -286,14 +286,19 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
     const wasMintDm = room?.room_type === 'mint_dm'
     await leaveRoom(roomId)
     removeRoom(roomId)
-    onLeaveOrDelete?.(isDirect ? t('directLeaveToast') : t('leaveRoomToast'))
+
     if (wasMintDm) {
-      // 나간 후 MINT DM 방 즉시 재생성 → DM 목록에 계속 표시
-      getOrCreateMintDmRoom()
-        .then(() => fetchRooms())
-        .then(rooms => useRoomStore.getState().setRooms(rooms))
-        .catch(err => console.error('[mint_dm] rejoin failed:', err))
+      // mint_dm은 나가기 후 즉시 새 방 재생성 → 방 목록 갱신 완료 후 navigate
+      try {
+        await getOrCreateMintDmRoom()
+        const updated = await fetchRooms()
+        useRoomStore.getState().setRooms(updated)
+      } catch (err) {
+        console.error('[mint_dm] rejoin failed:', err)
+      }
     }
+
+    onLeaveOrDelete?.(isDirect ? t('directLeaveToast') : t('leaveRoomToast'))
   }
 
   const handleDelete = async () => {
