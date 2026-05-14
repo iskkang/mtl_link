@@ -321,7 +321,7 @@ export function ChatWindow({ roomId, onBack, onLeaveOrDelete, onRoomSelect, high
         onToggleNotif={onToggleNotif}
         isAnnouncement={room?.is_announcement}
         isChannel={isChannel}
-        onLeave={() => setLeaveOpen(true)}
+        onLeave={room?.room_type === 'mint_dm' ? undefined : () => setLeaveOpen(true)}
         onDelete={() => setDeleteOpen(true)}
         pinnedCount={pinnedCount}
         onTogglePinPanel={() => setPinPanelOpen(o => !o)}
