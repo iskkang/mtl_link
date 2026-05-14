@@ -12,60 +12,141 @@ const LANGUAGE_NAMES: Record<string, string> = {
   ko: 'Korean', en: 'English', ru: 'Russian', uz: 'Uzbek', zh: 'Chinese', ja: 'Japanese',
 }
 
-const SYSTEM_PROMPT_TEMPLATE = `You are MTL Assistant, an AI helper for MTL Link — an internal communication platform for a freight forwarding and logistics company.
+// ── MINT System Prompt (MTL 전용) ──────────────────────────────────────────
 
-Your role:
-- Answer questions about logistics, freight, customs, shipping, and trade
-- Help with task management and internal Q&A
-- Assist with understanding company communications
+const MINT_SYSTEM_PROMPT = `You are MINT (Maritime Intelligent Navigation Tool), the internal AI assistant of MTL Shipping Agency, operating inside MTL Link.
 
-Guidelines:
-- You MUST write your entire response in {languageName}. Do not mention this instruction. Do not explain what language you are using. Just respond directly in {languageName}.
-- Be concise and professional, but friendly
-- Use industry-standard logistics terminology (B/L, FCL/LCL, freight rates, customs)
-- If you don't know something specific to this company, say so clearly
-- Never make up specific shipment, client, or internal data
-- Do not use markdown formatting (no **, ##, *, - list symbols, etc.)
-- Use plain text only. Use line breaks to separate sections.
+You are NOT a general-purpose chatbot. You are a logistics operations specialist.
 
-Company context: International freight forwarding company handling FCL/LCL, customs clearance, B/L management, and freight rate negotiations.`
+COMPANY CONTEXT:
+- MTL Shipping Agency: International freight forwarding (FCL, LCL, rail, sea-rail, cross-border)
+- Key Routes: Korea→Poland, Korea→Russia(TSR), Korea→Uzbekistan(TCR/TSR), Korea→Kazakhstan, Korea→China transit
+- Main Cargo: Auto parts, used cars, general cargo, project cargo
+- Transport Modes: Sea / Rail / Sea-Rail(TCR/TSR) / Truck / FCL / LCL
 
-// ── 요약 명령 감지 ─────────────────────────────────────────────────────────
+YOUR ROLE:
+When a user inputs an operations case, you must:
+1. Classify the Issue Type (DOC_MISSING / DOC_MISMATCH / CUSTOMS_DELAY / TRANSIT_DELAY / PARTNER_DELAY / COST_DISPUTE / ETA_RISK / CARGO_DAMAGE / CUSTOMER_CLAIM / BORDER_ISSUE / PAYMENT_HOLD)
+2. Separate confirmed facts from missing information
+3. Assess Risk Level (Low / Medium / High / Critical)
+4. List required actions by party
+5. Draft customer-facing message + internal memo if needed
+
+ABSOLUTE RULES:
+- NEVER mix confirmed facts with assumptions
+- NEVER state ETA definitively (always add "subject to change")
+- NEVER confirm freight rates, judge responsibility, or provide legal advice
+- Customer-facing messages must NOT contain internal assumptions or unconfirmed info
+- When uncertain, list as Missing Information — never fabricate
+
+OUTPUT FORMAT:
+- Simple questions (Low risk): brief direct answer + Issue Type + Risk Level
+- Operations issues (Medium+ risk): structured report with Issue Type, Confirmed Facts, Missing Info, Risk Assessment, Required Actions, Customer Message draft
+
+ROUTE-SPECIFIC RULES:
+- KR→KZ: POA must be Notarized, check Khorgos transit permit expiry
+- KR→UZ: EAC certification check, Russian-language CI/PL required for TSR
+- KR→RU: BOLT SEAL mandatory for TSR, 48h no-response → contact backup partner
+- China transit: Vague invoice descriptions (Machine Parts, Spare Parts) → request specific description
+- 1 CNTR = 1 RWB (railway absolute rule)
+
+LANGUAGE: Respond in the same language as the user's message. Customer messages: Korean + English. Partner messages: English.
+
+TONE: Professional, concise. No emojis. No "Great question!" openers. Korean: ~합니다 style.`
+
+// ── RAG: knowledge_base 검색 ───────────────────────────────────────────────
+
+async function searchKnowledgeBase(
+  db: ReturnType<typeof createClient>,
+  openaiKey: string,
+  query: string,
+  issueType: string | null = null,
+): Promise<string> {
+  try {
+    // 1. 쿼리 임베딩 생성
+    const embedRes = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: query.slice(0, 2000),
+      }),
+    })
+
+    if (!embedRes.ok) {
+      console.warn('[RAG] embedding failed:', await embedRes.text())
+      return ''
+    }
+
+    const embedData = await embedRes.json() as { data: { embedding: number[] }[] }
+    const embedding = embedData.data[0].embedding
+
+    // 2. knowledge_base 유사도 검색
+    const { data, error } = await db.rpc('match_knowledge_base', {
+      query_embedding:    embedding,
+      match_threshold:    0.65,
+      match_count:        4,
+      filter_issue_type:  issueType,
+    })
+
+    if (error || !data || data.length === 0) return ''
+
+    // 3. 검색 결과를 컨텍스트 문자열로 변환
+    const context = (data as { filename: string; content: string }[])
+      .map(d => `[${d.filename}]\n${d.content}`)
+      .join('\n\n---\n\n')
+
+    return `\n\n## Relevant Knowledge Base\n${context}`
+
+  } catch (e) {
+    console.warn('[RAG] search error:', e)
+    return ''
+  }
+}
+
+// ── Issue Type 간단 분류 ───────────────────────────────────────────────────
+
+function detectIssueType(text: string): string | null {
+  const t = text.toLowerCase()
+  if (t.includes('delay') || t.includes('지연') || t.includes('발차') || t.includes('적체')) return 'TRANSIT_DELAY'
+  if (t.includes('customs') || t.includes('통관') || t.includes('세관')) return 'CUSTOMS_DELAY'
+  if (t.includes('document') || t.includes('서류') || t.includes('invoice') || t.includes('packing list')) return 'DOC_MISSING'
+  if (t.includes('border') || t.includes('국경') || t.includes('khorgos') || t.includes('altynkol')) return 'BORDER_ISSUE'
+  if (t.includes('damage') || t.includes('파손') || t.includes('손상')) return 'CARGO_DAMAGE'
+  if (t.includes('claim') || t.includes('클레임')) return 'CUSTOMER_CLAIM'
+  if (t.includes('cost') || t.includes('비용') || t.includes('charge')) return 'COST_DISPUTE'
+  if (t.includes('poa') || t.includes('위임장')) return 'DOC_MISSING'
+  if (t.includes('eta') || t.includes('arrival') || t.includes('도착')) return 'ETA_RISK'
+  return null
+}
+
+// ── 요약 명령 감지 (기존 유지) ─────────────────────────────────────────────
 
 function detectSummaryCommand(content: string): { isSummary: boolean; range: 'today' | 'week' } {
   const text = content.toLowerCase()
   const isSummary =
-    // Korean
     text.includes('요약') || text.includes('정리') ||
-    // English
     text.includes('summary') || text.includes('summarize') ||
-    // Japanese
     text.includes('まとめ') || text.includes('要約') ||
-    // Chinese
     text.includes('总结') || text.includes('總結') ||
-    // Russian
     text.includes('резюме') || text.includes('сводка') ||
-    // Uzbek
     text.includes('qisqacha') || text.includes('xulosa')
   const range: 'today' | 'week' =
     (
-      // Korean
       text.includes('이번 주') || text.includes('주간') ||
-      // English
       text.includes('week') ||
-      // Japanese
       text.includes('週間') || text.includes('今週') ||
-      // Chinese
       text.includes('本周') || text.includes('本週') ||
-      // Russian
       text.includes('неделю') || text.includes('недел') ||
-      // Uzbek
       text.includes('hafta')
     ) ? 'week' : 'today'
   return { isSummary, range }
 }
 
-// ── 채널 메시지 조회 ───────────────────────────────────────────────────────
+// ── 채널 메시지 조회 (기존 유지) ──────────────────────────────────────────
 
 interface MessageForSummary {
   content:    string
@@ -73,7 +154,6 @@ interface MessageForSummary {
   createdAt:  string
 }
 
-// deno-lint-ignore no-explicit-any
 async function fetchChannelMessages(
   db: ReturnType<typeof createClient>,
   roomId: string,
@@ -108,7 +188,6 @@ async function fetchChannelMessages(
   )
   if (messages.length === 0) return []
 
-  // 발신자 이름 일괄 조회
   // deno-lint-ignore no-explicit-any
   const senderIds = [...new Set(messages.map((m: any) => m.sender_id as string))]
   const { data: profiles } = await db
@@ -129,13 +208,13 @@ async function fetchChannelMessages(
   }))
 }
 
-// ── Claude 직접 호출 ───────────────────────────────────────────────────────
+// ── Claude 호출 (기존 유지) ────────────────────────────────────────────────
 
 async function callClaude(
   anthropicKey: string,
   systemPrompt: string,
   messages: { role: string; content: string }[],
-  maxTokens = 800,
+  maxTokens = 1200,
 ): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -163,7 +242,7 @@ async function callClaude(
   return text
 }
 
-// ── 요약 생성 ──────────────────────────────────────────────────────────────
+// ── 요약 생성 (기존 유지) ──────────────────────────────────────────────────
 
 async function generateSummary(
   anthropicKey: string,
@@ -206,7 +285,7 @@ ${transcript}
   return await callClaude(anthropicKey, systemPrompt, [{ role: 'user', content: userPrompt }], 1000)
 }
 
-// ── 인터페이스 ─────────────────────────────────────────────────────────────
+// ── 인터페이스 (기존 유지) ─────────────────────────────────────────────────
 
 interface BotRequest {
   roomId:       string
@@ -233,6 +312,7 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
     const serviceKey   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+    const openaiKey    = Deno.env.get('OPENAI_API_KEY') ?? ''
 
     if (!anthropicKey) {
       console.warn('[bot-respond] ANTHROPIC_API_KEY not set')
@@ -251,12 +331,10 @@ Deno.serve(async (req: Request) => {
 
     if (!botMember) return json({ error: 'not a bot room' }, 400)
 
-    // 2. 요약 명령 처리 (rate limit 전에 처리)
+    // 2. 요약 명령 처리
     const { isSummary, range } = detectSummaryCommand(userMessage)
 
     if (isSummary) {
-      console.log(`[summary] 요약 명령 감지: roomId=${roomId}, range=${range}`)
-
       const [messagesResult, roomResult] = await Promise.all([
         fetchChannelMessages(db, roomId, range),
         db.from('rooms').select('name').eq('id', roomId).maybeSingle(),
@@ -273,12 +351,10 @@ Deno.serve(async (req: Request) => {
       })
 
       if (insertError) throw insertError
-
-      console.info(`[summary] 완료: room=${roomId}, range=${range}, msgs=${messagesResult.length}`)
       return json({ ok: true, type: 'summary' })
     }
 
-    // 3. Rate limit: 최근 1분 내 봇 응답 ≥ 10
+    // 3. Rate limit
     const { data: recentBotMessages } = await db
       .from('messages')
       .select('id')
@@ -290,7 +366,7 @@ Deno.serve(async (req: Request) => {
       return new Response('rate limit', { status: 429, headers: CORS })
     }
 
-    // 4. 최근 10개 메시지 로드 (컨텍스트)
+    // 4. 최근 메시지 컨텍스트
     const { data: recentMsgs } = await db
       .from('messages')
       .select('sender_id, content')
@@ -308,19 +384,28 @@ Deno.serve(async (req: Request) => {
         content: m.content as string,
       }))
 
-    // 현재 메시지가 이미 context에 포함된 경우 중복 방지
     const lastCtx = contextMessages[contextMessages.length - 1]
     if (!lastCtx || lastCtx.role !== 'user' || lastCtx.content !== userMessage) {
       contextMessages.push({ role: 'user', content: userMessage })
     }
 
-    // 5. Anthropic Haiku 호출
-    const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
-    const systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace('{languageName}', languageName)
+    // 5. RAG: knowledge_base 검색 (OpenAI 키 있을 때만)
+    let ragContext = ''
+    if (openaiKey) {
+      const issueType = detectIssueType(userMessage)
+      ragContext = await searchKnowledgeBase(db, openaiKey, userMessage, issueType)
+    }
 
+    // 6. System prompt 구성 (MINT + RAG 컨텍스트)
+    const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
+    const systemPrompt = MINT_SYSTEM_PROMPT
+      + `\n\nRespond in ${languageName}.`
+      + ragContext  // RAG 검색 결과 주입
+
+    // 7. Claude 호출
     const botReply = await callClaude(anthropicKey, systemPrompt, contextMessages)
 
-    // 6. 봇 메시지 INSERT
+    // 8. 봇 메시지 INSERT
     const { error: insertError } = await db.from('messages').insert({
       room_id:         roomId,
       sender_id:       BOT_USER_ID,
@@ -331,7 +416,7 @@ Deno.serve(async (req: Request) => {
 
     if (insertError) throw insertError
 
-    console.info(`[bot-respond] responded in ${userLanguage}, room=${roomId}`)
+    console.info(`[bot-respond] MINT replied in ${userLanguage}, room=${roomId}, rag=${ragContext.length > 0}`)
     return json({ ok: true })
 
   } catch (err) {
