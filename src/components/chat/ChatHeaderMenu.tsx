@@ -10,6 +10,7 @@ interface Props {
   onToggleNotif:   () => void
   isOwner:         boolean
   isDirect:        boolean
+  isMintDm?:       boolean
   isAnnouncement?: boolean
   onLeave:         () => void
   onDelete:        () => void
@@ -17,7 +18,7 @@ interface Props {
 
 export function ChatHeaderMenu({
   notifEnabled, onToggleNotif,
-  isOwner, isDirect, isAnnouncement, onLeave, onDelete,
+  isOwner, isDirect, isMintDm, isAnnouncement, onLeave, onDelete,
 }: Props) {
   const { t, i18n } = useTranslation()
   const { mode, toggle: toggleTheme } = useTheme()
@@ -87,7 +88,7 @@ export function ChatHeaderMenu({
           <div className="my-1 border-t" style={{ borderColor: 'var(--line)' }} />
 
           {/* Section 2: Room actions (danger zone) */}
-          {!isAnnouncement && (
+          {!isAnnouncement && !isMintDm && (
             <MenuRow
               icon={<LogOut size={15} />}
               label={t('roomLeave')}

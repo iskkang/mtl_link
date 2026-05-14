@@ -31,6 +31,7 @@ interface Props {
   onToggleNotif:   () => void
   isAnnouncement?: boolean
   isChannel?:      boolean
+  isMintDm?:       boolean
   onLeave:         () => void
   onDelete:        () => void
   pinnedCount?:    number
@@ -45,7 +46,7 @@ export function ChatHeader({
   peerStatus, peerStatusMessage,
   effectivePeerLang, onOpenTranslation,
   searchOpen, onToggleSearch,
-  notifEnabled, onToggleNotif, isAnnouncement, isChannel, onLeave, onDelete,
+  notifEnabled, onToggleNotif, isAnnouncement, isChannel, isMintDm, onLeave, onDelete,
   pinnedCount, onTogglePinPanel, onToggleChannelSettings, roomId,
 }: Props) {
   const { t } = useTranslation()
@@ -240,6 +241,7 @@ export function ChatHeader({
               onToggleNotif={onToggleNotif}
               isOwner={isOwner}
               isDirect={isDirect}
+              isMintDm={isMintDm}
               isAnnouncement={isAnnouncement}
               onLeave={onLeave}
               onDelete={onDelete}
