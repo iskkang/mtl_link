@@ -299,7 +299,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
 
   // ── 메시지 목록 ───────────────────────────────────────────────────────────
   const MessageList = () => (
-    <div className="flex flex-col gap-6 p-4 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-7 p-4 max-w-3xl mx-auto w-full">
       {messages.map(msg => (
         <div
           key={msg.id}
@@ -322,7 +322,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
             ) : (
               <div className="w-full">
                 {/* MINT 라벨 */}
-                <div className="flex items-center gap-1.5 mb-2">
+                <div className="flex items-center gap-1.5 mb-2.5">
                   <div
                     className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ background: 'var(--blue-soft)' }}
@@ -441,6 +441,8 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
         .mint-idle-card:active { transform: translateY(0); }
 
         /* ── Markdown 렌더 스타일 ── */
+        .ai-markdown > *:first-child { margin-top: 0 !important; }
+        .ai-markdown > *:last-child { margin-bottom: 0 !important; }
         .ai-markdown p { margin: 0 0 0.85em; }
         .ai-markdown p:last-child { margin-bottom: 0; }
 
