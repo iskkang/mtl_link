@@ -68,7 +68,7 @@ export default function ChatPage() {
   }
   const handleAiBack = () => {
     setActiveAiView('chat')
-    setActiveSection('chat')
+    setActiveSection('ai')
   }
 
   const handleAiSessionDelete      = () => { setActiveSessionId(null); setAiSidebarVersion(v => v + 1) }
@@ -249,7 +249,7 @@ export default function ChatPage() {
         onCalPrevMonth={handleCalPrevMonth}
         onCalNextMonth={handleCalNextMonth}
         activeSessionId={activeSessionId}
-        onSelectSession={setActiveSessionId}
+        onSelectSession={(id) => { setActiveSessionId(id); setActiveAiView('chat') }}
         aiSidebarVersion={aiSidebarVersion}
       >
         <Suspense fallback={
