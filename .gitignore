@@ -32,3 +32,21 @@ data/
 
 # 일회성 유틸 스크립트
 scripts/import_glossary.mjs
+.vercel
+
+# 데이터 파일 (DB에 적재됨, 원본은 별도 보관)
+supabase/knowledge-base/10_Data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# 빌드 캐시
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# 환경변수 (추가)
+.env
