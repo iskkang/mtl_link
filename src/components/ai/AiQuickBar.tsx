@@ -15,7 +15,8 @@ interface Action {
 const ACTIONS: Action[] = [
   { labelKey: 'aiQuickQuotation', icon: '📋', promptKey: 'aiPromptQuotation', navigate: 'quotation' },
   { labelKey: 'aiQuickMessage',   icon: '✉️', promptKey: 'aiPromptMessage',   navigate: 'message'   },
-  { labelKey: 'aiQuickTransport', icon: '🚢', promptKey: 'aiPromptTransport', navigate: 'transport' as const },
+  // RAG 채팅으로 대체, 2026-05-15 숨김
+  // { labelKey: 'aiQuickTransport', icon: '🚢', promptKey: 'aiPromptTransport', navigate: 'transport' as const },
   { labelKey: 'aiQuickCustoms',   icon: '🌍', promptKey: 'aiPromptCustoms',   navigate: 'customs'   as const },
   // RAG 채팅으로 대체, 2026-05-15 숨김 — 코드·라우트·DB 유지
   // { labelKey: 'aiQuickHsCode', icon: '📦', promptKey: 'aiPromptHsCode', navigate: 'hscode' as const },

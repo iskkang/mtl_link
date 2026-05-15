@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { aiEvents } from '../../lib/aiEvents'
 import { AiQuickActions } from './AiQuickActions'
 import { AiQuickBar } from './AiQuickBar'
+import { MintExamplePrompts } from './MintExamplePrompts'
 import MintIntroCard from './MintIntroCard'
 import { isMintIntroQuery, isMintIntroResponse } from '../../utils/mintIntro'
 
@@ -486,15 +487,20 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
           </div>
 
           {/* 중앙 입력창 */}
-          <div style={{ width: '100%', maxWidth: 600, marginBottom: 28 }}>
+          <div style={{ width: '100%', maxWidth: 600, marginBottom: 24 }}>
             {renderInput('centered')}
           </div>
 
-          {/* 기능 카드 */}
+          {/* 예시 질문 카드 */}
+          <div style={{ marginBottom: 28 }}>
+            <MintExamplePrompts onSelect={text => void handleSend(text)} />
+          </div>
+
+          {/* 도구 카드 */}
           <AiQuickActions
             onSelect={text => void handleSend(text)}
             onNavigate={onNavigate}
-            showHeader={false}
+            showHeader={true}
           />
         </div>
       )}
