@@ -11,7 +11,6 @@ const ChatPage           = lazy(() => import('./pages/ChatPage'))
 const AdminPage          = lazy(() => import('./pages/AdminPage'))
 const InstallPage        = lazy(() => import('./pages/InstallPage'))
 const ActionItemsPage    = lazy(() => import('./pages/ActionItemsPage'))
-const TrackingTestPage   = lazy(() => import('./pages/TrackingTest'))
 
 const PageFallback = (
   <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-mtl-ocean">
@@ -46,11 +45,6 @@ export function AppRoutes() {
         <Route path="/tasks" element={
           <ProtectedRoute>
             <ActionItemsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/tracking-test" element={
-          <ProtectedRoute>
-            <TrackingTestPage />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

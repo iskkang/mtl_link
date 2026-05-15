@@ -3,6 +3,7 @@ import {
   MessageSquare, Users, CheckSquare, Inbox,
   Bell, Calendar, FolderOpen, Hash, DollarSign,
 } from 'lucide-react'
+import { FescoFIcon } from '../ui/FescoFIcon'
 import { MintIcon } from '../ui/MarvisIcon'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
@@ -14,7 +15,7 @@ export type Section =
   | 'chat' | 'members' | 'tasks' | 'requests'
   | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots' | 'ai'
   | 'ratefinder' | 'all-unread' | 'threads' | 'mentions'
-  | 'profile'
+  | 'profile' | 'tracking'
 
 export const MOBILE_SECTIONS = new Set<Section>(['chat', 'members', 'tasks', 'requests'])
 
@@ -93,6 +94,13 @@ export function MenuRail({
             active={activeSection === 'ratefinder'}
             onClick={() => onSectionChange('ratefinder')}
           />
+          <RailBtn
+            Icon={FescoFIcon}
+            label="Tracking"
+            active={activeSection === 'tracking'}
+            activeColor="#0d9488"
+            onClick={() => onSectionChange('tracking')}
+          />
         </div>
 
         <div className="w-8 my-1.5 border-t flex-shrink-0" style={{ borderColor: 'var(--side-line)' }} />
@@ -152,15 +160,16 @@ export function MenuRail({
 
 /* ── Rail icon button ─────────────────────────────── */
 function RailBtn({
-  Icon, label, active, badge, badgeColor, muted, onClick,
+  Icon, label, active, activeColor, badge, badgeColor, muted, onClick,
 }: {
-  Icon:        React.ElementType
-  label:       string
-  active:      boolean
-  badge?:      number
-  badgeColor?: string
-  muted?:      boolean
-  onClick:     () => void
+  Icon:         React.ElementType
+  label:        string
+  active:       boolean
+  activeColor?: string
+  badge?:       number
+  badgeColor?:  string
+  muted?:       boolean
+  onClick:      () => void
 }) {
   return (
     <button
@@ -171,7 +180,7 @@ function RailBtn({
       className="relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors duration-100 mx-auto"
       style={{
         background: active ? 'var(--side-active)'      : 'transparent',
-        color:      active ? 'var(--side-active-icon)' : 'var(--side-mute)',
+        color:      active ? (activeColor ?? 'var(--side-active-icon)') : 'var(--side-mute)',
         opacity:    muted && !active ? 0.45 : 1,
       }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--side-hover)' }}

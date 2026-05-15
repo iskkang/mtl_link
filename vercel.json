@@ -1,5 +1,11 @@
 {
   "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/fesco/sync",
+      "schedule": "0 */4 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

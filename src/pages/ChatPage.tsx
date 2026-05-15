@@ -26,8 +26,9 @@ const HsCodePage        = lazy(() => import('../components/ai/HsCodePage').then(
 const KnowledgePage     = lazy(() => import('../components/ai/KnowledgePage').then(m => ({ default: m.KnowledgePage })))
 const AdminApprovalPage = lazy(() => import('../components/ai/AdminApprovalPage').then(m => ({ default: m.AdminApprovalPage })))
 const TrackingPage      = lazy(() => import('../components/ai/TrackingPage').then(m => ({ default: m.TrackingPage })))
-const RateFinderPage    = lazy(() => import('../components/ai/RateFinderPage').then(m => ({ default: m.RateFinderPage })))
-const AiChatWindow      = lazy(() => import('../components/ai/AiChatWindow').then(m => ({ default: m.AiChatWindow })))
+const RateFinderPage      = lazy(() => import('../components/ai/RateFinderPage').then(m => ({ default: m.RateFinderPage })))
+const AiChatWindow        = lazy(() => import('../components/ai/AiChatWindow').then(m => ({ default: m.AiChatWindow })))
+const FescoTrackingPage   = lazy(() => import('../components/tracking/FescoTrackingPage').then(m => ({ default: m.FescoTrackingPage })))
 
 type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking'
 
@@ -231,7 +232,7 @@ export default function ChatPage() {
   return (
     <>
       <AppLayout
-        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai' || activeSection === 'ratefinder' || activeSection === 'all-unread' || activeSection === 'threads'}
+        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai' || activeSection === 'ratefinder' || activeSection === 'all-unread' || activeSection === 'threads' || activeSection === 'tracking'}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
@@ -293,6 +294,8 @@ export default function ChatPage() {
             />
           ) : activeSection === 'threads' ? (
             <ThreadsPage onBack={() => setActiveSection('chat')} />
+          ) : activeSection === 'tracking' ? (
+            <FescoTrackingPage />
           ) : activeSection === 'ai' ? (
             <AiChatWindow
               sessionId={activeSessionId}
