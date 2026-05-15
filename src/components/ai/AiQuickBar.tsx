@@ -17,7 +17,8 @@ const ACTIONS: Action[] = [
   { labelKey: 'aiQuickMessage',   icon: '✉️', promptKey: 'aiPromptMessage',   navigate: 'message'   },
   { labelKey: 'aiQuickTransport', icon: '🚢', promptKey: 'aiPromptTransport', navigate: 'transport' as const },
   { labelKey: 'aiQuickCustoms',   icon: '🌍', promptKey: 'aiPromptCustoms',   navigate: 'customs'   as const },
-  { labelKey: 'aiQuickHsCode',    icon: '📦', promptKey: 'aiPromptHsCode',    navigate: 'hscode' as const },
+  // RAG 채팅으로 대체, 2026-05-15 숨김 — 코드·라우트·DB 유지
+  // { labelKey: 'aiQuickHsCode', icon: '📦', promptKey: 'aiPromptHsCode', navigate: 'hscode' as const },
   { labelKey: 'aiQuickTracking',  icon: '🔍', promptKey: 'aiPromptTracking',  navigate: 'tracking' as const },
 ]
 

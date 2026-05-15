@@ -38,13 +38,8 @@ export function AiQuickActions({ onSelect, onNavigate, showHeader = true }: Prop
       prompt:    t('aiPromptCustoms'),
       navigate:  'customs' as const,
     },
-    {
-      labelKey:  'aiQuickHsCode',
-      subKey:    'aiQuickHsCodeSub',
-      icon:      '📦',
-      prompt:    t('aiPromptHsCode'),
-      navigate:  'hscode' as const,
-    },
+    // RAG 채팅으로 대체, 2026-05-15 숨김 — 코드·라우트·DB 유지
+    // { labelKey: 'aiQuickHsCode', subKey: 'aiQuickHsCodeSub', icon: '📦', prompt: t('aiPromptHsCode'), navigate: 'hscode' as const },
     {
       labelKey:  'aiQuickTracking',
       subKey:    'aiQuickTrackingSub',
