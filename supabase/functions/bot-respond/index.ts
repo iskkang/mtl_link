@@ -46,15 +46,28 @@ async function searchKnowledgeBase(
     // 2. knowledge_base 유사도 검색
     const { data, error } = await db.rpc('match_knowledge_base', {
       query_embedding:    embedding,
-      match_threshold:    0.65,
-      match_count:        4,
+      match_threshold:    0.5,    // 함수 내부에서 미사용, 호출 측에서 후처리
+      match_count:        20,     // 여유 있게 가져와서 threshold 후처리
       filter_issue_type:  issueType,
+      filter_region:      null,
     })
 
-    if (error || !data || data.length === 0) return ''
+    if (error || !data) {
+      console.warn('[RAG] search error:', error)
+      return ''
+    }
+
+    // threshold 필터는 호출 측에서 후처리 (서브쿼리 금지 — IVFFlat 인덱스 비활성화됨)
+    const SIMILARITY_THRESHOLD = 0.40
+    const TOP_K = 4
+    const filtered = (data as { filename: string; content: string; similarity: number }[])
+      .filter(d => d.similarity >= SIMILARITY_THRESHOLD)
+      .slice(0, TOP_K)
+
+    if (filtered.length === 0) return ''
 
     // 3. 검색 결과를 컨텍스트 문자열로 변환
-    const context = (data as { filename: string; content: string }[])
+    const context = filtered
       .map(d => `[${d.filename}]\n${d.content}`)
       .join('\n\n---\n\n')
 
@@ -361,7 +374,7 @@ Deno.serve(async (req: Request) => {
       + ragContext  // RAG 검색 결과 주입
 
     // 7. Claude 호출
-    const botReply = await callClaude(anthropicKey, systemPrompt, contextMessages, 400)
+    const botReply = await callClaude(anthropicKey, systemPrompt, contextMessages, 800)
 
     // 8. 봇 메시지 INSERT
     const { error: insertError } = await db.from('messages').insert({

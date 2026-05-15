@@ -42,6 +42,9 @@ function extractSearchTerms(text: string): string[] {
   for (const m of en) terms.add(m)
   const ko = text.match(/[가-힯]{2,}/g) ?? []
   for (const m of ko) terms.add(m)
+  // 10자리 HS 코드 숫자 패턴 (예: 0101211000)
+  const hsCodes = text.match(/\b\d{8,10}\b/g) ?? []
+  for (const m of hsCodes) terms.add(m)
   return [...terms].slice(0, 20)
 }
 
@@ -117,8 +120,8 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
 
   const { data, error } = await supabaseAdmin.rpc('match_knowledge_base', {
     query_embedding:   embedding,
-    match_threshold:   0.5,
-    match_count:       5,
+    match_threshold:   0.5,   // 함수 내부에서 미사용, 호출 측에서 후처리
+    match_count:       20,    // 여유 있게 가져와서 threshold 후처리
     filter_issue_type: null,
     filter_region:     null,
   })
@@ -133,14 +136,24 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
     return findRelevantKnowledge(question)
   }
 
+  // threshold 필터는 호출 측에서 후처리 (서브쿼리 금지 — IVFFlat 인덱스 비활성화됨)
+  const SIMILARITY_THRESHOLD = 0.40
+  const TOP_K = 5
+  const filtered = (data as { filename: string; doc_type: string | null; issue_type: string | null; content: string; similarity: number }[])
+    .filter(d => d.similarity >= SIMILARITY_THRESHOLD)
+    .slice(0, TOP_K)
+
+  if (filtered.length === 0) {
+    console.log('[knowledge] threshold 미달 → 키워드 매칭 폴백')
+    return findRelevantKnowledge(question)
+  }
+
   console.log(
-    `[knowledge] 벡터 검색 hits=${(data as unknown[]).length}`,
-    (data as { filename: string; similarity: number }[])
-      .map(d => `${d.filename}(${d.similarity.toFixed(2)})`),
+    `[knowledge] 벡터 검색 hits=${filtered.length}/${(data as unknown[]).length}`,
+    filtered.map(d => `${d.filename}(${d.similarity.toFixed(2)})`),
   )
 
-  return (data as { filename: string; doc_type: string | null; issue_type: string | null; content: string }[])
-    .map(item => ({ filename: item.filename, doc_type: item.doc_type, issue_type: item.issue_type, content: item.content }))
+  return filtered.map(item => ({ filename: item.filename, doc_type: item.doc_type, issue_type: item.issue_type, content: item.content }))
 }
 
 // ── 시스템 프롬프트 주입 ───────────────────────────────────────────────────
@@ -206,7 +219,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model:      'claude-haiku-4-5-20251001',
-        max_tokens: 400,
+        max_tokens: 800,
         system:     systemPrompt,
         messages:   contextMessages,
       }),
