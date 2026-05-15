@@ -11,18 +11,26 @@ source: FESCO_SOP.docx
 
 # FESCO 운송 SOP
 
-## 1. 노선 정보
+## 1. 기본 루트
 
 ```
-주요 루트: BUSAN → VLADIVOSTOK → BREST → KUTNO (폴란드)
-           KUTNO 이후: HAMBURG / DUISBURG / ROTTERDAM 등 연결
+A. 한국 → 러시아
 
-서비스 타입:
-- FOR: RAIL까지 운송 (MTLPOL이 AN 받고 도착지 핸들링)
-- FOT: 도착지 TRUCK까지 포함
-→ 유럽 철송 건은 도착 후 MTLPOL 핸들링이므로 FOR으로 부킹
-```
+Busan → Vladivostok → 러시아 내륙
 
+FESCO의 한국-러시아 정기 해상 서비스는 KSDL / Korea Soviet Direct Line입니다. 공식 설명상 Busan–Vladivostok 구간을 운항하며, 일반화물, 위험물, 냉장화물, 벌크/특수장비 화물을 취급합니다. Busan–Vladivostok 해상 구간 표기 T/T는 2 days입니다.
+
+B. 한국 → 우즈베키스탄
+
+Busan → Vladivostok → Tashkent/Chukursay
+
+FESCO는 한국·중국·일본 등 아시아 국가 화물을 Vladivostok 또는 Novorossiysk를 통해 Uzbekistan으로 운송한다고 명시하고 있습니다. Vladivostok–Tashkent는 FESCO Tashkent Shuttle이 있고, 도착역은 Chukursay, 주 1회, T/T 13–14 days로 공개되어 있습니다.
+
+C. 한국 → 카자흐스탄
+
+Busan → Vladivostok / Novorossiysk / St. Petersburg / 육상 국경 → Almaty, Astana, Kostanay 등
+
+FESCO는 Kazakhstan향 운송을 Vladivostok, Novorossiysk, St. Petersburg 및 육상 국경 경유로 제공한다고 안내하고, 노선 맵상 Almaty, Astana, Kostanay를 표시합니다
 ---
 
 ## 2. FESCO 특이사항 (운영팀 필수 숙지)
@@ -71,9 +79,12 @@ source: FESCO_SOP.docx
 
 ### Step 1: 부킹 전 확인
 - 화주 부킹 요청 확인
-- HS CODE + ITEM 명 확인
+- 품명, HS Code, 수량, 중량, CBM
+- 컨테이너: SOC / COC, 20GP / 40GP / 40HQ / RF 확인
+- 카고타입: 일반 / DG / Reefer / OOG / 중량화물
 - **1PKG당 중량 확인** (1.5톤 초과 여부)
 - TSR 제한 아이템 여부 확인
+- 핵심은 러시아향이면 제재 품목 확인을 먼저 해야 한다는 것입니다. 화물 먼저 받고 나중에 체크하면 위험합니다. 특히 전자부품, 기계류, 차량부품, 이중용도 품목은 FESCO 부킹 가능 여부와 별개로 한국 수출통제 리스크가 있습니다.
 
 ### Step 2: 선사 부킹
 - 이메일/유선으로 FINAL STATION, 수량, 선적일 전달 후 선복 부킹
@@ -107,6 +118,19 @@ source: FESCO_SOP.docx
 - 당일 환율로 AR/AP 입력
 - 화주에게 인보이스 전달
 - SURRENDER 처리 요청 (BL No 포함 이메일)
+
+### Step 8: 주의사항
+- 러시아·중앙아시아향은 B/L description을 너무 애매하게 쓰면 문제가 생길 수 있다는 것입니다. 
+- “Machine parts”, “Equipment”, “Accessories”처럼 뭉뚱그리면 FESCO/세관/은행에서 추가 확인이 나올 가능성이 큽니다.
+
+### Step9: 도착지 통관 / 최종 배송
+ - 수입자 등록:	러시아/우즈벡/카자흐 현지 consignee 수입 가능 여부
+ - 통관 브로커:	FESCO 제공 또는 수입자 지정
+ - HS Code:	한국 HS와 현지 HS 불일치 여부
+ - 인증:	EAC, 위생증, 식품/화장품/전자 인증 등
+ - 세금:	VAT, Duty, 통관 수수료
+ - D/O:	FESCO 또는 현지 agent release 조건
+ - Final delivery:	역 도착 후 truck delivery 여부
 
 ---
 

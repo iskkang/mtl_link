@@ -25,14 +25,13 @@ CREATE TABLE IF NOT EXISTS knowledge_base (
   UNIQUE (filename, chunk_index)
 );
 
--- Step 3: 벡터 인덱스 (검색 속도)
-CREATE INDEX ON knowledge_base
-  USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 100);
+-- Step 3: 벡터 인덱스 (검색 속도) — HNSW (메모리 제약 없음, IVFFlat 대체)
+CREATE INDEX IF NOT EXISTS knowledge_base_embedding_idx ON knowledge_base
+  USING hnsw (embedding vector_cosine_ops);
 
 -- Step 4: 메타데이터 인덱스
-CREATE INDEX ON knowledge_base (doc_type, issue_type);
-CREATE INDEX ON knowledge_base (region, mode);
+CREATE INDEX IF NOT EXISTS knowledge_base_doc_issue_idx ON knowledge_base (doc_type, issue_type);
+CREATE INDEX IF NOT EXISTS knowledge_base_region_mode_idx ON knowledge_base (region, mode);
 
 -- Step 5: 유사도 검색 함수
 CREATE OR REPLACE FUNCTION match_knowledge_base(
@@ -67,10 +66,19 @@ $$;
 -- Step 6: RLS 설정
 ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role can do everything"
-  ON knowledge_base FOR ALL
-  USING (true)
-  WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'knowledge_base'
+      AND policyname = 'Service role can do everything'
+  ) THEN
+    CREATE POLICY "Service role can do everything"
+      ON knowledge_base FOR ALL
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;
 
 -- 완료 확인
 SELECT 'knowledge_base 테이블 생성 완료' AS status;
