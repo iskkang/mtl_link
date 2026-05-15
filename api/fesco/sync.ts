@@ -52,17 +52,18 @@ interface FescoOrdersResponse {
   }
 }
 
-// Required Vercel environment variable: CRON_SECRET
-// Vercel Cron automatically sends: Authorization: Bearer <CRON_SECRET>
-// Manual callers (admin, local dev) must do the same.
+// CRON_SECRET guard is enforced in production only.
+// Local dev (vercel dev, no VERCEL_ENV=production) bypasses the check.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) {
-    return res.status(500).json({ ok: false, error: 'CRON_SECRET is not configured' })
-  }
-  const authHeader = (req.headers['authorization'] ?? '').toString()
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  if (process.env.VERCEL_ENV === 'production') {
+    const cronSecret = process.env.CRON_SECRET
+    if (!cronSecret) {
+      return res.status(500).json({ ok: false, error: 'CRON_SECRET is not configured' })
+    }
+    const authHeader = (req.headers['authorization'] ?? '').toString()
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' })
+    }
   }
 
   const supabaseUrl = process.env.SUPABASE_URL
@@ -133,7 +134,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           dispatcher: fescoHttpAgent,
         })
       } catch (e: any) {
-        console.error('[sync] step 2 network error at offset=' + offset + ':', {
+        // Temporary diagnostic — logs error type and cause only, no token or secrets.
+        const urlObj = new URL(url)
+        console.error('[sync] step 2 network error:', {
+          page:         offset / 10,
+          urlPath:      urlObj.pathname + urlObj.search,
+          errorName:    e?.name,
           message:      e?.message,
           causeName:    e?.cause?.name,
           causeCode:    e?.cause?.code,

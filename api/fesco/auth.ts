@@ -36,7 +36,6 @@ export async function loginFesco(): Promise<string> {
         'Content-Type': 'application/json',
         'Accept':       'application/json',
         'X-Lk-Lang':   'en',
-        'User-Agent':   'MTL-Link-FESCO-Sync/1.0 (+internal operations dashboard)',
       },
       body: JSON.stringify(body),
       dispatcher: fescoHttpAgent,
