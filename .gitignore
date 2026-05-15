@@ -50,3 +50,5 @@ tsconfig.tsbuildinfo
 
 # 환경변수 (추가)
 .env
+
+.vercel

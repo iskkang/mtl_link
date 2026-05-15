@@ -1,0 +1,88 @@
+{
+  "message": "Успешно получен трекинг контейнеров",
+  "data": [
+    {
+      "unavailable": false,
+      "containerNumber": "BMOU4891889",
+      "billId": null,
+      "type": "fit",
+      "order": {
+        "ownerShip": "SOC",
+        "bills": ["FSCOPUVV605518", "FSIMPUCH422853"]
+      },
+      "events": { "data": [] },
+      "segments": [
+        {
+          "containerNumber": "BMOU4891889",
+          "prebooking": true,
+          "currentSegment": true,
+          "departureDate": "2026-05-14",
+          "destinationDate": null,
+          "planingDestinationDate": "2026-05-16",
+          "planingDepartureDate": "2026-05-14",
+          "telex": true,
+          "id": "4bc58cea-bad6-46bc-bf1f-80a4f5922965",
+          "completed": false,
+          "inProgress": true,
+          "plan": false,
+          "segmentType": "SEA",
+          "transport": {
+            "name": "ZHONG CHUAN HAI YUN",
+            "nameLatin": "ZHONG CHUAN HAI YUN",
+            "voyageNumber": "HKK1121"
+          },
+          "remainingDistance": null,
+          "departureLocation": "Пусан",
+          "departureLocationEn": "Busan",
+          "departureLocationCN": "釜山",
+          "departureLocationVN": "Busan",
+          "destinationLocation": "Владивосток",
+          "destinationLocationEn": "Vladivostok",
+          "destinationLocationCN": "符拉迪沃斯托克",
+          "destinationLocationVN": "Vladivostok",
+          "countryOfDepartureLocation": "КОРЕЯ, РЕСПУБЛИКА",
+          "countryOfDepartureLocationEn": "The Republic Of Korea",
+          "countryOfDepartureLocationCN": "大韩民国",
+          "countryOfDepartureLocationVN": "Hàn Quốc",
+          "countryOfDestinationLocation": "РОССИЯ",
+          "countryOfDestinationLocationEn": "The Russian Federation",
+          "countryOfDestinationLocationCN": "俄罗斯",
+          "countryOfDestinationLocationVN": "Nga"
+        },
+        {
+          "containerNumber": "BMOU4891889",
+          "prebooking": false,
+          "currentSegment": false,
+          "departureDate": null,
+          "destinationDate": null,
+          "planingDestinationDate": null,
+          "planingDepartureDate": null,
+          "telex": true,
+          "id": "0364c12a-a1bc-4236-9ebb-4167f991b4cc",
+          "completed": false,
+          "inProgress": false,
+          "plan": true,
+          "segmentType": "RR",
+          "transport": { "name": null, "nameLatin": null, "voyageNumber": null },
+          "remainingDistance": null,
+          "departureLocation": "Владивосток (Эксп.)",
+          "departureLocationEn": "Vladivostok (exp)",
+          "departureLocationCN": "符拉迪沃斯托克 （埃卡斯佩。）",
+          "departureLocationVN": "Vladivostok (EKSP.)",
+          "destinationLocation": "Чукурсай",
+          "destinationLocationEn": "Chukursaj",
+          "destinationLocationCN": "丘库尔赛",
+          "destinationLocationVN": "Chukursai",
+          "countryOfDepartureLocation": "РОССИЯ",
+          "countryOfDepartureLocationEn": "The Russian Federation",
+          "countryOfDepartureLocationCN": "俄罗斯",
+          "countryOfDepartureLocationVN": "Nga",
+          "countryOfDestinationLocation": "УЗБЕКИСТАН",
+          "countryOfDestinationLocationEn": "Uzbekistan",
+          "countryOfDestinationLocationCN": "乌兹别克斯坦",
+          "countryOfDestinationLocationVN": "Uzbekistan"
+        }
+      ]
+    }
+  ]
+}
