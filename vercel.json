@@ -4,6 +4,10 @@
     {
       "path": "/api/fesco/sync",
       "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/fesco/container-tracking-cron",
+      "schedule": "0 */3 * * *"
     }
   ],
   "headers": [
