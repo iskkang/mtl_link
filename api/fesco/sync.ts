@@ -54,7 +54,22 @@ interface FescoOrdersResponse {
 
 // CRON_SECRET guard is enforced in production only.
 // Local dev (vercel dev, no VERCEL_ENV=production) bypasses the check.
+console.log('[sync] module loaded')
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('[sync] handler entered')
+  try {
+    return await syncHandler(req, res)
+  } catch (topErr) {
+    const msg = topErr instanceof Error ? topErr.message : String(topErr)
+    console.error('[sync] UNCAUGHT top-level error:', msg)
+    if (!res.headersSent) {
+      return res.status(500).json({ ok: false, error: 'uncaught: ' + msg })
+    }
+  }
+}
+
+async function syncHandler(req: VercelRequest, res: VercelResponse) {
   if (process.env.VERCEL_ENV === 'production') {
     const cronSecret = process.env.CRON_SECRET
     if (!cronSecret) {
