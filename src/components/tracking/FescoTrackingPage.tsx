@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { translateFescoStatus } from '../../lib/fesco-status'
+import {
+  getFescoSignal,
+  translateFescoStatusText,
+  SIGNAL_COLOR,
+} from '../../lib/fescoSignal'
 
 /* ── List-view order (subset of columns) ─────────────────────────── */
 interface FescoOrder {
@@ -173,20 +177,15 @@ export function FescoTrackingPage() {
 
   /* ── Render ──────────────────────────────────────────────────── */
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
+    <div className="fesco-bookings-shell flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
 
       {/* Header */}
-      <div
-        className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b"
-        style={{ borderColor: 'var(--line)' }}
-      >
+      <div className="fesco-header flex-shrink-0 flex items-start justify-between">
         <div>
-          <h1 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>
-            FESCO Bookings
-          </h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--ink-4)' }}>
+          <h1>FESCO <em>Bookings</em></h1>
+          <div className="sub">
             {loading ? 'Loading…' : `${total.toLocaleString()} bookings synced from FESCO LK`}
-          </p>
+          </div>
         </div>
         <button
           type="button"
@@ -244,7 +243,12 @@ export function FescoTrackingPage() {
       {/* Content — switches to master/detail when an order is selected */}
       <div className={`flex-1 overflow-hidden flex flex-col ${selectedId ? 'md:flex-row' : ''}`}>
 
-        {/* ── List column ── */}
+        {/* ── List column ──
+             Future use:
+             This sidebar area is intentionally reserved for recent search/history items,
+             similar to ChatGPT conversation history.
+             Do not collapse or remove it during current FESCO booking UI work.
+        */}
         <div
           className={`overflow-y-auto px-4 py-4 ${
             selectedId
@@ -300,88 +304,84 @@ export function FescoTrackingPage() {
 
           {/* Booking cards */}
           {!loading && orders.length > 0 && (
-            <div className="space-y-2">
+            <div>
               {orders.map(order => {
-                const isSelected = order.id === selectedId
-                const label      = order.external_1c_number ?? `FESCO-${order.id}`
-                const containers = order.containers ?? []
-                const preview    = containers.slice(0, 3)
-                const extra      = containers.length - preview.length
-                const { bg, color } = getStatusStyle(order.status)
+                const isSelected     = order.id === selectedId
+                const containers     = order.containers ?? []
+                const containerCount = containers.length
+                const { signal, region, elapsedDays } = getFescoSignal(order)
+                const color          = SIGNAL_COLOR[signal]
+                const statusStr      = (order.status ?? '').toLowerCase()
+                const pillClass      = statusStr === 'active'   ? 'active'
+                                     : statusStr === 'rejected' ? 'rejected'
+                                     : 'complete'
 
                 return (
                   <button
                     key={order.id}
                     type="button"
+                    className={`fesco-card-compact${isSelected ? ' is-active' : ''}`}
                     onClick={() => handleCardClick(order.id)}
-                    className="w-full text-left rounded-xl border p-4 transition-colors"
-                    style={{
-                      background:  isSelected ? 'rgba(13,148,136,0.08)' : 'var(--card)',
-                      borderColor: isSelected ? '#0d9488'               : 'var(--line)',
-                      outline:     'none',
-                    }}
                   >
-                    {/* Top row */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-mono text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-                            {label}
-                          </span>
-                          <span
-                            className="px-1.5 py-0.5 rounded text-xs font-medium"
-                            style={{ background: bg, color }}
-                          >
-                            {order.status ?? '—'}
-                          </span>
-                          {order.external_1c_status && (
-                            <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
-                              {translateFescoStatus(order.external_1c_status)}
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className="text-sm truncate"
-                          style={{ color: 'var(--ink-3)' }}
-                          title={order.route_latin ?? undefined}
-                        >
-                          {order.route_latin ?? '—'}
-                        </div>
-                      </div>
-                      <div
-                        className="text-xs flex-shrink-0 pt-0.5"
-                        style={{ color: 'var(--ink-4)' }}
-                        title={order.last_synced_at ?? undefined}
-                      >
+                    {/* top row: dot · number · pill · time */}
+                    <div className="fesco-card-top">
+                      <span
+                        className={`fesco-signal${color.pulse ? ' fesco-signal-pulse-red' : ''}`}
+                        style={{
+                          backgroundColor: color.dotBg,
+                          boxShadow: `0 0 0 3px ${color.dotRing}`,
+                        }}
+                        aria-label={color.label}
+                        title={color.label}
+                      />
+                      <span className="fesco-number">
+                        {order.external_1c_number ?? `FESCO-${order.id}`}
+                      </span>
+                      <span className={`fesco-status-pill ${pillClass}`}>
+                        {order.status ?? '—'}
+                      </span>
+                      <span className="fesco-time">
                         {relativeTime(order.last_synced_at)}
-                      </div>
+                      </span>
                     </div>
 
-                    {/* Bottom row */}
-                    <div
-                      className="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-xs"
-                      style={{ color: 'var(--ink-4)' }}
-                    >
-                      {containers.length > 0 ? (
-                        <span>
-                          <span style={{ color: 'var(--ink-3)' }}>{containers.length} ctr:</span>{' '}
-                          <span className="font-mono">
-                            {preview.join(' · ')}
-                            {extra > 0 && <span style={{ color: 'var(--ink-4)' }}> +{extra}</span>}
-                          </span>
-                        </span>
-                      ) : (
-                        <span>No containers</span>
-                      )}
-                      {order.manager && (
-                        <span
-                          className="ml-auto truncate"
-                          style={{ color: 'var(--ink-4)', maxWidth: 160 }}
-                          title={order.manager}
-                        >
+                    {/* manager */}
+                    {order.manager && (
+                      <div className="fesco-card-meta">
+                        <span className="fesco-manager" title={order.manager}>
                           {order.manager}
                         </span>
-                      )}
+                      </div>
+                    )}
+
+                    {/* Russian status */}
+                    {order.external_1c_status && (
+                      <div className="fesco-status-text" title={order.external_1c_status || undefined}>
+                        {translateFescoStatusText(order.external_1c_status)}
+                      </div>
+                    )}
+
+                    {/* route */}
+                    <div className="fesco-route" title={order.route_latin ?? undefined}>
+                      {order.route_latin ?? '—'}
+                    </div>
+
+                    {/* containers */}
+                    {containerCount > 0 ? (
+                      <div className="fesco-containers">
+                        <span className="ctr-count">{containerCount} ctr:</span>{' '}
+                        {containers.slice(0, 3).join(' · ')}
+                        {containerCount > 3 ? ` +${containerCount - 3}` : ''}
+                      </div>
+                    ) : (
+                      <div className="fesco-containers empty">No containers</div>
+                    )}
+
+                    {/* order-level signal label — prefix makes order-level scope explicit */}
+                    <div className="fesco-signal-label" style={{ color: color.text }}>
+                      Order signal · {color.label}
+                      {elapsedDays !== null ? ` · ${elapsedDays}d` : ''}
+                      {region !== 'Other' ? ` · ${region}` : ''}
                     </div>
                   </button>
                 )
@@ -452,7 +452,7 @@ export function FescoTrackingPage() {
 
             {/* Detail content */}
             {detail && !detailLoading && (
-              <div className="px-6 py-4 space-y-5">
+              <div className="px-6 pt-6 pb-4 space-y-5">
 
                 {/* Signal banner (if present) */}
                 {detail.signal && (
@@ -490,8 +490,8 @@ export function FescoTrackingPage() {
                         {val(detail.status)}
                       </span>
                       {detail.external_1c_status && (
-                        <span className="text-xs" style={{ color: 'var(--ink-4)' }}>
-                          {translateFescoStatus(detail.external_1c_status)}
+                        <span className="text-xs" style={{ color: 'var(--ink-4)' }} title={detail.external_1c_status || undefined}>
+                          {translateFescoStatusText(detail.external_1c_status)}
                         </span>
                       )}
                     </span>
@@ -517,114 +517,257 @@ export function FescoTrackingPage() {
                 </section>
 
                 {/* Containers */}
-                <section
-                  className="rounded-xl border p-4"
-                  style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-                >
-                  <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--ink-4)' }}>
-                    Containers ({(detail.containers ?? []).length})
-                  </h3>
-                  {(detail.containers ?? []).length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--ink-4)' }}>No containers</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {(detail.containers ?? []).map(c => (
-                        <span
-                          key={c}
-                          className="font-mono text-xs px-2 py-1 rounded"
-                          style={{ background: 'var(--side-row)', color: 'var(--ink-3)' }}
-                        >
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                {(() => {
+                  const { signal: cSig } = getFescoSignal(detail)
+                  const cColor = SIGNAL_COLOR[cSig]
+                  const containers: string[] = Array.isArray(detail.containers) ? detail.containers : []
 
-                {/* Bills */}
-                <section
-                  className="rounded-xl border p-4"
-                  style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-                >
-                  <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--ink-4)' }}>
-                    Bills of Lading ({(detail.bills ?? []).length})
-                  </h3>
-                  {(detail.bills ?? []).length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--ink-4)' }}>No bills</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {(detail.bills ?? []).map(b => (
-                        <span
-                          key={b}
-                          className="font-mono text-xs px-2 py-1 rounded"
-                          style={{ background: 'var(--side-row)', color: 'var(--ink-3)' }}
-                        >
-                          {b}
-                        </span>
-                      ))}
+                  return (
+                    <div className="detail-card">
+                      <div className="detail-title">CONTAINERS ({containers.length})</div>
+
+                      {containers.length > 0 ? (
+                        <div className="container-list">
+                          {containers.map(containerNo => (
+                            <div key={containerNo} className="container-row">
+                              <span
+                                className={`fesco-signal${cColor.pulse ? ' fesco-signal-pulse-red' : ''}`}
+                                style={{
+                                  backgroundColor: cColor.dotBg,
+                                  boxShadow: `0 0 0 3px ${cColor.dotRing}`,
+                                }}
+                              />
+                              <span className="container-no">{containerNo}</span>
+                              <span className="container-signal" style={{ color: cColor.text }}>
+                                Order signal applied
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="detail-empty">No containers</div>
+                      )}
                     </div>
-                  )}
-                </section>
+                  )
+                  /*
+                    v1.1 NOTE:
+                    Containers are actual container numbers (text[]), but signal is still order-level.
+
+                    v1.5 future:
+                    If FESCO provides per-container events, compute:
+                      - containerSignal per container
+                      - orderSignal = worst child container signal
+                        priority: red > blue > yellow > green > gray
+                    Then replace "Order signal applied" with actual per-container signal.
+                    Do NOT use segments[*].containers as per-container event data —
+                    those are service/rate rows, not actual container movements.
+                  */
+                })()}
+
+                {/* B/L Numbers */}
+                {(() => {
+                  const bills: string[] = Array.isArray(detail.bills) ? detail.bills : []
+
+                  return (
+                    <div className="detail-card">
+                      <div className="detail-title">B/L Numbers ({bills.length})</div>
+
+                      {bills.length > 0 ? (
+                        <div className="bill-list">
+                          {bills.map(bl => (
+                            <div key={bl} className="bill-row">{bl}</div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="detail-empty">No bills</div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Segments */}
-                <section
-                  className="rounded-xl border p-4"
-                  style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-                >
-                  <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--ink-4)' }}>
-                    Segments ({(detail.segments ?? []).length})
-                  </h3>
-                  {(detail.segments ?? []).length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--ink-4)' }}>No segment data</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {(detail.segments ?? []).map((s, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          {s.type && (
-                            <span
-                              className="font-mono text-xs px-1.5 py-0.5 rounded flex-shrink-0"
-                              style={{ background: 'var(--side-row)', color: 'var(--ink-3)' }}
-                            >
-                              {String(s.type).toUpperCase()}
-                            </span>
-                          )}
-                          <span style={{ color: 'var(--ink)' }}>
-                            {s.from && s.to ? `${s.from} → ${s.to}` : JSON.stringify(s)}
-                          </span>
-                          {s.status && (
-                            <span className="ml-auto text-xs flex-shrink-0" style={{ color: 'var(--ink-4)' }}>
-                              {translateFescoStatus(s.status)}
-                            </span>
-                          )}
+                {(() => {
+                  type SegmentService = {
+                    key:           string
+                    serviceName:   string
+                    containerName: string
+                    price:         string
+                    main:          boolean
+                  }
+
+                  type FormattedSegment = {
+                    key:      string
+                    order:    number
+                    mode:     string
+                    from:     string
+                    to:       string
+                    countryTo: string
+                    services: SegmentService[]
+                  }
+
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const segments: any[] = Array.isArray(detail.segments) ? detail.segments : []
+
+                  const formatted: FormattedSegment[] = [...segments]
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .sort((a: any, b: any) => (a?.segmentOrder ?? 0) - (b?.segmentOrder ?? 0))
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .map((s: any, idx: number) => {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const serviceRows: any[] = Array.isArray(s?.containers) ? s.containers : []
+
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const services: SegmentService[] = serviceRows.map((sv: any, j: number) => ({
+                        key:           `${idx}-${j}-${sv?.UUID || sv?.RateNumber || 'service'}`,
+                        serviceName:   sv?.ServiceNameEng || sv?.ServiceName || '—',
+                        containerName: sv?.ContainerNameEng || sv?.ContainerName || '—',
+                        price:         (sv?.Price !== undefined && sv?.Currency)
+                                         ? `${sv.Price} ${sv.Currency}`
+                                         : '—',
+                        main:          Boolean(sv?.MainService),
+                      }))
+
+                      services.sort((a, b) => Number(b.main) - Number(a.main))
+
+                      return {
+                        key:       `${idx}-${s?.segmentOrder ?? 'seg'}-${s?.LocUidTo || s?.locNameLatinTo || 'to'}`,
+                        order:     s?.segmentOrder ?? idx + 1,
+                        mode:      s?.rstCode || '—',
+                        from:      s?.locNameLatinFrom || '—',
+                        to:        s?.locNameLatinTo || '—',
+                        countryTo: (s?.locAdditionalNameLatinTo || '').split(',').pop()?.trim() || '',
+                        services,
+                      }
+                    })
+
+                  return (
+                    <div className="detail-card">
+                      <div className="detail-title">SEGMENTS ({formatted.length})</div>
+
+                      {formatted.length > 0 ? (
+                        <div className="segment-list">
+                          {formatted.map(seg => (
+                            <div key={seg.key} className="segment-row">
+                              <div className="segment-head">
+                                <span className="segment-order">#{seg.order}</span>
+                                <span className="segment-mode">{seg.mode}</span>
+                                <span className="segment-route">
+                                  {seg.from} → {seg.to}
+                                  {seg.countryTo ? (
+                                    <span className="segment-country"> · {seg.countryTo}</span>
+                                  ) : null}
+                                </span>
+                              </div>
+
+                              {seg.services.length > 0 ? (
+                                <div className="segment-services">
+                                  {seg.services.map(sv => (
+                                    <div key={sv.key} className="segment-service-row">
+                                      <span className="segment-service-name">
+                                        {sv.serviceName}
+                                        {sv.main ? <span className="segment-badge">MAIN</span> : null}
+                                      </span>
+                                      <span className="segment-service-meta">
+                                        <span>{sv.containerName}</span>
+                                        <span className="segment-price">{sv.price}</span>
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="detail-empty">No service/rate rows</div>
+                              )}
+                            </div>
+                          ))}
+
+                          <details className="segment-raw">
+                            <summary>Show raw segment JSON</summary>
+                            <pre>{JSON.stringify(detail.segments, null, 2)}</pre>
+                          </details>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="detail-empty">No segment data</div>
+                      )}
                     </div>
-                  )}
-                </section>
+                  )
+                })()}
 
                 {/* Tracking */}
-                <section
-                  className="rounded-xl border p-4"
-                  style={{ background: 'var(--card)', borderColor: 'var(--line)' }}
-                >
-                  <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--ink-4)' }}>
-                    Tracking ({(detail.tracking ?? []).length})
-                  </h3>
-                  {(detail.tracking ?? []).length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--ink-4)' }}>No tracking data</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {(detail.tracking ?? []).map((t, i) => (
-                        <div key={i} className="text-xs font-mono p-2 rounded" style={{ background: 'var(--side-row)', color: 'var(--ink-3)' }}>
-                          {JSON.stringify(t)}
-                        </div>
-                      ))}
+                {(() => {
+                  const trackingItems: Record<string, unknown>[] = Array.isArray(detail.tracking) ? detail.tracking : []
+                  const containers: string[] = Array.isArray(detail.containers) ? detail.containers : []
+                  const countMatch = trackingItems.length > 0 && containers.length === trackingItems.length
+                  const KNOWN_TRACKING_KEYS = new Set(['departureDate', 'departure_date', 'destinationDate', 'destination_date', 'vote'])
+
+                  const fmtDate = (val: unknown): string => {
+                    if (val === null || val === undefined || val === '') return '—'
+                    const m = String(val).match(/^(\d{4}-\d{2}-\d{2})/)
+                    return m ? m[1] : String(val)
+                  }
+
+                  const fmtVote = (val: unknown): string => {
+                    if (val === true  || val === 'true'  || val === 1) return 'Yes'
+                    if (val === false || val === 'false' || val === 0) return 'No'
+                    if (val === undefined || val === null) return '—'
+                    return String(val)
+                  }
+
+                  return (
+                    <div className="detail-card">
+                      <div className="detail-title">TRACKING ({trackingItems.length})</div>
+                      {trackingItems.length === 0 ? (
+                        <div className="detail-empty">No tracking data</div>
+                      ) : (
+                        <>
+                          <div className="tracking-list">
+                            {trackingItems.map((t, i) => {
+                              const dep  = t?.departureDate  ?? t?.departure_date  ?? null
+                              const dest = t?.destinationDate ?? t?.destination_date ?? null
+                              const unknownEntries = Object.entries(t ?? {}).filter(([k]) => !KNOWN_TRACKING_KEYS.has(k))
+                              const rowLabel = countMatch
+                                ? `#${i + 1} ${containers[i]}`
+                                : `Tracking item #${i + 1}`
+                              return (
+                                <div key={i} className="tracking-row">
+                                  <div className="tracking-row-head">{rowLabel}</div>
+                                  <div className="tracking-fields">
+                                    <div className="tracking-field">
+                                      <span className="tracking-label">Departure</span>
+                                      <span className="tracking-value">{fmtDate(dep)}</span>
+                                    </div>
+                                    <div className="tracking-field">
+                                      <span className="tracking-label">Destination</span>
+                                      <span className="tracking-value">{fmtDate(dest)}</span>
+                                    </div>
+                                    <div className="tracking-field">
+                                      <span className="tracking-label">Vote</span>
+                                      <span className="tracking-value">{fmtVote(t?.vote)}</span>
+                                    </div>
+                                  </div>
+                                  {unknownEntries.length > 0 && (
+                                    <details className="segment-raw">
+                                      <summary>Show extra fields ({unknownEntries.length})</summary>
+                                      <pre>{JSON.stringify(Object.fromEntries(unknownEntries), null, 2)}</pre>
+                                    </details>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                          {countMatch && (
+                            <div className="tracking-match-note">
+                              Tracking items appear to match containers by order.
+                            </div>
+                          )}
+                          <details className="segment-raw">
+                            <summary>Show raw tracking JSON</summary>
+                            <pre>{JSON.stringify(detail.tracking, null, 2)}</pre>
+                          </details>
+                        </>
+                      )}
                     </div>
-                  )}
-                </section>
+                  )
+                })()}
 
               </div>
             )}

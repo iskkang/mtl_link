@@ -367,3 +367,489 @@ body, .chat-panel, .chat-header, .composer-panel,
 
 .ai-markdown p,
 .ai-markdown li { overflow-wrap: anywhere; }
+
+/* ===== MINT design tokens + card styles (FESCO tracking only) ===== */
+
+/* All CSS custom properties are scoped to .fesco-bookings-shell so
+   they do not pollute the global token namespace. */
+.fesco-bookings-shell {
+  --mint-primary: #14b8a6;
+  --mint-deep:    #0d9488;
+  --mint-light:   #5eead4;
+  --mint-bg:      #f0fdfa;
+  --mint-border:  #ccfbf1;
+
+  --ink-900: #0a1410;
+  --ink-800: #1f2a26;
+  --ink-700: #39443f;
+  --ink-600: #5b6660;
+  --ink-500: #828a85;
+  --ink-400: #b6bcb8;
+  --ink-300: #dde0de;
+  --ink-200: #eef0ef;
+  --ink-100: #f6f7f6;
+  --ink-50:  #fafbfa;
+  --paper:   #fbfaf6;
+
+  --signal-green:     #0d9488;
+  --signal-yellow:    #d97706;
+  --signal-red:       #dc2626;
+  --signal-blue:      #0284c7;
+  --signal-gray:      #94a3b8;
+  --signal-green-bg:  #ecfdf5;
+  --signal-yellow-bg: #fef3c7;
+  --signal-red-bg:    #fee2e2;
+  --signal-blue-bg:   #e0f2fe;
+  --signal-gray-bg:   #f1f5f9;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Geist', 'Helvetica Neue', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  font-family: var(--font-body);
+}
+
+.fesco-bookings-shell h1,
+.fesco-bookings-shell h2,
+.fesco-bookings-shell .display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.fesco-bookings-shell .label-mono {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-500);
+}
+
+/* ── FESCO header strip ── */
+.fesco-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--ink-200);
+  margin-bottom: 16px;
+}
+
+.fesco-header h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
+  margin: 0 0 4px;
+}
+
+.fesco-header h1 em {
+  font-style: italic;
+  color: var(--mint-deep);
+  font-weight: 300;
+}
+
+.fesco-header .sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-500);
+}
+
+/* ── Signal dot ── */
+.fesco-signal {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* Single @keyframes definition — do not duplicate */
+@keyframes fesco-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 3px var(--signal-red-bg); }
+  50%       { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.18); }
+}
+
+.fesco-signal-pulse-red {
+  animation: fesco-pulse-red 2s infinite;
+}
+
+/* ── Shared pill ── */
+.fesco-status-pill {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fesco-status-pill.active   { background: var(--mint-bg);       color: var(--mint-deep); }
+.fesco-status-pill.rejected { background: var(--signal-red-bg); color: var(--signal-red); }
+.fesco-status-pill.complete { background: var(--ink-100);       color: var(--ink-600); }
+
+/* ── Compact vertical card (v1.1) ── */
+.fesco-card-compact {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--ink-200);
+  border-radius: 12px;
+  margin-bottom: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.fesco-card-compact:hover {
+  border-color: var(--ink-300);
+  background: var(--ink-50);
+  box-shadow: 0 1px 4px rgba(10, 20, 16, 0.04);
+}
+
+.fesco-card-compact.is-active {
+  border-color: var(--mint-primary);
+  background: var(--mint-bg);
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.16);
+}
+
+.fesco-card-top {
+  display: grid;
+  grid-template-columns: 14px auto auto 1fr;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fesco-number {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-900);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.fesco-time {
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+.fesco-card-meta {
+  margin-top: 5px;
+  padding-left: 22px;
+  min-width: 0;
+}
+
+.fesco-manager {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fesco-status-text {
+  display: block;
+  margin-top: 8px;
+  padding-left: 22px;
+  font-size: 12px;
+  color: var(--ink-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fesco-route {
+  display: block;
+  margin-top: 4px;
+  padding-left: 22px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fesco-containers {
+  display: block;
+  margin-top: 5px;
+  padding-left: 22px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-500);
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fesco-containers .ctr-count { color: var(--ink-700); font-weight: 600; }
+.fesco-containers.empty      { font-style: italic; color: var(--ink-400); }
+
+.fesco-signal-label {
+  display: block;
+  margin-top: 8px;
+  padding-left: 22px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Detail panel shared ── */
+.detail-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--ink-200);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.detail-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-500);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.detail-empty {
+  font-size: 13px;
+  color: var(--ink-400);
+  font-style: italic;
+}
+
+/* ── Container rows ── */
+.container-list { display: grid; gap: 8px; }
+
+.container-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--ink-200);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.container-no {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.container-signal {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ── B/L rows ── */
+.bill-list { display: grid; gap: 6px; }
+
+.bill-row {
+  padding: 7px 11px;
+  border: 1px solid var(--ink-200);
+  border-radius: 6px;
+  background: #fff;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-800);
+  letter-spacing: 0.03em;
+}
+
+/* ── Segment list ── */
+.segment-list { display: grid; gap: 10px; }
+
+.segment-row {
+  padding: 11px 13px;
+  border: 1px solid var(--ink-200);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.segment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.segment-order {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-500);
+  font-weight: 600;
+}
+
+.segment-mode {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--ink-100);
+  color: var(--ink-700);
+  font-weight: 700;
+}
+
+.segment-route {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.segment-country {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--mint-deep);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.segment-services {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ink-200);
+  display: grid;
+  gap: 6px;
+}
+
+.segment-service-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--ink-700);
+}
+
+.segment-service-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.segment-badge {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--mint-bg);
+  color: var(--mint-deep);
+  font-weight: 700;
+}
+
+.segment-service-meta {
+  display: inline-flex;
+  gap: 10px;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+.segment-price {
+  color: var(--ink-800);
+  font-weight: 600;
+}
+
+.segment-raw {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-500);
+}
+
+.segment-raw summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.segment-raw pre {
+  margin-top: 6px;
+  padding: 10px;
+  background: var(--ink-100);
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 320px;
+  font-size: 10.5px;
+  color: var(--ink-700);
+}
+
+.tracking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tracking-row {
+  padding: 10px 12px;
+  background: var(--side-row);
+  border-radius: 8px;
+}
+
+.tracking-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tracking-field {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.tracking-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-4);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.tracking-value {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.tracking-row-head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.tracking-match-note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--ink-4);
+  font-style: italic;
+}
