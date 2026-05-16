@@ -194,6 +194,46 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
 
 const pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
+// ─── Stale alert helpers ──────────────────────────────────────────────────────
+
+interface StaleAlertResult {
+  alertType: 'stale_tracking_watch' | 'stale_tracking_risk'
+  severity:  'yellow' | 'red'
+  message:   string
+}
+
+function getStaleAlert(row: {
+  status?:          string | null
+  last_success_at?: string | null
+}): StaleAlertResult | null {
+  if (row.status === 'completed') return null
+  if (!row.last_success_at)      return null
+
+  const ageHours = (Date.now() - new Date(row.last_success_at).getTime()) / 3_600_000
+
+  if (ageHours >= 48) {
+    return {
+      alertType: 'stale_tracking_risk',
+      severity:  'red',
+      message:   'Tracking data has not been refreshed for more than 48 hours.',
+    }
+  }
+  if (ageHours >= 24) {
+    return {
+      alertType: 'stale_tracking_watch',
+      severity:  'yellow',
+      message:   'Tracking data has not been refreshed for more than 24 hours.',
+    }
+  }
+  return null
+}
+
+const ALERT_PRIORITY: Record<string, number> = { gray: 0, green: 1, yellow: 2, red: 3 }
+
+function shouldApplyAlertLevel(current?: string | null, next?: string | null): boolean {
+  return (ALERT_PRIORITY[next ?? 'gray'] ?? 0) > (ALERT_PRIORITY[current ?? 'gray'] ?? 0)
+}
+
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -232,6 +272,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let alertsUpdated         = 0
   let alertsResolved        = 0
   let failedContainersCount = 0
+  let staleAlertsOpened    = 0
+  let staleAlertsUpdated   = 0
+  let staleAlertsResolved  = 0
   const sampleNormalized: unknown[] = []
 
   try {
@@ -284,7 +327,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ordersScanned, containersFound, validContainers, invalidContainers,
         containersFetched: 0, currentRowsUpserted: 0, segmentsUpserted: 0,
         alertsOpened: 0, alertsUpdated: 0, alertsResolved: 0,
-        failedContainersCount: 0, errors,
+        failedContainersCount: 0,
+        staleAlertsOpened: 0, staleAlertsUpdated: 0, staleAlertsResolved: 0,
+        errors,
       })
     }
 
@@ -553,6 +598,136 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── 7. Stale tracking alert check ──────────────────────────────────────────
+    if (!dryRun) {
+      console.log('[ctr-sync] step 7: checking for stale tracking')
+
+      // 7a. Cleanup: resolve open stale alerts for containers that are now completed
+      const { data: openStaleForCleanup } = await supabase
+        .from('fesco_alerts')
+        .select('id, container_number')
+        .in('alert_type', ['stale_tracking_watch', 'stale_tracking_risk'])
+        .eq('status', 'open')
+
+      if (openStaleForCleanup && openStaleForCleanup.length > 0) {
+        const staleCtrNums = [...new Set(openStaleForCleanup.map(a => a.container_number as string))]
+        const { data: completedRows } = await supabase
+          .from('fesco_container_tracking_current')
+          .select('container_number')
+          .in('container_number', staleCtrNums)
+          .eq('status', 'completed')
+
+        if (completedRows && completedRows.length > 0) {
+          const completedSet = new Set(completedRows.map(r => r.container_number as string))
+          const idsToResolve = openStaleForCleanup
+            .filter(a => completedSet.has(a.container_number as string))
+            .map(a => a.id as number)
+          if (idsToResolve.length > 0) {
+            await supabase
+              .from('fesco_alerts')
+              .update({ status: 'resolved', resolved_at: now })
+              .in('id', idsToResolve)
+            staleAlertsResolved += idsToResolve.length
+          }
+        }
+      }
+
+      // 7b. Check all non-completed rows for staleness
+      const { data: trackingRows, error: staleQueryErr } = await supabase
+        .from('fesco_container_tracking_current')
+        .select('container_number, order_id, external_1c_number, status, last_success_at, last_error_at, last_error_message, consecutive_errors, alert_level')
+        .neq('status', 'completed')
+
+      if (staleQueryErr) {
+        errors.push('stale check query: ' + staleQueryErr.message)
+      } else {
+        for (const row of (trackingRows ?? [])) {
+          const stale = getStaleAlert({
+            status:          row.status          as string | null,
+            last_success_at: row.last_success_at as string | null,
+          })
+
+          if (stale) {
+            const staleHours = row.last_success_at
+              ? Math.round((Date.now() - new Date(row.last_success_at as string).getTime()) / 3_600_000)
+              : null
+            const rawContext = {
+              last_success_at:    row.last_success_at,
+              last_error_at:      row.last_error_at,
+              last_error_message: row.last_error_message,
+              consecutive_errors: row.consecutive_errors,
+              stale_hours:        staleHours,
+            }
+
+            // Deduplicate: find any open stale alert (watch or risk) for this container
+            const { data: existingStaleRows } = await supabase
+              .from('fesco_alerts')
+              .select('id')
+              .eq('container_number', row.container_number as string)
+              .in('alert_type', ['stale_tracking_watch', 'stale_tracking_risk'])
+              .eq('status', 'open')
+              .limit(1)
+            const existingStale = existingStaleRows?.[0] ?? null
+
+            if (existingStale) {
+              await supabase
+                .from('fesco_alerts')
+                .update({
+                  alert_type:   stale.alertType,
+                  severity:     stale.severity,
+                  message:      stale.message,
+                  last_seen_at: now,
+                  raw_context:  rawContext,
+                })
+                .eq('id', existingStale.id)
+              staleAlertsUpdated++
+            } else {
+              await supabase
+                .from('fesco_alerts')
+                .insert({
+                  container_number:   row.container_number,
+                  order_id:           row.order_id,
+                  external_1c_number: row.external_1c_number,
+                  alert_type:         stale.alertType,
+                  severity:           stale.severity,
+                  message:            stale.message,
+                  status:             'open',
+                  raw_context:        rawContext,
+                  first_seen_at:      now,
+                  last_seen_at:       now,
+                })
+              staleAlertsOpened++
+            }
+
+            // Upgrade alert_level on current row only if stale priority is strictly higher
+            if (shouldApplyAlertLevel(row.alert_level as string | null, stale.severity)) {
+              await supabase
+                .from('fesco_container_tracking_current')
+                .update({ alert_level: stale.severity, alert_reason: stale.message })
+                .eq('container_number', row.container_number as string)
+            }
+          } else {
+            // Fresh — resolve any open stale alerts for this container
+            const { data: openStale } = await supabase
+              .from('fesco_alerts')
+              .select('id')
+              .eq('container_number', row.container_number as string)
+              .in('alert_type', ['stale_tracking_watch', 'stale_tracking_risk'])
+              .eq('status', 'open')
+
+            if (openStale && openStale.length > 0) {
+              await supabase
+                .from('fesco_alerts')
+                .update({ status: 'resolved', resolved_at: now })
+                .in('id', openStale.map(a => a.id as number))
+              staleAlertsResolved += openStale.length
+            }
+          }
+        }
+      }
+      console.log(`[ctr-sync] step 7 OK: stale opened=${staleAlertsOpened} updated=${staleAlertsUpdated} resolved=${staleAlertsResolved}`)
+    }
+
     const result: Record<string, unknown> = {
       ok:                  true,
       mode:                dryRun ? 'dry_run' : 'live',
@@ -567,6 +742,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       alertsUpdated,
       alertsResolved,
       failedContainersCount,
+      staleAlertsOpened,
+      staleAlertsUpdated,
+      staleAlertsResolved,
       errors,
     }
     if (dryRun && sampleNormalized.length > 0) result.sampleNormalized = sampleNormalized
