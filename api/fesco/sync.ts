@@ -73,13 +73,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false },
-    global: {
-      fetch: globalThis.fetch,
-    },
-    realtime: {
-      params: {},
-      transport: ws as any,
-    },
   })
 
   // Atomic lock: evicts stale locks (> 15 min old) then atomically claims
