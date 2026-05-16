@@ -7,8 +7,6 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { fetch as undiciFetch, Agent } from 'undici'
-import { loginFesco } from './auth'
 
 // Safety policy:
 // - Use only MTL's own MY.FESCO account credentials.
@@ -16,14 +14,6 @@ import { loginFesco } from './auth'
 // - Keep cron frequency conservative (every 4 hours).
 // - Do not bypass CAPTCHA or any FESCO access controls.
 // - If FESCO provides official API credentials later, replace this integration.
-
-// FESCO API can be slow to establish TLS connections from Node 20 on Windows/Vercel dev.
-// Use explicit undici Agent timeouts instead of native fetch defaults.
-const fescoHttpAgent = new Agent({
-  connectTimeout: 45000,
-  headersTimeout: 120000,
-  bodyTimeout:    120000,
-})
 
 interface FescoOrder {
   id:                   number
@@ -109,6 +99,29 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
   let updated      = 0
   let failed       = 0
   let total        = 0
+
+  // Dynamic imports — keeps undici/auth out of module-level so load errors
+  // are caught by the outer try-catch and returned as JSON.
+  let undiciFetch: typeof import('undici').fetch
+  let Agent: typeof import('undici').Agent
+  let loginFesco: typeof import('./auth').loginFesco
+  try {
+    const undici = await import('undici')
+    undiciFetch = undici.fetch
+    Agent       = undici.Agent
+    const authMod = await import('./auth')
+    loginFesco    = authMod.loginFesco
+  } catch (importErr) {
+    const msg = importErr instanceof Error ? importErr.message : String(importErr)
+    console.error('[sync] dynamic import FAILED:', msg)
+    return res.status(500).json({ ok: false, error: 'import failed: ' + msg })
+  }
+
+  const fescoHttpAgent = new Agent({
+    connectTimeout: 45000,
+    headersTimeout: 120000,
+    bodyTimeout:    120000,
+  })
 
   try {
     // 1. Login
