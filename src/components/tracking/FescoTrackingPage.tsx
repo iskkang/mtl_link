@@ -63,6 +63,10 @@ interface ContainerTrackingRow {
   transport_name:           string | null
   voyage_number:            string | null
   last_checked_at:          string | null
+  last_success_at:          string | null
+  last_error_at:            string | null
+  last_error_message:       string | null
+  consecutive_errors:       number | null
 }
 
 interface OrderAlertSummary {
@@ -127,6 +131,23 @@ const ALERT_DISPLAY: Record<string, { label: string; color: string; bg: string; 
 }
 
 const ALERT_SORT: Record<string, number> = { red: 0, yellow: 1, green: 2, gray: 3 }
+
+const STALE_WATCH_HOURS = 24
+const STALE_RISK_HOURS  = 48
+
+const STALE_DISPLAY = {
+  watch: { label: 'Stale', color: '#d97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.25)'  },
+  risk:  { label: 'Stale', color: '#dc2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.25)'  },
+}
+
+function getStaleState(row: ContainerTrackingRow): 'fresh' | 'watch' | 'risk' {
+  if (row.status === 'completed') return 'fresh'
+  if (!row.last_success_at) return 'risk'
+  const ageHours = (Date.now() - new Date(row.last_success_at).getTime()) / 3_600_000
+  if (ageHours >= STALE_RISK_HOURS)  return 'risk'
+  if (ageHours >= STALE_WATCH_HOURS) return 'watch'
+  return 'fresh'
+}
 
 // Load more than default to support full client-side search across all orders.
 // API caps at 100; current total active orders: ~57.
@@ -212,9 +233,10 @@ export function FescoTrackingPage() {
   const [detailError,   setDetailError]   = useState<string | null>(null)
 
   /* container tracking state */
-  const [containerTracking, setContainerTracking] = useState<ContainerTrackingRow[]>([])
-  const [trackingLoading,   setTrackingLoading]   = useState(false)
-  const [trackingError,     setTrackingError]     = useState<string | null>(null)
+  const [containerTracking,  setContainerTracking]  = useState<ContainerTrackingRow[]>([])
+  const [trackingLoading,    setTrackingLoading]    = useState(false)
+  const [trackingError,      setTrackingError]      = useState<string | null>(null)
+  const [expandedStaleCtr,   setExpandedStaleCtr]   = useState<string | null>(null)
 
   /* fetch alert summaries (fire-and-forget — non-critical) */
   const fetchAlertSummaries = useCallback(async (orderIds: number[]) => {
@@ -809,6 +831,9 @@ export function FescoTrackingPage() {
                           const statusLabel = STATUS_LABELS[tr.status ?? ''] ?? (tr.status ?? '—')
                           const route       = [tr.current_from, tr.current_to].filter(Boolean).join(' → ')
                           const segType     = tr.current_segment_type ?? ''
+                          const staleState  = getStaleState(tr)
+                          const staleInfo   = staleState !== 'fresh' ? STALE_DISPLAY[staleState] : null
+                          const staleExpanded = expandedStaleCtr === tr.container_number
 
                           return (
                             <div
@@ -820,9 +845,20 @@ export function FescoTrackingPage() {
                                 <span className="text-sm font-semibold" style={{ color: 'var(--ink)', fontFamily: 'monospace' }}>
                                   {tr.container_number}
                                 </span>
-                                <span className="text-xs font-semibold" style={{ color: alertInfo.color }}>
-                                  {alertInfo.label}
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  {staleInfo && (
+                                    <button
+                                      onClick={() => setExpandedStaleCtr(staleExpanded ? null : tr.container_number)}
+                                      className="text-xs font-medium px-1.5 py-0.5 rounded"
+                                      style={{ background: staleInfo.bg, color: staleInfo.color, border: `1px solid ${staleInfo.border}`, cursor: 'pointer' }}
+                                    >
+                                      {staleInfo.label}
+                                    </button>
+                                  )}
+                                  <span className="text-xs font-semibold" style={{ color: alertInfo.color }}>
+                                    {alertInfo.label}
+                                  </span>
+                                </div>
                               </div>
 
                               <div className="text-xs" style={{ color: 'var(--ink-2)', marginBottom: 3 }}>
@@ -858,6 +894,34 @@ export function FescoTrackingPage() {
                               {tr.last_checked_at && (
                                 <div className="text-xs" style={{ color: 'var(--ink-4)' }}>
                                   Checked {relativeTime(tr.last_checked_at)}
+                                </div>
+                              )}
+
+                              {staleInfo && staleExpanded && (
+                                <div
+                                  className="text-xs rounded"
+                                  style={{ marginTop: 6, padding: '6px 8px', background: 'var(--side-row)', border: `1px solid ${staleInfo.border}`, color: 'var(--ink-2)', lineHeight: 1.6 }}
+                                >
+                                  <div style={{ fontWeight: 600, color: staleInfo.color, marginBottom: 2 }}>Tracking data is stale</div>
+                                  <div>
+                                    Last refreshed:{' '}
+                                    <span style={{ color: 'var(--ink)' }}>
+                                      {tr.last_success_at ? relativeTime(tr.last_success_at) : 'Never refreshed'}
+                                    </span>
+                                  </div>
+                                  {tr.last_error_message && (
+                                    <div>
+                                      Last error:{' '}
+                                      <span style={{ color: '#dc2626' }}>{tr.last_error_message}</span>
+                                      {tr.last_error_at && (
+                                        <span style={{ color: 'var(--ink-4)' }}> · {relativeTime(tr.last_error_at)}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div>
+                                    Consecutive errors:{' '}
+                                    <span style={{ color: 'var(--ink)' }}>{tr.consecutive_errors ?? 0}</span>
+                                  </div>
                                 </div>
                               )}
                             </div>

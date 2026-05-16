@@ -60,7 +60,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'container_number, status, alert_level, alert_reason, ' +
         'current_segment_type, current_from, current_to, ' +
         'departure_date, planned_departure_date, destination_date, planned_destination_date, ' +
-        'transport_name, voyage_number, last_checked_at',
+        'transport_name, voyage_number, last_checked_at, ' +
+        'last_success_at, last_error_at, last_error_message, consecutive_errors',
       )
       .eq('order_id', orderId)
       .order('container_number'),
