@@ -199,7 +199,14 @@ function getStaleAlert(row: {
   last_success_at?: string | null
 }): StaleAlertResult | null {
   if (row.status === 'completed') return null
-  if (!row.last_success_at)      return null
+  if (!row.last_success_at) {
+    // Never synced successfully — treat as highest risk (no refresh baseline exists).
+    return {
+      alertType: 'stale_tracking_risk',
+      severity:  'red',
+      message:   'Tracking data has not been refreshed for more than 48 hours.',
+    }
+  }
 
   const ageHours = (Date.now() - new Date(row.last_success_at).getTime()) / 3_600_000
 
