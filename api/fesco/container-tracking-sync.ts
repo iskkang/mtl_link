@@ -241,9 +241,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const dryRun   = req.query.dryRun === '1' || req.query.dryRun === 'true'
-  const rawLimit = parseInt(String(req.query.limit ?? String(DEFAULT_LIMIT)), 10)
-  const limit    = Math.min(isNaN(rawLimit) ? DEFAULT_LIMIT : Math.max(1, rawLimit), MAX_LIMIT)
+  const dryRun    = req.query.dryRun === '1' || req.query.dryRun === 'true'
+  const rawLimit  = parseInt(String(req.query.limit  ?? String(DEFAULT_LIMIT)), 10)
+  const limit     = Math.min(isNaN(rawLimit)  ? DEFAULT_LIMIT : Math.max(1, rawLimit),  MAX_LIMIT)
+  const rawOffset = parseInt(String(req.query.offset ?? '0'), 10)
+  const offset    = isNaN(rawOffset) || rawOffset < 0 ? 0 : rawOffset
 
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -362,11 +364,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const allValid = [...containerToOrder.keys()]
-    const toLookup = allValid.slice(0, limit)
+    const allValid = [...containerToOrder.keys()].sort()
+    const toLookup = allValid.slice(offset, offset + limit)
     console.log(
       `[ctr-sync] step 2 OK: ${validContainers} valid (${containerToOrder.size} unique), ` +
-      `${invalidContainers} invalid, fetching ${toLookup.length} (limit=${limit})`,
+      `${invalidContainers} invalid, fetching ${toLookup.length} (offset=${offset}, limit=${limit})`,
     )
 
     if (toLookup.length === 0) {

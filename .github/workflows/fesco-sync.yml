@@ -30,15 +30,29 @@ jobs:
     needs: orders-sync
     timeout-minutes: 10
     steps:
-      - name: Call /api/fesco/container-tracking-cron
+      # Split into two batches of 72 to stay under Cloudflare's 100s proxy timeout.
+      # Containers are sorted alphabetically before slicing so batches are stable.
+      - name: Container tracking batch 1 (offset=0, limit=72)
         run: |
           response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/fesco/container-tracking-cron")
+            "${{ secrets.APP_URL }}/api/fesco/container-tracking-sync?limit=72")
           echo "HTTP status: $response"
           echo "Response body:"
           cat /tmp/body.json
           if [ "$response" != "200" ]; then
-            echo "Container tracking sync failed"
+            echo "Batch 1 failed"
+            exit 1
+          fi
+      - name: Container tracking batch 2 (offset=72, limit=72)
+        run: |
+          response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/fesco/container-tracking-sync?limit=72&offset=72")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "Batch 2 failed"
             exit 1
           fi
