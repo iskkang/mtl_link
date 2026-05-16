@@ -22,9 +22,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
 
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+  // VERCEL_PROJECT_PRODUCTION_URL = canonical production URL (no https:// prefix).
+  // VERCEL_URL = deployment-specific URL which may be behind Vercel deployment protection.
+  // Use production URL first to avoid the Vercel auth wall on deployment URLs.
+  const rawUrl =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+    process.env.VERCEL_URL
+  const baseUrl = rawUrl ? `https://${rawUrl}` : 'http://localhost:3000'
 
   const syncUrl = `${baseUrl}/api/fesco/container-tracking-sync?limit=${SYNC_LIMIT}`
 
