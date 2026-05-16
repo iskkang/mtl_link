@@ -47,6 +47,32 @@ interface FescoOrderDetail {
   last_synced_at:     string | null
 }
 
+/* ── Container tracking types ─────────────────────────────────────── */
+interface ContainerTrackingRow {
+  container_number:         string
+  status:                   string | null
+  alert_level:              string | null
+  alert_reason:             string | null
+  current_segment_type:     string | null
+  current_from:             string | null
+  current_to:               string | null
+  departure_date:           string | null
+  planned_departure_date:   string | null
+  destination_date:         string | null
+  planned_destination_date: string | null
+  transport_name:           string | null
+  voyage_number:            string | null
+  last_checked_at:          string | null
+}
+
+interface OrderAlertSummary {
+  red:    number
+  yellow: number
+  green:  number
+  gray:   number
+  total:  number
+}
+
 interface OrdersResponse {
   ok:     boolean
   total:  number
@@ -62,6 +88,19 @@ interface DetailResponse {
   error?: string
 }
 
+interface ContainerTrackingDetailResponse {
+  ok:       boolean
+  tracking: ContainerTrackingRow[]
+  alerts:   unknown[]
+  error?:   string
+}
+
+interface AlertSummaryResponse {
+  ok:      boolean
+  summary: Record<string, OrderAlertSummary>
+  error?:  string
+}
+
 /* ── Constants ────────────────────────────────────────────────────── */
 const STATUS_TABS = ['All', 'ACTIVE', 'REJECTED'] as const
 type StatusTab = typeof STATUS_TABS[number]
@@ -70,6 +109,24 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   ACTIVE:   { bg: 'rgba(20,184,166,0.12)', color: '#0d9488' },
   REJECTED: { bg: 'rgba(220,38,38,0.10)', color: '#dc2626' },
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  planned:           'Planned',
+  in_progress:       'In progress',
+  awaiting_next_leg: 'Awaiting next leg',
+  completed:         'Completed',
+  unavailable:       'Unavailable',
+  unknown:           'Unknown',
+}
+
+const ALERT_DISPLAY: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  red:    { label: 'Risk',      color: '#dc2626', bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.25)'   },
+  yellow: { label: 'Watch',     color: '#d97706', bg: 'rgba(217,119,6,0.08)',   border: 'rgba(217,119,6,0.25)'   },
+  green:  { label: 'OK',        color: '#0d9488', bg: 'rgba(20,184,166,0.08)',  border: 'rgba(20,184,166,0.25)'  },
+  gray:   { label: 'Completed', color: '#6b7280', bg: 'rgba(107,114,128,0.06)', border: 'rgba(107,114,128,0.2)'  },
+}
+
+const ALERT_SORT: Record<string, number> = { red: 0, yellow: 1, green: 2, gray: 3 }
 
 function getStatusStyle(status: string | null) {
   return STATUS_STYLE[(status ?? '').toUpperCase()] ?? { bg: 'var(--side-row)', color: 'var(--ink-3)' }
@@ -85,6 +142,12 @@ function relativeTime(iso: string | null): string {
   if (mins  < 60) return `${mins}m ago`
   if (hours < 24) return `${hours}h ago`
   return `${days}d ago`
+}
+
+function fmtDate(v: string | null | undefined): string {
+  if (!v) return '—'
+  const m = v.match(/^(\d{4}-\d{2}-\d{2})/)
+  return m ? m[1] : v
 }
 
 const val = (v: string | null | undefined) => v?.trim() || '—'
@@ -104,20 +167,43 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 /* ── Main component ──────────────────────────────────────────────── */
 export function FescoTrackingPage() {
   /* list state */
-  const [searchInput, setSearchInput] = useState('')
-  const [q,           setQ]           = useState('')
-  const [statusTab,   setStatusTab]   = useState<StatusTab>('All')
-  const [orders,      setOrders]      = useState<FescoOrder[]>([])
-  const [total,       setTotal]       = useState(0)
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState<string | null>(null)
-  const [refreshKey,  setRefreshKey]  = useState(0)
+  const [searchInput,    setSearchInput]    = useState('')
+  const [q,              setQ]              = useState('')
+  const [statusTab,      setStatusTab]      = useState<StatusTab>('All')
+  const [orders,         setOrders]         = useState<FescoOrder[]>([])
+  const [total,          setTotal]          = useState(0)
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState<string | null>(null)
+  const [refreshKey,     setRefreshKey]     = useState(0)
+  const [alertSummaries, setAlertSummaries] = useState<Record<number, OrderAlertSummary>>({})
 
   /* detail state */
   const [selectedId,    setSelectedId]    = useState<number | null>(null)
   const [detail,        setDetail]        = useState<FescoOrderDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError,   setDetailError]   = useState<string | null>(null)
+
+  /* container tracking state */
+  const [containerTracking, setContainerTracking] = useState<ContainerTrackingRow[]>([])
+  const [trackingLoading,   setTrackingLoading]   = useState(false)
+  const [trackingError,     setTrackingError]     = useState<string | null>(null)
+
+  /* fetch alert summaries (fire-and-forget — non-critical) */
+  const fetchAlertSummaries = useCallback(async (orderIds: number[]) => {
+    if (orderIds.length === 0) return
+    try {
+      const res  = await fetch(`/api/fesco/container-tracking?summary=1&order_ids=${orderIds.join(',')}`)
+      const json = await res.json() as AlertSummaryResponse
+      if (!json.ok) return
+      const parsed: Record<number, OrderAlertSummary> = {}
+      for (const [k, v] of Object.entries(json.summary)) {
+        parsed[parseInt(k, 10)] = v
+      }
+      setAlertSummaries(parsed)
+    } catch {
+      // non-critical: card chips simply won't appear
+    }
+  }, [])
 
   /* fetch list */
   const fetchOrders = useCallback(async (query: string, status: StatusTab) => {
@@ -132,12 +218,13 @@ export function FescoTrackingPage() {
       if (!json.ok) throw new Error(json.error ?? 'Failed to load bookings')
       setOrders(json.data)
       setTotal(json.total)
+      fetchAlertSummaries(json.data.map(o => o.id))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [fetchAlertSummaries])
 
   useEffect(() => {
     fetchOrders(q, statusTab)
@@ -160,20 +247,44 @@ export function FescoTrackingPage() {
     }
   }, [])
 
+  /* fetch container tracking for selected order */
+  const fetchContainerTracking = useCallback(async (id: number) => {
+    setTrackingLoading(true)
+    setTrackingError(null)
+    setContainerTracking([])
+    try {
+      const res  = await fetch(`/api/fesco/container-tracking?order_id=${id}`)
+      const json = await res.json() as ContainerTrackingDetailResponse
+      if (!json.ok) throw new Error(json.error ?? 'Failed to load tracking')
+      setContainerTracking(json.tracking)
+    } catch (e) {
+      setTrackingError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setTrackingLoading(false)
+    }
+  }, [])
+
+  const resetDetail = () => {
+    setDetail(null)
+    setDetailError(null)
+    setContainerTracking([])
+    setTrackingError(null)
+  }
+
   const handleCardClick = (id: number) => {
     if (id === selectedId) {
       setSelectedId(null)
-      setDetail(null)
-      setDetailError(null)
+      resetDetail()
     } else {
       setSelectedId(id)
       fetchDetail(id)
+      fetchContainerTracking(id)
     }
   }
 
   const handleSearch  = () => setQ(searchInput.trim())
   const handleRefresh = () => setRefreshKey(k => k + 1)
-  const handleClose   = () => { setSelectedId(null); setDetail(null); setDetailError(null) }
+  const handleClose   = () => { setSelectedId(null); resetDetail() }
 
   /* ── Render ──────────────────────────────────────────────────── */
   return (
@@ -316,6 +427,8 @@ export function FescoTrackingPage() {
                                      : statusStr === 'rejected' ? 'rejected'
                                      : 'complete'
 
+                const ctrSummary = alertSummaries[order.id]
+
                 return (
                   <button
                     key={order.id}
@@ -383,6 +496,22 @@ export function FescoTrackingPage() {
                       {elapsedDays !== null ? ` · ${elapsedDays}d` : ''}
                       {region !== 'Other' ? ` · ${region}` : ''}
                     </div>
+
+                    {/* container tracking alert chip */}
+                    {ctrSummary && ctrSummary.total > 0 && (() => {
+                      const hasRisk  = ctrSummary.red > 0 || ctrSummary.yellow > 0
+                      const chipColor = ctrSummary.red > 0 ? '#dc2626'
+                                      : ctrSummary.yellow > 0 ? '#d97706'
+                                      : '#0d9488'
+                      const parts: string[] = []
+                      if (ctrSummary.red    > 0) parts.push(`${ctrSummary.red} red`)
+                      if (ctrSummary.yellow > 0) parts.push(`${ctrSummary.yellow} yellow`)
+                      return (
+                        <div className="fesco-signal-label" style={{ color: chipColor }}>
+                          Container alert · {hasRisk ? parts.join(' · ') : 'OK'}
+                        </div>
+                      )
+                    })()}
                   </button>
                 )
               })}
@@ -521,6 +650,7 @@ export function FescoTrackingPage() {
                   const { signal: cSig } = getFescoSignal(detail)
                   const cColor = SIGNAL_COLOR[cSig]
                   const containers: string[] = Array.isArray(detail.containers) ? detail.containers : []
+                  const trackingMap = new Map(containerTracking.map(t => [t.container_number, t]))
 
                   return (
                     <div className="detail-card">
@@ -528,24 +658,86 @@ export function FescoTrackingPage() {
 
                       {containers.length > 0 ? (
                         <div className="container-list">
-                          {containers.map(containerNo => (
-                            <div key={containerNo} className="container-row">
-                              <span
-                                className={`fesco-signal${cColor.pulse ? ' fesco-signal-pulse-red' : ''}`}
-                                style={{
-                                  backgroundColor: cColor.dotBg,
-                                  boxShadow: `0 0 0 3px ${cColor.dotRing}`,
-                                }}
-                              />
-                              <span className="container-no">{containerNo}</span>
-                              <span className="container-signal" style={{ color: cColor.text }}>
-                                Order signal applied
-                              </span>
-                            </div>
-                          ))}
+                          {containers.map(containerNo => {
+                            const tr = trackingMap.get(containerNo)
+
+                            if (!tr) {
+                              return (
+                                <div key={containerNo} className="container-row">
+                                  <span
+                                    className={`fesco-signal${cColor.pulse ? ' fesco-signal-pulse-red' : ''}`}
+                                    style={{
+                                      backgroundColor: cColor.dotBg,
+                                      boxShadow: `0 0 0 3px ${cColor.dotRing}`,
+                                    }}
+                                  />
+                                  <span className="container-no">{containerNo}</span>
+                                  <span className="container-signal" style={{ color: cColor.text }}>
+                                    Order signal applied
+                                  </span>
+                                </div>
+                              )
+                            }
+
+                            const alertInfo   = ALERT_DISPLAY[tr.alert_level ?? 'gray'] ?? ALERT_DISPLAY.gray
+                            const statusLabel = STATUS_LABELS[tr.status ?? ''] ?? (tr.status ?? '—')
+                            const route       = [tr.current_from, tr.current_to].filter(Boolean).join(' → ')
+                            const segType     = tr.current_segment_type ?? ''
+
+                            return (
+                              <div
+                                key={containerNo}
+                                className="container-row"
+                                style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 3, paddingTop: 6, paddingBottom: 6 }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                                  <span className="container-no">{containerNo}</span>
+                                  <span
+                                    className="text-xs font-medium px-1.5 py-0.5 rounded"
+                                    style={{ background: alertInfo.bg, color: alertInfo.color, border: `1px solid ${alertInfo.border}` }}
+                                  >
+                                    {alertInfo.label}
+                                  </span>
+                                </div>
+                                <div className="text-xs" style={{ color: 'var(--ink-3)', paddingLeft: 2 }}>
+                                  {statusLabel}
+                                  {segType ? ` · ${segType}` : ''}
+                                  {route   ? ` · ${route}`   : ''}
+                                </div>
+                                {(tr.departure_date || tr.planned_departure_date || tr.destination_date || tr.planned_destination_date) && (
+                                  <div className="text-xs" style={{ color: 'var(--ink-4)', paddingLeft: 2 }}>
+                                    {tr.departure_date
+                                      ? `Departed ${fmtDate(tr.departure_date)}`
+                                      : tr.planned_departure_date
+                                      ? `Planned dep ${fmtDate(tr.planned_departure_date)}`
+                                      : null}
+                                    {(tr.destination_date || tr.planned_destination_date) &&
+                                     (tr.departure_date   || tr.planned_departure_date)
+                                      ? '  ·  ' : null}
+                                    {tr.destination_date
+                                      ? `Arrived ${fmtDate(tr.destination_date)}`
+                                      : tr.planned_destination_date
+                                      ? `Planned arr ${fmtDate(tr.planned_destination_date)}`
+                                      : null}
+                                  </div>
+                                )}
+                                {tr.alert_reason && (
+                                  <div className="text-xs" style={{ color: alertInfo.color, paddingLeft: 2 }}>
+                                    {tr.alert_reason}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       ) : (
                         <div className="detail-empty">No containers</div>
+                      )}
+
+                      {trackingLoading && (
+                        <div className="detail-empty" style={{ fontSize: 12, marginTop: 4 }}>
+                          Loading container tracking…
+                        </div>
                       )}
                     </div>
                   )
@@ -563,6 +755,102 @@ export function FescoTrackingPage() {
                     those are service/rate rows, not actual container movements.
                   */
                 })()}
+
+                {/* ── Container Tracking Summary ── */}
+                <div className="detail-card">
+                  <div className="detail-title">
+                    CONTAINER TRACKING
+                    {containerTracking.length > 0 && (
+                      <span style={{ marginLeft: 6, fontWeight: 400, color: 'var(--ink-4)' }}>
+                        ({containerTracking.length})
+                      </span>
+                    )}
+                  </div>
+
+                  {trackingLoading && (
+                    <div className="detail-empty">Loading container tracking…</div>
+                  )}
+
+                  {trackingError && !trackingLoading && (
+                    <div className="detail-empty" style={{ color: '#dc2626' }}>
+                      Unable to load container tracking.
+                    </div>
+                  )}
+
+                  {!trackingLoading && !trackingError && containerTracking.length === 0 && (
+                    <div className="detail-empty">Container tracking has not been synced yet.</div>
+                  )}
+
+                  {!trackingLoading && containerTracking.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {[...containerTracking]
+                        .sort((a, b) =>
+                          (ALERT_SORT[a.alert_level ?? 'gray'] ?? 3) -
+                          (ALERT_SORT[b.alert_level ?? 'gray'] ?? 3) ||
+                          a.container_number.localeCompare(b.container_number),
+                        )
+                        .map(tr => {
+                          const alertInfo   = ALERT_DISPLAY[tr.alert_level ?? 'gray'] ?? ALERT_DISPLAY.gray
+                          const statusLabel = STATUS_LABELS[tr.status ?? ''] ?? (tr.status ?? '—')
+                          const route       = [tr.current_from, tr.current_to].filter(Boolean).join(' → ')
+                          const segType     = tr.current_segment_type ?? ''
+
+                          return (
+                            <div
+                              key={tr.container_number}
+                              className="rounded-lg border p-3"
+                              style={{ background: alertInfo.bg, borderColor: alertInfo.border }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <span className="text-sm font-semibold" style={{ color: 'var(--ink)', fontFamily: 'monospace' }}>
+                                  {tr.container_number}
+                                </span>
+                                <span className="text-xs font-semibold" style={{ color: alertInfo.color }}>
+                                  {alertInfo.label}
+                                </span>
+                              </div>
+
+                              <div className="text-xs" style={{ color: 'var(--ink-2)', marginBottom: 3 }}>
+                                {statusLabel}
+                                {segType ? ` · ${segType}` : ''}
+                                {route   ? ` · ${route}`   : ''}
+                              </div>
+
+                              {(tr.departure_date || tr.planned_departure_date || tr.destination_date || tr.planned_destination_date) && (
+                                <div className="text-xs" style={{ color: 'var(--ink-4)', marginBottom: 3 }}>
+                                  {tr.departure_date
+                                    ? `Departed ${fmtDate(tr.departure_date)}`
+                                    : tr.planned_departure_date
+                                    ? `Planned dep ${fmtDate(tr.planned_departure_date)}`
+                                    : null}
+                                  {(tr.destination_date || tr.planned_destination_date) &&
+                                   (tr.departure_date   || tr.planned_departure_date)
+                                    ? '  ·  ' : null}
+                                  {tr.destination_date
+                                    ? `Arrived ${fmtDate(tr.destination_date)}`
+                                    : tr.planned_destination_date
+                                    ? `Planned arr ${fmtDate(tr.planned_destination_date)}`
+                                    : null}
+                                </div>
+                              )}
+
+                              {tr.alert_reason && (
+                                <div className="text-xs" style={{ color: alertInfo.color, marginBottom: 3 }}>
+                                  {tr.alert_reason}
+                                </div>
+                              )}
+
+                              {tr.last_checked_at && (
+                                <div className="text-xs" style={{ color: 'var(--ink-4)' }}>
+                                  Checked {relativeTime(tr.last_checked_at)}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                    </div>
+                  )}
+                </div>
 
                 {/* B/L Numbers */}
                 {(() => {
@@ -596,13 +884,13 @@ export function FescoTrackingPage() {
                   }
 
                   type FormattedSegment = {
-                    key:      string
-                    order:    number
-                    mode:     string
-                    from:     string
-                    to:       string
+                    key:       string
+                    order:     number
+                    mode:      string
+                    from:      string
+                    to:        string
                     countryTo: string
-                    services: SegmentService[]
+                    services:  SegmentService[]
                   }
 
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -699,17 +987,17 @@ export function FescoTrackingPage() {
                   const countMatch = trackingItems.length > 0 && containers.length === trackingItems.length
                   const KNOWN_TRACKING_KEYS = new Set(['departureDate', 'departure_date', 'destinationDate', 'destination_date', 'vote'])
 
-                  const fmtDate = (val: unknown): string => {
-                    if (val === null || val === undefined || val === '') return '—'
-                    const m = String(val).match(/^(\d{4}-\d{2}-\d{2})/)
-                    return m ? m[1] : String(val)
+                  const fmtDateLegacy = (v: unknown): string => {
+                    if (v === null || v === undefined || v === '') return '—'
+                    const m = String(v).match(/^(\d{4}-\d{2}-\d{2})/)
+                    return m ? m[1] : String(v)
                   }
 
-                  const fmtVote = (val: unknown): string => {
-                    if (val === true  || val === 'true'  || val === 1) return 'Yes'
-                    if (val === false || val === 'false' || val === 0) return 'No'
-                    if (val === undefined || val === null) return '—'
-                    return String(val)
+                  const fmtVote = (v: unknown): string => {
+                    if (v === true  || v === 'true'  || v === 1) return 'Yes'
+                    if (v === false || v === 'false' || v === 0) return 'No'
+                    if (v === undefined || v === null) return '—'
+                    return String(v)
                   }
 
                   return (
@@ -733,11 +1021,11 @@ export function FescoTrackingPage() {
                                   <div className="tracking-fields">
                                     <div className="tracking-field">
                                       <span className="tracking-label">Departure</span>
-                                      <span className="tracking-value">{fmtDate(dep)}</span>
+                                      <span className="tracking-value">{fmtDateLegacy(dep)}</span>
                                     </div>
                                     <div className="tracking-field">
                                       <span className="tracking-label">Destination</span>
-                                      <span className="tracking-value">{fmtDate(dest)}</span>
+                                      <span className="tracking-value">{fmtDateLegacy(dest)}</span>
                                     </div>
                                     <div className="tracking-field">
                                       <span className="tracking-label">Vote</span>
