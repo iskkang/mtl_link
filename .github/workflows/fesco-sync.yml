@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Call /api/fesco/sync
         run: |
-          response=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+          response=$(curl -sS -X POST -o /tmp/body.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/fesco/sync")
           echo "HTTP status: $response"
@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Call /api/fesco/container-tracking-cron
         run: |
-          response=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+          response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/fesco/container-tracking-cron")
           echo "HTTP status: $response"
