@@ -24,7 +24,9 @@ const BATCH_SIZE      = 10
 const DEFAULT_LIMIT   = 10
 const MAX_LIMIT       = 200
 const BATCH_DELAY_MS  = 500
-const FALLBACK_DELAY_MS = 300
+const FALLBACK_DELAY_MS    = 300
+const FETCH_MAX_ATTEMPTS   = 2    // 1 initial + 1 retry on network/HTTP error
+const FETCH_RETRY_DELAY_MS = 1000
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -226,9 +228,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let containersFetched   = 0
   let currentRowsUpserted = 0
   let segmentsUpserted    = 0
-  let alertsOpened        = 0
-  let alertsUpdated       = 0
-  let alertsResolved      = 0
+  let alertsOpened          = 0
+  let alertsUpdated         = 0
+  let alertsResolved        = 0
+  let failedContainersCount = 0
   const sampleNormalized: unknown[] = []
 
   try {
@@ -280,7 +283,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ok: true, mode: dryRun ? 'dry_run' : 'live',
         ordersScanned, containersFound, validContainers, invalidContainers,
         containersFetched: 0, currentRowsUpserted: 0, segmentsUpserted: 0,
-        alertsOpened: 0, alertsUpdated: 0, alertsResolved: 0, errors,
+        alertsOpened: 0, alertsUpdated: 0, alertsResolved: 0,
+        failedContainersCount: 0, errors,
       })
     }
 
@@ -303,36 +307,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Inner helper — uses token and errors from outer scope via closure.
     // Defined after token is definitely assigned (catch above returns).
+    // Retries up to FETCH_MAX_ATTEMPTS times on network/HTTP errors; JSON parse is not retried.
     const fetchNumbers = async (numbers: string[]): Promise<FescoTrackingItem[]> => {
       const url = `https://my.fesco.com/api/v2/lk/tracking?numbers=${encodeURIComponent(numbers.join(','))}`
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let r: any
-      try {
-        r = await undiciFetch(url, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Lk-Lang':    'en',
-            'User-Agent':   'MTL-Link-FESCO-Sync/1.0 (+internal operations dashboard)',
-          },
-          dispatcher: fescoHttpAgent,
-        })
-      } catch (e: unknown) {
-        errors.push(`fetch [${numbers[0]}…]: network: ${e instanceof Error ? e.message : String(e)}`)
-        return []
+      for (let attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; attempt++) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let r: any
+        try {
+          r = await undiciFetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'X-Lk-Lang':    'en',
+              'User-Agent':   'MTL-Link-FESCO-Sync/1.0 (+internal operations dashboard)',
+            },
+            dispatcher: fescoHttpAgent,
+          })
+        } catch (e: unknown) {
+          const msg = `fetch [${numbers[0]}…]: network: ${e instanceof Error ? e.message : String(e)}`
+          if (attempt < FETCH_MAX_ATTEMPTS) { await pause(FETCH_RETRY_DELAY_MS); continue }
+          errors.push(msg)
+          return []
+        }
+        if (!r.ok) {
+          const body: string = await r.text()
+          const msg = `fetch [${numbers[0]}…]: HTTP ${r.status}: ${body.substring(0, 200)}`
+          if (attempt < FETCH_MAX_ATTEMPTS) { await pause(FETCH_RETRY_DELAY_MS); continue }
+          errors.push(msg)
+          return []
+        }
+        try {
+          const parsed = await r.json() as FescoTrackingResponse
+          return parsed?.data ?? []
+        } catch {
+          errors.push(`fetch [${numbers[0]}…]: JSON parse error`)
+          return []
+        }
       }
-      if (!r.ok) {
-        const body: string = await r.text()
-        errors.push(`fetch [${numbers[0]}…]: HTTP ${r.status}: ${body.substring(0, 200)}`)
-        return []
-      }
-      try {
-        const parsed = await r.json() as FescoTrackingResponse
-        return parsed?.data ?? []
-      } catch {
-        errors.push(`fetch [${numbers[0]}…]: JSON parse error`)
-        return []
-      }
+      return []
     }
 
     const collectItems = (items: FescoTrackingItem[]) => {
@@ -365,6 +377,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log(`[ctr-sync] step 4 OK: data for ${containersFetched} containers`)
+
+    const fetchedSet    = new Set(fetched.map(f => f.ctrNum))
+    const failedContainers = toLookup.filter(c => !fetchedSet.has(c))
+    failedContainersCount  = failedContainers.length
+    if (failedContainersCount > 0) {
+      console.log(`[ctr-sync] ${failedContainersCount} containers failed all fetch attempts`)
+    }
 
     // ── 5. Normalize + upsert ───────────────────────────────────────────────
     const now = new Date().toISOString()
@@ -403,6 +422,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         voyage_number:             curSeg?.transport?.voyageNumber          ?? null,
         raw_response:              item,
         last_checked_at:           now,
+        last_success_at:           now,
+        consecutive_errors:        0,
         updated_at:                now,
       }
 
@@ -511,6 +532,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── 6. Record errors for containers that failed all fetch attempts ──────────
+    if (!dryRun && failedContainers.length > 0) {
+      console.log(`[ctr-sync] step 6: recording errors for ${failedContainers.length} failed containers`)
+      for (const ctr of failedContainers) {
+        const errMsg = (errors.find(e => e.includes(ctr)) ?? 'fetch failed after retries').substring(0, 500)
+        const { data: existing } = await supabase
+          .from('fesco_container_tracking_current')
+          .select('consecutive_errors')
+          .eq('container_number', ctr)
+          .maybeSingle()
+        await supabase
+          .from('fesco_container_tracking_current')
+          .update({
+            last_error_at:      now,
+            last_error_message: errMsg,
+            consecutive_errors: (existing?.consecutive_errors ?? 0) + 1,
+          })
+          .eq('container_number', ctr)
+      }
+    }
+
     const result: Record<string, unknown> = {
       ok:                  true,
       mode:                dryRun ? 'dry_run' : 'live',
@@ -524,6 +566,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       alertsOpened,
       alertsUpdated,
       alertsResolved,
+      failedContainersCount,
       errors,
     }
     if (dryRun && sampleNormalized.length > 0) result.sampleNormalized = sampleNormalized
