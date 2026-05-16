@@ -1,0 +1,44 @@
+name: FESCO Sync
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # every 4 hours UTC
+  workflow_dispatch:         # manual trigger from GitHub Actions UI
+
+jobs:
+  orders-sync:
+    name: Sync FESCO orders
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call /api/fesco/sync
+        run: |
+          response=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/fesco/sync")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "Orders sync failed"
+            exit 1
+          fi
+
+  container-tracking-sync:
+    name: Sync FESCO container tracking
+    runs-on: ubuntu-latest
+    needs: orders-sync
+    timeout-minutes: 10
+    steps:
+      - name: Call /api/fesco/container-tracking-cron
+        run: |
+          response=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/fesco/container-tracking-cron")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "Container tracking sync failed"
+            exit 1
+          fi
