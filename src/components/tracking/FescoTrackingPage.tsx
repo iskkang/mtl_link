@@ -128,6 +128,10 @@ const ALERT_DISPLAY: Record<string, { label: string; color: string; bg: string; 
 
 const ALERT_SORT: Record<string, number> = { red: 0, yellow: 1, green: 2, gray: 3 }
 
+// Load more than default to support full client-side search across all orders.
+// API caps at 100; current total active orders: ~57.
+const PAGE_SIZE = 100
+
 function getStatusStyle(status: string | null) {
   return STATUS_STYLE[(status ?? '').toUpperCase()] ?? { bg: 'var(--side-row)', color: 'var(--ink-3)' }
 }
@@ -152,7 +156,31 @@ function fmtDate(v: string | null | undefined): string {
 
 const val = (v: string | null | undefined) => v?.trim() || '—'
 
-const PAGE_SIZE = 50
+/* ── Search helpers ──────────────────────────────────────────────── */
+function getOrderContainerNumbers(order: FescoOrder): string[] {
+  const value = order.containers
+  if (Array.isArray(value)) {
+    return value.map(v => String(v || '').trim()).filter(Boolean)
+  }
+  return []
+}
+
+function matchesSearch(order: FescoOrder, q: string): boolean {
+  if (!q) return true
+  const needle = q.toLowerCase()
+  const containerText = getOrderContainerNumbers(order).join(' ')
+  const haystack = [
+    order.external_1c_number,
+    order.route_latin,
+    order.manager,
+    order.client_name,
+    order.status,
+    order.external_1c_status,
+    order.type,
+    containerText,
+  ].filter(Boolean).join(' ').toLowerCase()
+  return haystack.includes(needle)
+}
 
 /* ── Detail panel helper ─────────────────────────────────────────── */
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -205,13 +233,12 @@ export function FescoTrackingPage() {
     }
   }, [])
 
-  /* fetch list */
-  const fetchOrders = useCallback(async (query: string, status: StatusTab) => {
+  /* fetch list — search is client-side; only status is sent to server */
+  const fetchOrders = useCallback(async (status: StatusTab) => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: '0' })
-      if (query)            params.set('q',      query)
       if (status !== 'All') params.set('status', status)
       const res  = await fetch(`/api/fesco/orders?${params}`)
       const json = await res.json() as OrdersResponse
@@ -227,8 +254,8 @@ export function FescoTrackingPage() {
   }, [fetchAlertSummaries])
 
   useEffect(() => {
-    fetchOrders(q, statusTab)
-  }, [q, statusTab, fetchOrders, refreshKey])
+    fetchOrders(statusTab)
+  }, [statusTab, fetchOrders, refreshKey])
 
   /* fetch detail */
   const fetchDetail = useCallback(async (id: number) => {
@@ -286,6 +313,9 @@ export function FescoTrackingPage() {
   const handleRefresh = () => setRefreshKey(k => k + 1)
   const handleClose   = () => { setSelectedId(null); resetDetail() }
 
+  /* client-side filter — includes container numbers */
+  const filteredOrders = q ? orders.filter(o => matchesSearch(o, q)) : orders
+
   /* ── Render ──────────────────────────────────────────────────── */
   return (
     <div className="fesco-bookings-shell flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
@@ -320,7 +350,7 @@ export function FescoTrackingPage() {
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            placeholder="Search by booking #, route, client, manager…"
+            placeholder="Search by booking #, container, route, client, manager…"
             className="flex-1 min-w-0 px-3 py-1.5 rounded-lg text-sm outline-none border transition-colors"
             style={{ background: 'var(--card)', borderColor: 'var(--line)', color: 'var(--ink)' }}
           />
@@ -393,13 +423,22 @@ export function FescoTrackingPage() {
           )}
 
           {/* Empty */}
-          {!loading && !error && orders.length === 0 && (
+          {!loading && !error && filteredOrders.length === 0 && (
             <div
               className="flex flex-col items-center justify-center py-20 text-sm"
               style={{ color: 'var(--ink-4)' }}
             >
               <div className="text-3xl mb-3">📭</div>
-              <div className="font-medium">No bookings found</div>
+              {orders.length === 0 ? (
+                <div className="font-medium">No bookings found</div>
+              ) : (
+                <>
+                  <div className="font-medium">No bookings match "{q}"</div>
+                  <div className="text-xs mt-1" style={{ color: 'var(--ink-4)' }}>
+                    {orders.length} bookings loaded — try a different search term
+                  </div>
+                </>
+              )}
               {(q || statusTab !== 'All') && (
                 <button
                   type="button"
@@ -414,9 +453,9 @@ export function FescoTrackingPage() {
           )}
 
           {/* Booking cards */}
-          {!loading && orders.length > 0 && (
+          {!loading && filteredOrders.length > 0 && (
             <div>
-              {orders.map(order => {
+              {filteredOrders.map(order => {
                 const isSelected     = order.id === selectedId
                 const containers     = order.containers ?? []
                 const containerCount = containers.length
@@ -499,7 +538,7 @@ export function FescoTrackingPage() {
 
                     {/* container tracking alert chip */}
                     {ctrSummary && ctrSummary.total > 0 && (() => {
-                      const hasRisk  = ctrSummary.red > 0 || ctrSummary.yellow > 0
+                      const hasRisk   = ctrSummary.red > 0 || ctrSummary.yellow > 0
                       const chipColor = ctrSummary.red > 0 ? '#dc2626'
                                       : ctrSummary.yellow > 0 ? '#d97706'
                                       : '#0d9488'
@@ -518,11 +557,20 @@ export function FescoTrackingPage() {
             </div>
           )}
 
-          {/* Pagination hint */}
-          {!loading && total > orders.length && (
-            <div className="text-center text-xs py-5" style={{ color: 'var(--ink-4)' }}>
-              Showing {orders.length.toLocaleString()} of {total.toLocaleString()} bookings
-            </div>
+          {/* Search result count / pagination hint */}
+          {!loading && !error && (
+            <>
+              {q && filteredOrders.length > 0 && filteredOrders.length < orders.length && (
+                <div className="text-center text-xs py-3" style={{ color: 'var(--ink-4)' }}>
+                  {filteredOrders.length} of {orders.length} bookings match
+                </div>
+              )}
+              {!q && total > orders.length && (
+                <div className="text-center text-xs py-5" style={{ color: 'var(--ink-4)' }}>
+                  Showing {orders.length.toLocaleString()} of {total.toLocaleString()} bookings
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -645,7 +693,8 @@ export function FescoTrackingPage() {
                   <DetailRow label="Email" value={val(detail.manager_email)} />
                 </section>
 
-                {/* Containers */}
+                {/* Containers — compact list with alert chip only.
+                    Full tracking detail is shown in the CONTAINER TRACKING section below. */}
                 {(() => {
                   const { signal: cSig } = getFescoSignal(detail)
                   const cColor = SIGNAL_COLOR[cSig]
@@ -679,53 +728,17 @@ export function FescoTrackingPage() {
                               )
                             }
 
-                            const alertInfo   = ALERT_DISPLAY[tr.alert_level ?? 'gray'] ?? ALERT_DISPLAY.gray
-                            const statusLabel = STATUS_LABELS[tr.status ?? ''] ?? (tr.status ?? '—')
-                            const route       = [tr.current_from, tr.current_to].filter(Boolean).join(' → ')
-                            const segType     = tr.current_segment_type ?? ''
+                            const alertInfo = ALERT_DISPLAY[tr.alert_level ?? 'gray'] ?? ALERT_DISPLAY.gray
 
                             return (
-                              <div
-                                key={containerNo}
-                                className="container-row"
-                                style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 3, paddingTop: 6, paddingBottom: 6 }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                                  <span className="container-no">{containerNo}</span>
-                                  <span
-                                    className="text-xs font-medium px-1.5 py-0.5 rounded"
-                                    style={{ background: alertInfo.bg, color: alertInfo.color, border: `1px solid ${alertInfo.border}` }}
-                                  >
-                                    {alertInfo.label}
-                                  </span>
-                                </div>
-                                <div className="text-xs" style={{ color: 'var(--ink-3)', paddingLeft: 2 }}>
-                                  {statusLabel}
-                                  {segType ? ` · ${segType}` : ''}
-                                  {route   ? ` · ${route}`   : ''}
-                                </div>
-                                {(tr.departure_date || tr.planned_departure_date || tr.destination_date || tr.planned_destination_date) && (
-                                  <div className="text-xs" style={{ color: 'var(--ink-4)', paddingLeft: 2 }}>
-                                    {tr.departure_date
-                                      ? `Departed ${fmtDate(tr.departure_date)}`
-                                      : tr.planned_departure_date
-                                      ? `Planned dep ${fmtDate(tr.planned_departure_date)}`
-                                      : null}
-                                    {(tr.destination_date || tr.planned_destination_date) &&
-                                     (tr.departure_date   || tr.planned_departure_date)
-                                      ? '  ·  ' : null}
-                                    {tr.destination_date
-                                      ? `Arrived ${fmtDate(tr.destination_date)}`
-                                      : tr.planned_destination_date
-                                      ? `Planned arr ${fmtDate(tr.planned_destination_date)}`
-                                      : null}
-                                  </div>
-                                )}
-                                {tr.alert_reason && (
-                                  <div className="text-xs" style={{ color: alertInfo.color, paddingLeft: 2 }}>
-                                    {tr.alert_reason}
-                                  </div>
-                                )}
+                              <div key={containerNo} className="container-row">
+                                <span className="container-no">{containerNo}</span>
+                                <span
+                                  className="text-xs font-medium px-1.5 py-0.5 rounded"
+                                  style={{ background: alertInfo.bg, color: alertInfo.color, border: `1px solid ${alertInfo.border}` }}
+                                >
+                                  {alertInfo.label}
+                                </span>
                               </div>
                             )
                           })}
@@ -745,12 +758,14 @@ export function FescoTrackingPage() {
                     v1.1 NOTE:
                     Containers are actual container numbers (text[]), but signal is still order-level.
 
-                    v1.5 future:
+                    v1.6 NOTE:
+                    Compact chip only here. Full per-container tracking detail is in CONTAINER TRACKING section.
+
+                    v1.5+ future:
                     If FESCO provides per-container events, compute:
                       - containerSignal per container
                       - orderSignal = worst child container signal
                         priority: red > blue > yellow > green > gray
-                    Then replace "Order signal applied" with actual per-container signal.
                     Do NOT use segments[*].containers as per-container event data —
                     those are service/rate rows, not actual container movements.
                   */
