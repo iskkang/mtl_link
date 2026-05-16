@@ -100,28 +100,61 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
   let failed       = 0
   let total        = 0
 
-  // Dynamic imports — keeps undici/auth out of module-level so load errors
-  // are caught by the outer try-catch and returned as JSON.
-  let undiciFetch: typeof import('undici').fetch
-  let Agent: typeof import('undici').Agent
-  let loginFesco: typeof import('./auth').loginFesco
-  try {
-    const undici = await import('undici')
-    undiciFetch = undici.fetch
-    Agent       = undici.Agent
-    const authMod = await import('./auth')
-    loginFesco    = authMod.loginFesco
-  } catch (importErr) {
-    const msg = importErr instanceof Error ? importErr.message : String(importErr)
-    console.error('[sync] dynamic import FAILED:', msg)
-    return res.status(500).json({ ok: false, error: 'import failed: ' + msg })
-  }
+  // undici is in node_modules — always present in the Lambda bundle.
+  const undici = await import('undici').catch((err: unknown) => {
+    console.error('[sync] undici import FAILED:', err instanceof Error ? err.message : String(err))
+    return null
+  })
+  if (!undici) return res.status(500).json({ ok: false, error: 'undici unavailable' })
+  const { fetch: undiciFetch, Agent } = undici
 
   const fescoHttpAgent = new Agent({
     connectTimeout: 45000,
     headersTimeout: 120000,
     bodyTimeout:    120000,
   })
+
+  // loginFesco is inlined here because @vercel/node only compiles route files
+  // (files with a default export). auth.ts has no default export so it is never
+  // compiled and auth.js is absent from the Lambda bundle at runtime.
+  // Headers and body match CLAUDE.md requirements exactly — do not change them.
+  async function loginFesco(): Promise<string> {
+    const username = process.env.FESCO_USERNAME
+    const password = process.env.FESCO_PASSWORD
+    if (!username || !password) throw new Error('FESCO_USERNAME or FESCO_PASSWORD not set')
+    const loginBody = {
+      usernameOrEmail: username,
+      password,
+      safeDevice:   false,
+      personalData: false,
+      sessionId:    null,
+      browser: '{"name":"chrome","version":"131.0.0","os":"Windows 10","type":"browser"}',
+    }
+    let loginRes: any
+    try {
+      loginRes = await undiciFetch('https://my.fesco.com/api/v2/lk/user/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept':       'application/json',
+          'X-Lk-Lang':   'en',
+        },
+        body: JSON.stringify(loginBody),
+        dispatcher: fescoHttpAgent,
+      })
+    } catch (err: any) {
+      console.error('[fesco-auth] login failed:', { message: err?.message, causeName: err?.cause?.name, causeCode: err?.cause?.code })
+      throw new Error(`login: ${err?.message || 'unknown error'}`)
+    }
+    const responseText = await loginRes.text()
+    if (!loginRes.ok) throw new Error(`FESCO login failed: ${loginRes.status}: ${responseText.substring(0, 200)}`)
+    let parsed: any
+    try { parsed = JSON.parse(responseText) } catch { throw new Error('FESCO login response is not JSON: ' + responseText.substring(0, 100)) }
+    const token = parsed?.data?.token
+    if (!token) throw new Error('FESCO login: no token field. Got: ' + responseText.substring(0, 200))
+    console.log('[auth] login successful, token length:', token.length)
+    return token
+  }
 
   try {
     // 1. Login
