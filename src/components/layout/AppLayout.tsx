@@ -213,33 +213,35 @@ function DesktopColumns({
         />
       </div>
 
-      {/* ChatSidebar — 280px */}
-      <div
-        className="flex flex-col border-r"
-        style={{ borderColor: 'var(--side-line)' }}
-      >
-        <ChatSidebar
-          activeSection={activeSection}
-          onSectionChange={onSectionChange}
-          selectedRoomId={selectedRoomId}
-          onSelectRoom={onSelectRoom}
-          onNewChat={onNewChat}
-          onSelectFriend={onSelectFriend}
-          onSelectRequest={onSelectRequest}
-          received={received}
-          created={created}
-          done={done}
-          onReload={reload}
-          calendarYear={calendarYear}
-          calendarMonth={calendarMonth}
-          onCalPrevMonth={onCalPrevMonth}
-          onCalNextMonth={onCalNextMonth}
-          activeSessionId={activeSessionId}
-          onSelectSession={onSelectSession}
-          aiSidebarVersion={aiSidebarVersion}
-          onEditProfile={onEditProfile}
-        />
-      </div>
+      {/* ChatSidebar — 280px — hidden for full-width sections (e.g. tracking) */}
+      {activeSection !== 'tracking' && (
+        <div
+          className="flex flex-col border-r"
+          style={{ borderColor: 'var(--side-line)' }}
+        >
+          <ChatSidebar
+            activeSection={activeSection}
+            onSectionChange={onSectionChange}
+            selectedRoomId={selectedRoomId}
+            onSelectRoom={onSelectRoom}
+            onNewChat={onNewChat}
+            onSelectFriend={onSelectFriend}
+            onSelectRequest={onSelectRequest}
+            received={received}
+            created={created}
+            done={done}
+            onReload={reload}
+            calendarYear={calendarYear}
+            calendarMonth={calendarMonth}
+            onCalPrevMonth={onCalPrevMonth}
+            onCalNextMonth={onCalNextMonth}
+            activeSessionId={activeSessionId}
+            onSelectSession={onSelectSession}
+            aiSidebarVersion={aiSidebarVersion}
+            onEditProfile={onEditProfile}
+          />
+        </div>
+      )}
     </>
   )
 }

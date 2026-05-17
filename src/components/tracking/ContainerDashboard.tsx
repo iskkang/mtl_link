@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2, Ship } from 'lucide-react'
+import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
@@ -63,6 +63,89 @@ function fmtRelTime(iso: string | null): string {
 function daysSince(iso: string | null): number {
   if (!iso) return 0
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+}
+
+/* ── Alert type → i18n reason key ───────────────────────────────────── */
+const ALERT_REASON_KEY: Record<string, string> = {
+  container_tracking_unknown:    'trackingUnknown',
+  container_tracking_unavailable:'trackingUnavailable',
+  awaiting_next_leg_overdue:     'awaitingNextLeg',
+  planned_arrival_overdue:       'arrivalOverdue',
+  planned_departure_overdue:     'departureOverdue',
+  stale_tracking_risk:           'stale',
+}
+
+function alertReasonKey(types: string[]): string {
+  for (const t of types) {
+    const k = ALERT_REASON_KEY[t]
+    if (k) return k
+  }
+  return 'other'
+}
+
+/* ── Map placeholder SVG (decorative Eurasia + dots) ────────────────── */
+function MapPlaceholder({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden rounded-lg border"
+      style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minHeight: 200 }}>
+
+      {/* Decorative continent SVG */}
+      <svg
+        viewBox="0 0 520 240"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          opacity: 0.55,
+        }}
+      >
+        {/* Eurasia landmass — simplified outline */}
+        <path
+          d="M 58 115 C 62 88, 90 68, 118 72 L 132 58 C 148 44, 166 40, 186 48
+             L 204 42 C 222 32, 248 30, 272 38 L 298 30 C 322 22, 352 28, 374 44
+             L 400 38 C 420 30, 445 42, 458 62 L 466 82 C 472 98, 468 118, 454 128
+             L 432 138 C 414 148, 394 144, 374 136 L 352 150 C 332 162, 306 158, 282 148
+             L 258 156 C 238 164, 212 158, 192 146 L 164 150 C 140 154, 112 142, 94 126 Z"
+          fill="var(--ink-200)"
+          stroke="var(--ink-300)"
+          strokeWidth="0.8"
+        />
+        {/* Korean peninsula / Japan islands */}
+        <ellipse cx="448" cy="90" rx="14" ry="20"
+          fill="var(--ink-200)" stroke="var(--ink-300)" strokeWidth="0.8"
+          transform="rotate(-15 448 90)" />
+        <ellipse cx="466" cy="102" rx="8" ry="12"
+          fill="var(--ink-200)" stroke="var(--ink-300)" strokeWidth="0.6"
+          transform="rotate(-20 466 102)" />
+
+        {/* Dashed route line */}
+        <polyline
+          points="116,108  226,100  338,80  432,76"
+          stroke="var(--mint-light)"
+          strokeWidth="1"
+          strokeDasharray="5 4"
+          fill="none"
+          opacity="0.6"
+        />
+
+        {/* Container location dots */}
+        <circle cx="116" cy="108" r="5" fill="var(--mint-primary)" opacity="0.75" />
+        <circle cx="226" cy="100" r="5" fill="var(--mint-primary)" opacity="0.75" />
+        <circle cx="338" cy="80"  r="5" fill="var(--mint-primary)" opacity="0.75" />
+        <circle cx="432" cy="76"  r="5" fill="var(--mint-primary)" opacity="0.75" />
+
+        {/* Dot halos */}
+        <circle cx="116" cy="108" r="9" fill="var(--mint-primary)" opacity="0.18" />
+        <circle cx="432" cy="76"  r="9" fill="var(--mint-primary)" opacity="0.18" />
+      </svg>
+
+      {/* Text overlay */}
+      <div className="relative z-10 flex flex-col items-center gap-1 text-center px-4">
+        <p className="label-mono" style={{ color: 'var(--ink-500)' }}>{title}</p>
+        <p className="text-[13px]" style={{ color: 'var(--ink-400)' }}>{subtitle}</p>
+      </div>
+    </div>
+  )
 }
 
 /* ── Signal dot ─────────────────────────────────────────────────────── */
@@ -208,11 +291,12 @@ const ALL_COUNTRIES = ['RU', 'UZ', 'BY', 'KZ'] as const
 export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => void }) {
   const { t } = useTranslation()
 
-  const [data,       setData]       = useState<ContainerItem[]>([])
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState<string | null>(null)
-  const [lastFetch,  setLastFetch]  = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
+  const [data,           setData]           = useState<ContainerItem[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState<string | null>(null)
+  const [lastFetch,      setLastFetch]      = useState<string | null>(null)
+  const [refreshing,     setRefreshing]     = useState(false)
+  const [showAllAction,  setShowAllAction]  = useState(false)
 
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
     () => new Set(['RU', 'UZ', 'BY', 'KZ']),
@@ -426,23 +510,10 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
             <div className="flex gap-4" style={{ minHeight: 280 }}>
 
               {/* Map placeholder */}
-              <div
-                className="flex-1 rounded-lg border flex flex-col items-center justify-center gap-3"
-                style={{ borderColor: 'var(--ink-200)', background: 'var(--card)' }}
-              >
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ background: 'var(--ink-100)' }}
-                >
-                  <Ship size={22} style={{ color: 'var(--ink-400)' }} />
-                </div>
-                <div>
-                  <p className="label-mono text-center">{t('tracking.dashboard.panel.containerLocations')}</p>
-                  <p className="text-[10px] text-center mt-1" style={{ color: 'var(--ink-400)' }}>
-                    {t('tracking.dashboard.mapPlaceholder')}
-                  </p>
-                </div>
-              </div>
+              <MapPlaceholder
+                title={t('tracking.dashboard.map.title')}
+                subtitle={t('tracking.dashboard.map.subtitle')}
+              />
 
               {/* Recent orders */}
               <div
@@ -541,10 +612,15 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 style={{ borderColor: 'var(--ink-200)', background: 'var(--card)' }}
               >
                 <div
-                  className="px-4 pt-3 pb-2 border-b flex-shrink-0"
+                  className="px-4 pt-3 pb-2 border-b flex-shrink-0 flex items-center justify-between"
                   style={{ borderColor: 'var(--ink-200)' }}
                 >
                   <span className="label-mono">{t('tracking.dashboard.panel.actionNeeded')}</span>
+                  {actionNeeded.length > 0 && (
+                    <span className="text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
+                      {actionNeeded.length}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
@@ -557,48 +633,71 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                       <span className="text-[11px]">{t('tracking.dashboard.empty.noAction')}</span>
                     </div>
                   ) : (
-                    actionNeeded.map(c => (
-                      <div
-                        key={c.container_number}
-                        className="px-4 py-2.5 border-b flex items-center gap-2.5 transition-colors"
-                        style={{ borderColor: 'var(--ink-200)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
-                      >
-                        <SignalDot signal="red" />
-                        <span
-                          className="font-mono text-[11px] font-medium flex-shrink-0"
-                          style={{ color: 'var(--ink-900)' }}
+                    <>
+                      {(showAllAction ? actionNeeded : actionNeeded.slice(0, 5)).map(c => {
+                        const errorRef = c.last_error_at ?? c.last_success_at
+                        const days = daysSince(errorRef)
+                        const reasonKey = alertReasonKey(c.open_alert_types)
+                        return (
+                          <div
+                            key={c.container_number}
+                            className="px-4 py-1.5 border-b flex items-center gap-2.5 transition-colors"
+                            style={{ borderColor: 'var(--ink-200)' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+                          >
+                            <SignalDot signal="red" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="font-mono text-[11px] font-medium"
+                                  style={{ color: 'var(--ink-900)' }}
+                                >
+                                  {c.container_number}
+                                </span>
+                                {days > 0 && (
+                                  <span
+                                    className="px-1 py-0.5 rounded text-[9px] font-mono font-semibold flex-shrink-0"
+                                    style={{ background: 'var(--signal-red-bg)', color: 'var(--signal-red)' }}
+                                  >
+                                    {t('tracking.dashboard.actionNeeded.daysOverdue', { days })}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] truncate flex items-center gap-1" style={{ color: 'var(--ink-500)' }}>
+                                <span className="truncate">
+                                  {c.destination_city ?? '—'}
+                                  {c.destination_country_code && (
+                                    <span className="font-mono ml-1" style={{ color: 'var(--ink-400)' }}>
+                                      {c.destination_country_code}
+                                    </span>
+                                  )}
+                                </span>
+                                <span style={{ color: 'var(--ink-300)' }}>·</span>
+                                <span className="flex-shrink-0" style={{ color: 'var(--ink-400)' }}>
+                                  {t(`tracking.dashboard.actionNeeded.reason.${reasonKey}`)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {actionNeeded.length > 5 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllAction(v => !v)}
+                          className="w-full px-4 py-1.5 text-[10px] font-medium transition-colors text-left"
+                          style={{ color: 'var(--mint-deep)', background: 'transparent' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                         >
-                          {c.container_number}
-                        </span>
-                        {c.last_error_at && daysSince(c.last_error_at) > 0 && (
-                          <span
-                            className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold flex-shrink-0"
-                            style={{ background: 'var(--signal-red-bg)', color: 'var(--signal-red)' }}
-                          >
-                            +{daysSince(c.last_error_at)}d
-                          </span>
-                        )}
-                        <span className="text-[10px] truncate flex-1" style={{ color: 'var(--ink-600)' }}>
-                          {c.destination_city ?? '—'}
-                          {c.destination_country_code && (
-                            <span className="font-mono ml-1" style={{ color: 'var(--ink-400)' }}>
-                              {c.destination_country_code}
-                            </span>
-                          )}
-                        </span>
-                        {c.last_error_message && (
-                          <span
-                            className="text-[9px] truncate hidden"
-                            style={{ maxWidth: 140, color: 'var(--ink-400)' }}
-                            title={c.last_error_message}
-                          >
-                            {c.last_error_message.substring(0, 40)}
-                          </span>
-                        )}
-                      </div>
-                    ))
+                          {showAllAction
+                            ? t('tracking.dashboard.actionNeeded.showLess')
+                            : t('tracking.dashboard.actionNeeded.showAll', { count: actionNeeded.length })
+                          }
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
