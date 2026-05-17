@@ -40,7 +40,7 @@ class ResetViewControl implements mapboxgl.IControl {
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>'
     btn.addEventListener('click', () => {
-      map.flyTo({ center: [60, 50], zoom: 3, duration: 800 })
+      map.flyTo({ center: [80, 55], zoom: 4, duration: 800 })
       this.onReset()
     })
     this._container.appendChild(btn)
@@ -82,7 +82,7 @@ export function ContainerMap({ containers, onSelectContainers, onClearSelection 
     const map = new mapboxgl.Map({
       container:       containerRef.current,
       style:           'mapbox://styles/mapbox/light-v11',
-      center:          [60, 50],
+      center:          [80, 55],
       zoom:            3,
       projection:      'mercator',
       pitchWithRotate: false,
