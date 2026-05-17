@@ -146,8 +146,9 @@ function DetailCard({ items, onClear }: {
   onClear: () => void
 }) {
   const { t } = useTranslation()
-  const seaLabel  = t('tracking.dashboard.segment.sea')
-  const railLabel = t('tracking.dashboard.segment.rail')
+  const seaLabel       = t('tracking.dashboard.segment.sea')
+  const railLabel      = t('tracking.dashboard.segment.rail')
+  const openInFesco    = t('tracking.openInFesco')
 
   return (
     <div
@@ -204,9 +205,19 @@ function DetailCard({ items, onClear }: {
                   <SignalDot signal={c.signal} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>
+                      <a
+                        href={`https://my.fesco.com/tracking?tab=${c.container_number}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        title={openInFesco}
+                        className="font-mono text-[11px] font-medium truncate transition-colors"
+                        style={{ color: 'var(--ink-900)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--mint-deep)'; (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-900)'; (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none' }}
+                      >
                         {c.container_number}
-                      </span>
+                      </a>
                       {days > 0 && (
                         <span className="text-[9px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--red)' }}>
                           {t('tracking.dashboard.actionNeeded.daysOverdue', { days })}
@@ -341,8 +352,9 @@ const ALL_COUNTRIES = ['RU', 'UZ', 'BY', 'KZ'] as const
 
 export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => void }) {
   const { t } = useTranslation()
-  const seaLabel  = t('tracking.dashboard.segment.sea')
-  const railLabel = t('tracking.dashboard.segment.rail')
+  const seaLabel     = t('tracking.dashboard.segment.sea')
+  const railLabel    = t('tracking.dashboard.segment.rail')
+  const openInFesco  = t('tracking.openInFesco')
 
   const [data,             setData]             = useState<ContainerItem[]>([])
   const [recentOrders,     setRecentOrders]     = useState<RecentOrderItem[]>([])
@@ -719,12 +731,19 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                             <SignalDot signal="red" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1.5">
-                                <span
-                                  className="font-mono text-[11px] font-medium"
+                                <a
+                                  href={`https://my.fesco.com/tracking?tab=${c.container_number}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  title={openInFesco}
+                                  className="font-mono text-[11px] font-medium transition-colors"
                                   style={{ color: 'var(--ink-900)' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--mint-deep)'; (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--ink-900)'; (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none' }}
                                 >
                                   {c.container_number}
-                                </span>
+                                </a>
                                 {days > 0 && (
                                   <span
                                     className="text-[9px] font-mono font-medium flex-shrink-0"

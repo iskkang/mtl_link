@@ -807,7 +807,7 @@ const resources = {
         },
         segment: { sea: '해상', rail: '철도' },
         map: { title: '컨테이너 위치', subtitle: '인터랙티브 지도 · v1.9.2', resetView: '초기 화면' },
-      }},
+      }, openInFesco: 'FESCO에서 열기' },
     },
   },
 
@@ -1535,7 +1535,7 @@ const resources = {
         },
         segment: { sea: 'Sea', rail: 'Rail' },
         map: { title: 'Container locations', subtitle: 'Interactive map · v1.9.2', resetView: 'Reset view' },
-      }},
+      }, openInFesco: 'Open in FESCO tracking' },
     },
   },
 
@@ -2263,7 +2263,7 @@ const resources = {
         },
         segment: { sea: 'Море', rail: 'ЖД' },
         map: { title: 'Местоположение контейнеров', subtitle: 'Интерактивная карта · v1.9.2', resetView: 'Сбросить вид' },
-      }},
+      }, openInFesco: 'Открыть в FESCO' },
     },
   },
 
@@ -2991,7 +2991,7 @@ const resources = {
         },
         segment: { sea: 'Dengiz', rail: "Temir yo'l" },
         map: { title: 'Konteyner joylashuvi', subtitle: "Interaktiv xarita · v1.9.2", resetView: "Ko'rinishni tiklash" },
-      }},
+      }, openInFesco: "FESCO'da ochish" },
     },
   },
 
@@ -3720,7 +3720,7 @@ const resources = {
         },
         segment: { sea: '海运', rail: '铁路' },
         map: { title: '集装箱位置', subtitle: '互动地图 · v1.9.2', resetView: '重置视图' },
-      }},
+      }, openInFesco: '在 FESCO 中打开' },
     },
   },
 
@@ -4449,7 +4449,7 @@ const resources = {
         },
         segment: { sea: '海上', rail: '鉄道' },
         map: { title: 'コンテナ位置', subtitle: 'インタラクティブマップ · v1.9.2', resetView: 'ビューをリセット' },
-      }},
+      }, openInFesco: 'FESCOで開く' },
     },
   },
 }
