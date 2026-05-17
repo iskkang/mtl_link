@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── 1. Collect distinct location strings ───────────────────────────────────
 
-  const [trackingRes, ordersRes] = await Promise.all([
+  const [trackingRes, ordersRes, pendingGeoRes] = await Promise.all([
     supabase
       .from('fesco_container_tracking_current')
       .select('current_to')
@@ -52,6 +52,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('fesco_orders')
       .select('route_latin')
       .not('route_latin', 'is', null),
+    supabase
+      .from('city_coordinates')
+      .select('query_text, query_normalized')
+      .is('latitude', null),
   ])
 
   const rawLocations = new Set<string>()
@@ -83,6 +87,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         rawLocations.add(d)
       }
+    }
+  }
+
+  // ── 1b. Add pending rows from city_coordinates (latitude IS NULL) ────────────
+  // Picks up event-location cities (Mogzon, Gyrshelun, etc.) inserted by dashboard serving.
+  const existingNormalized = new Set([...rawLocations].map(v => v.toLowerCase()))
+  for (const row of (pendingGeoRes.data ?? []) as { query_text: string | null; query_normalized: string }[]) {
+    if (row.query_normalized && !existingNormalized.has(row.query_normalized)) {
+      rawLocations.add(row.query_text ?? row.query_normalized)
+      existingNormalized.add(row.query_normalized)
     }
   }
 
