@@ -13,7 +13,7 @@ interface ContainerMapProps {
   onMarkerClick?: (containerNumber: string) => void
 }
 
-const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN as string | undefined
+const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
 
 /* signal → hex color */
 const SIG_COLOR: Record<string, string> = {
