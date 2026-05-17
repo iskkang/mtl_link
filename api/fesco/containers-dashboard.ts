@@ -31,17 +31,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const limit  = Math.min(Math.max(parseInt(String(req.query.limit  ?? '200'), 10) || 200, 1), 500)
   const offset = Math.max(parseInt(String(req.query.offset ?? '0'),  10) || 0, 0)
 
-  // ── 1. Container tracking rows ─────────────────────────────────────────────
+  // ── 1. Container tracking rows (exclude completed) ────────────────────────
   const { data: ctRows, error: ctErr, count } = await supabase
     .from('fesco_container_tracking_current')
     .select(
       'container_number, order_id, external_1c_number, status, alert_level, alert_reason, ' +
-      'current_from, current_to, current_from_country, current_to_country, ' +
+      'current_from, current_to, current_segment_type, current_from_country, current_to_country, ' +
       'departure_date, planned_departure_date, destination_date, planned_destination_date, ' +
       'transport_name, voyage_number, ' +
       'last_success_at, last_error_at, last_error_message, consecutive_errors',
       { count: 'exact' },
     )
+    .neq('status', 'completed')
     .order('container_number')
     .range(offset, offset + limit - 1)
 
@@ -56,6 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     alert_reason:             string | null
     current_from:             string | null
     current_to:               string | null
+    current_segment_type:     string | null
     current_from_country:     string | null
     current_to_country:       string | null
     departure_date:           string | null
@@ -88,10 +90,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── 3. Geocoding lookups ───────────────────────────────────────────────────
-  // Collect normalized location strings: current_to + parsed destinations
+  // Collect current_from + current_to for smart marker placement, plus parsed route cities
   const locationKeys = new Set<string>()
   for (const r of rows) {
-    if (r.current_to?.trim()) locationKeys.add(r.current_to.trim().toLowerCase())
+    if (r.current_to?.trim())   locationKeys.add(r.current_to.trim().toLowerCase())
+    if (r.current_from?.trim()) locationKeys.add(r.current_from.trim().toLowerCase())
   }
   for (const o of (orderRows ?? []) as { route_latin: string | null }[]) {
     const parsed = parseRoute(o.route_latin)
@@ -139,16 +142,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── 5. Assemble result ─────────────────────────────────────────────────────
   const data = rows.map(r => {
-    const order   = r.order_id != null ? orderMap.get(r.order_id) : null
-    const parsed  = parseRoute(order?.route_latin)
-    const alerts  = alertMap.get(r.container_number) ?? []
+    const order  = r.order_id != null ? orderMap.get(r.order_id) : null
+    const parsed = parseRoute(order?.route_latin)
+    const alerts = alertMap.get(r.container_number) ?? []
 
-    const curLocKey  = r.current_to?.trim().toLowerCase() ?? null
-    const destKey    = parsed.destination?.trim().toLowerCase() ?? null
-    const origKey    = parsed.origin?.trim().toLowerCase() ?? null
+    // Smart marker placement: departed → show current_to (heading there); not yet departed → current_from (still there)
+    const displayLocationText = r.departure_date ? r.current_to : r.current_from
+    const displayLocKey       = displayLocationText?.trim().toLowerCase() ?? null
+    const displayGeo          = displayLocKey ? geoMap.get(displayLocKey) ?? null : null
 
-    const curGeo  = curLocKey  ? geoMap.get(curLocKey)  ?? null : null
-    const destGeo = destKey    ? geoMap.get(destKey)    ?? null : null
+    // Backward-compat: current_to-based coordinates (deprecated, use display_* for marker placement)
+    const curLocKey = r.current_to?.trim().toLowerCase() ?? null
+    const curGeo    = curLocKey ? geoMap.get(curLocKey) ?? null : null
+
+    const destKey = parsed.destination?.trim().toLowerCase() ?? null
+    const origKey = parsed.origin?.trim().toLowerCase() ?? null
+    const destGeo = destKey ? geoMap.get(destKey) ?? null : null
 
     return {
       container_number:          r.container_number,
@@ -158,11 +167,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       destination_city:          parsed.destination  ?? null,
       destination_country_code:  destGeo?.country_code  ?? null,
       destination_country_name:  destGeo?.country_name  ?? null,
+      // Smart marker placement
+      display_location_text:     displayLocationText ?? null,
+      display_latitude:          displayGeo?.latitude  ?? null,
+      display_longitude:         displayGeo?.longitude ?? null,
+      // Deprecated (backward compat): current_to-based coordinates
       current_location_text:     r.current_to ?? null,
       current_latitude:          curGeo?.latitude  ?? null,
       current_longitude:         curGeo?.longitude ?? null,
-      // ETA: no dedicated ETA column in fesco_orders; using planned_destination_date
-      // from fesco_container_tracking_current as best available approximation.
       eta:                       r.planned_destination_date ?? null,
       signal:                    deriveSignal(r, alerts),
       last_success_at:           r.last_success_at,
@@ -171,7 +183,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       consecutive_errors:        r.consecutive_errors ?? 0,
       open_alert_count:          alerts.length,
       open_alert_types:          alerts.map(a => a.alert_type).filter((t): t is string => t != null),
-      // extras kept for UI convenience
+      // Segment context
+      current_to:                r.current_to ?? null,
+      current_segment_type:      r.current_segment_type ?? null,
+      departure_date:            r.departure_date ?? null,
+      planned_destination_date:  r.planned_destination_date ?? null,
+      alert_reason:              r.alert_reason ?? null,
+      // extras
       origin_key:                origKey,
       current_from:              r.current_from,
       current_from_country:      r.current_from_country,
