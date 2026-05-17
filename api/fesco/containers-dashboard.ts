@@ -224,15 +224,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let displayLocationText: string | null = null
     let transitProgress:     number | null = null
 
-    // Country mismatch sanity check (v1.10.2c): skip event coord when it geocodes to a
-    // different country than current_from — signals a geocode false match
-    // (e.g. "9-10 Prichaly VMTP" geocodes to LT while segment is Vladivostok RU → skip).
-    const countryMatch = !fromCoord
-      || !evGeo?.country_code
-      || !fromGeo?.country_code
-      || evGeo.country_code === fromGeo.country_code
+    // Bounding-box sanity check (v1.10.2c): skip event coord when it falls outside the
+    // current segment's bbox + buffer. Catches geocode false matches within the same country
+    // (e.g. "9-10 Prichaly VMTP" → Kaliningrad 21°E, while Vladivostok→Chukursaj spans
+    // 69°E–132°E → bbox fail → fallback keeps marker at Vladivostok).
+    const BBOX_BUFFER_DEG = 8  // ≈ 900 km latitude/longitude
+    let useEventCoord = false
+    if (eventCoord && lastEvent?.locationLatin) {
+      if (fromCoord && toCoord) {
+        const minLat = Math.min(fromCoord.latitude!,  toCoord.latitude!)  - BBOX_BUFFER_DEG
+        const maxLat = Math.max(fromCoord.latitude!,  toCoord.latitude!)  + BBOX_BUFFER_DEG
+        const minLng = Math.min(fromCoord.longitude!, toCoord.longitude!) - BBOX_BUFFER_DEG
+        const maxLng = Math.max(fromCoord.longitude!, toCoord.longitude!) + BBOX_BUFFER_DEG
+        useEventCoord =
+          eventCoord.latitude!  >= minLat && eventCoord.latitude!  <= maxLat &&
+          eventCoord.longitude! >= minLng && eventCoord.longitude! <= maxLng
+      } else {
+        // Segment endpoints not geocoded → bbox check impossible → trust event coord
+        useEventCoord = true
+      }
+    }
 
-    if (eventCoord && lastEvent?.locationLatin && countryMatch) {
+    if (useEventCoord && eventCoord && lastEvent?.locationLatin) {
       // PRIORITY 1: actual last-event location (most accurate)
       displayLat          = eventCoord.latitude
       displayLng          = eventCoord.longitude
