@@ -489,11 +489,17 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       style={{ background: 'var(--chat-bg)' }}
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="fesco-header flex-shrink-0" style={{ marginBottom: 0 }}>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1>{t('tracking.dashboard.title')}</h1>
-            <div className="sub">
+      <div
+        className="fesco-header flex-shrink-0"
+        style={{ padding: '12px 28px 10px', marginBottom: 0 }}
+      >
+        {/* Row 1: title + subtitle + stats + refresh */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <h1 style={{ fontSize: 20, margin: 0, flexShrink: 0 }}>
+              {t('tracking.dashboard.title')}
+            </h1>
+            <span className="sub truncate">
               {loading
                 ? 'Loading…'
                 : t('tracking.dashboard.activeContainersSynced', {
@@ -501,10 +507,10 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                     time:  fmtRelTime(lastFetch),
                   })
               }
-            </div>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0 pt-1">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {stats.red    > 0 && <StatPill count={stats.red}    signal="red"    label={t('tracking.dashboard.pill.action')} />}
             {stats.yellow > 0 && <StatPill count={stats.yellow} signal="yellow" label={t('tracking.dashboard.pill.watch')} />}
             {stats.green  > 0 && <StatPill count={stats.green}  signal="green"  label={t('tracking.dashboard.pill.onTrack')} />}
@@ -523,33 +529,30 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
             </button>
           </div>
         </div>
-      </div>
 
-      {/* ── Country filter row ─────────────────────────────────────────── */}
-      <div
-        className="flex-shrink-0 px-7 py-2 border-b flex items-center gap-2 flex-wrap"
-        style={{ borderColor: 'var(--ink-200)' }}
-      >
-        <span className="label-mono">{t('tracking.dashboard.filter.destination')}</span>
-        {ALL_COUNTRIES.map(cc => (
-          <CountryChip
-            key={cc}
-            label={t(`tracking.dashboard.country.${cc}`)}
-            count={countryCounts[cc] ?? 0}
-            active={selectedCountries.has(cc)}
-            onClick={() => toggleCountry(cc)}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={resetFilter}
-          className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
-          style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-        >
-          <X size={11} /> {t('tracking.dashboard.filter.clear')}
-        </button>
+        {/* Row 2: filter chips */}
+        <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
+          <span className="label-mono">{t('tracking.dashboard.filter.destination')}</span>
+          {ALL_COUNTRIES.map(cc => (
+            <CountryChip
+              key={cc}
+              label={t(`tracking.dashboard.country.${cc}`)}
+              count={countryCounts[cc] ?? 0}
+              active={selectedCountries.has(cc)}
+              onClick={() => toggleCountry(cc)}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={resetFilter}
+            className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
+            style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+          >
+            <X size={11} /> {t('tracking.dashboard.filter.clear')}
+          </button>
+        </div>
       </div>
 
       {/* ── Body ───────────────────────────────────────────────────────── */}
