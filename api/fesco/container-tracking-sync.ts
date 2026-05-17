@@ -52,6 +52,18 @@ interface FescoTrackingSegment {
   transport?:                      FescoTrackingTransport
 }
 
+interface FescoTrackingEvent {
+  id?:                string
+  containerNumber?:   string
+  date?:              string
+  locationLatin?:     string
+  operationLatin?:    string
+  remainingDistance?: string
+  totalDistance?:     number
+  transportLatin?:    string
+  type?:              string
+}
+
 interface FescoTrackingItem {
   containerNumber?: string
   unavailable?:     boolean
@@ -61,6 +73,8 @@ interface FescoTrackingItem {
     bills?:     string[]
   }
   segments?: FescoTrackingSegment[]
+  events?:   { data?: FescoTrackingEvent[] }
+  lastEventId?: string
 }
 
 interface FescoTrackingResponse {
@@ -523,6 +537,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         transport_name:            curSeg?.transport?.nameLatin             ?? null,
         voyage_number:             curSeg?.transport?.voyageNumber          ?? null,
         segments_json:             Array.isArray(item.segments) ? item.segments : [],
+        events_json:               Array.isArray(item.events?.data) ? item.events!.data : [],
         raw_response:              item,
         last_checked_at:           now,
         last_success_at:           now,

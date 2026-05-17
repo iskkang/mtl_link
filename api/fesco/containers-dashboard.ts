@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'current_from, current_to, current_segment_type, current_from_country, current_to_country, ' +
       'departure_date, planned_departure_date, destination_date, planned_destination_date, ' +
       'transport_name, voyage_number, ' +
-      'last_success_at, last_error_at, last_error_message, consecutive_errors, segments_json',
+      'last_success_at, last_error_at, last_error_message, consecutive_errors, segments_json, events_json',
       { count: 'exact' },
     )
     .neq('status', 'completed')
@@ -96,6 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     last_error_message:       string | null
     consecutive_errors:       number | null
     segments_json:            unknown[] | null
+    events_json:              unknown[] | null
   }[]
 
   if (rows.length === 0) {
@@ -116,11 +117,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── 3. Geocoding lookups ───────────────────────────────────────────────────
-  // Collect current_from + current_to for smart marker placement, plus parsed route cities
+  // Collect current_from + current_to for smart marker placement, plus parsed route cities.
+  // Also extract last event per container for event-based positioning (v1.10.2).
   const locationKeys = new Set<string>()
+
+  type LastEventData = {
+    locationLatin:     string | null
+    date:              string | null
+    operationLatin:    string | null
+    transportLatin:    string | null
+    type:              string | null
+    totalDistance:     number | null
+    remainingDistance: number | null
+  }
+  const lastEventMap = new Map<string, LastEventData>()
+
   for (const r of rows) {
     if (r.current_to?.trim())   locationKeys.add(r.current_to.trim().toLowerCase())
     if (r.current_from?.trim()) locationKeys.add(r.current_from.trim().toLowerCase())
+
+    // Extract last event and add its location to geocoding set
+    const evArr      = Array.isArray(r.events_json) ? r.events_json as Record<string, unknown>[] : []
+    const ev         = evArr.length > 0 ? evArr[0] : null
+    const evLocation = typeof ev?.locationLatin === 'string' ? ev.locationLatin : null
+    if (evLocation?.trim()) locationKeys.add(evLocation.trim().toLowerCase())
+
+    lastEventMap.set(r.container_number, {
+      locationLatin:     evLocation,
+      date:              typeof ev?.date            === 'string' ? ev.date            : null,
+      operationLatin:    typeof ev?.operationLatin  === 'string' ? ev.operationLatin  : null,
+      transportLatin:    typeof ev?.transportLatin  === 'string' ? ev.transportLatin  : null,
+      type:              typeof ev?.type            === 'string' ? ev.type            : null,
+      totalDistance:     typeof ev?.totalDistance   === 'number' ? ev.totalDistance   : null,
+      remainingDistance: ev?.remainingDistance != null ? Number(ev.remainingDistance) : null,
+    })
   }
   for (const o of (orderRows ?? []) as { route_latin: string | null }[]) {
     const parsed = parseRoute(o.route_latin)
@@ -172,13 +202,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const parsed = parseRoute(order?.route_latin)
     const alerts = alertMap.get(r.container_number) ?? []
 
-    // Smart marker placement with time-based interpolation for in-transit containers
+    // Display position: priority chain (v1.10.2)
+    const lastEvent = lastEventMap.get(r.container_number) ?? null
+
     const fromKey   = r.current_from?.trim().toLowerCase() ?? null
     const toKey     = r.current_to?.trim().toLowerCase() ?? null
     const fromGeo   = fromKey ? geoMap.get(fromKey) ?? null : null
     const toGeo     = toKey   ? geoMap.get(toKey)   ?? null : null
     const fromCoord = fromGeo?.latitude != null && fromGeo?.longitude != null ? fromGeo : null
     const toCoord   = toGeo?.latitude   != null && toGeo?.longitude   != null ? toGeo   : null
+
+    const evLocKey  = lastEvent?.locationLatin?.trim().toLowerCase() ?? null
+    const evGeo     = evLocKey ? geoMap.get(evLocKey) ?? null : null
+    const eventCoord = evGeo?.latitude != null && evGeo?.longitude != null ? evGeo : null
 
     const departed = !!r.departure_date
     const arrived  = !!r.destination_date
@@ -188,40 +224,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let displayLocationText: string | null = null
     let transitProgress:     number | null = null
 
-    if (departed && !arrived && fromCoord && toCoord) {
-      const progress = computeTransitProgress(r.departure_date, r.planned_destination_date)
-      if (progress !== null) {
-        const pos = interpolateCoord(
-          fromCoord.latitude!, fromCoord.longitude!,
-          toCoord.latitude!,   toCoord.longitude!,
-          progress,
-        )
-        displayLat          = pos.lat
-        displayLng          = pos.lng
-        displayLocationText = r.current_to
-        transitProgress     = progress
-      } else {
-        displayLat          = toCoord.latitude
-        displayLng          = toCoord.longitude
-        displayLocationText = r.current_to
+    if (eventCoord && lastEvent?.locationLatin) {
+      // PRIORITY 1: actual last-event location (most accurate)
+      displayLat          = eventCoord.latitude
+      displayLng          = eventCoord.longitude
+      displayLocationText = lastEvent.locationLatin
+      // km-based progress when available
+      if (lastEvent.totalDistance && lastEvent.totalDistance > 0 && lastEvent.remainingDistance != null) {
+        const p = 1 - (lastEvent.remainingDistance / lastEvent.totalDistance)
+        transitProgress = Math.max(0, Math.min(1, p))
       }
-    } else if (departed && toCoord) {
-      displayLat          = toCoord.latitude
-      displayLng          = toCoord.longitude
-      displayLocationText = r.current_to
-    } else if (!departed && fromCoord) {
-      displayLat          = fromCoord.latitude
-      displayLng          = fromCoord.longitude
-      displayLocationText = r.current_from
     } else {
-      if (toCoord) {
+      // PRIORITY 2+: v1.9.2c time-based interpolation + segment fallbacks
+      if (departed && !arrived && fromCoord && toCoord) {
+        const progress = computeTransitProgress(r.departure_date, r.planned_destination_date)
+        if (progress !== null) {
+          const pos = interpolateCoord(
+            fromCoord.latitude!, fromCoord.longitude!,
+            toCoord.latitude!,   toCoord.longitude!,
+            progress,
+          )
+          displayLat          = pos.lat
+          displayLng          = pos.lng
+          displayLocationText = r.current_to
+          transitProgress     = progress
+        } else {
+          displayLat          = toCoord.latitude
+          displayLng          = toCoord.longitude
+          displayLocationText = r.current_to
+        }
+      } else if (departed && toCoord) {
         displayLat          = toCoord.latitude
         displayLng          = toCoord.longitude
         displayLocationText = r.current_to
-      } else if (fromCoord) {
+      } else if (!departed && fromCoord) {
         displayLat          = fromCoord.latitude
         displayLng          = fromCoord.longitude
         displayLocationText = r.current_from
+      } else {
+        if (toCoord) {
+          displayLat          = toCoord.latitude
+          displayLng          = toCoord.longitude
+          displayLocationText = r.current_to
+        } else if (fromCoord) {
+          displayLat          = fromCoord.latitude
+          displayLng          = fromCoord.longitude
+          displayLocationText = r.current_from
+        }
       }
     }
 
@@ -266,6 +315,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       alert_reason:              r.alert_reason ?? null,
       // Full segments array (v1.10.0)
       segments:                  r.segments_json ?? [],
+      // Last event data (v1.10.2)
+      last_event_location:           lastEvent?.locationLatin     ?? null,
+      last_event_date:               lastEvent?.date              ?? null,
+      last_event_operation:          lastEvent?.operationLatin    ?? null,
+      last_event_transport:          lastEvent?.transportLatin    ?? null,
+      last_event_type:               lastEvent?.type              ?? null,
+      last_event_total_distance:     lastEvent?.totalDistance     ?? null,
+      last_event_remaining_distance: lastEvent?.remainingDistance ?? null,
       // extras
       origin_key:                origKey,
       current_from:              r.current_from,
