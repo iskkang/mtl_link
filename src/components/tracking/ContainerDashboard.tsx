@@ -231,8 +231,8 @@ function DonutChart({ green, yellow, red, centerLabel }: {
   const total = green + yellow + red
   if (total === 0) return null
 
-  const R  = 52
-  const SW = 12
+  const R  = 38
+  const SW = 10
   const CX = R + SW / 2 + 2
   const C  = 2 * Math.PI * R
 
@@ -276,11 +276,11 @@ function DonutChart({ green, yellow, red, centerLabel }: {
           transform={`rotate(-90 ${CX} ${CX})`}
         />
       )}
-      <text x={CX} y={CX - 5} textAnchor="middle" fontSize="24" fontWeight="700"
+      <text x={CX} y={CX - 3} textAnchor="middle" fontSize="18" fontWeight="700"
         fill="var(--ink-900)" fontFamily="var(--font-body)">
         {total}
       </text>
-      <text x={CX} y={CX + 11} textAnchor="middle" fontSize="8" fontWeight="600"
+      <text x={CX} y={CX + 10} textAnchor="middle" fontSize="7" fontWeight="600"
         fill="var(--ink-500)" letterSpacing="1.5" fontFamily="var(--font-mono)">
         {centerLabel}
       </text>
@@ -553,7 +553,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       </div>
 
       {/* ── Body ───────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto p-4 flex flex-col gap-4 min-h-0">
+      <div className="flex-1 overflow-hidden p-4 flex flex-col gap-4 min-h-0">
 
         {/* Error banner */}
         {error && (
@@ -571,12 +571,12 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
         {/* Loading skeletons */}
         {loading && (
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-4" style={{ minHeight: 280 }}>
+          <div className="flex-1 min-h-0 flex flex-col gap-4">
+            <div className="flex-1 min-h-0 flex gap-4">
               <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
               <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 320, background: 'var(--card)', borderColor: 'var(--line)' }} />
             </div>
-            <div className="flex gap-4" style={{ height: 200 }}>
+            <div className="flex-shrink-0 flex gap-4" style={{ height: 260 }}>
               <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 240, background: 'var(--card)', borderColor: 'var(--line)' }} />
               <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
               <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 320, background: 'var(--card)', borderColor: 'var(--line)' }} />
@@ -585,14 +585,14 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
         )}
 
         {!loading && !error && (
-          <>
+          <div className="flex-1 min-h-0 flex flex-col gap-4">
             {/* ── Top row: Map + Detail ────────────────────────────────── */}
-            <div className="flex gap-4" style={{ minHeight: 280 }}>
+            <div className="flex-1 min-h-0 flex gap-4">
 
               {/* Live map — flex-1 */}
               <div
                 className="flex-1 rounded-lg border overflow-hidden"
-                style={{ borderColor: 'var(--ink-200)', minHeight: 280 }}
+                style={{ borderColor: 'var(--ink-200)' }}
               >
                 <ContainerMap
                   containers={mapPoints}
@@ -609,11 +609,11 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
             </div>
 
             {/* ── Bottom row: Donut + Recent Orders + Action Needed ────── */}
-            <div className="flex gap-4" style={{ minHeight: 200 }}>
+            <div className="flex-shrink-0 flex gap-4" style={{ height: 260 }}>
 
               {/* Status donut — 240px */}
               <div
-                className="rounded-lg border flex items-center px-5 gap-5 flex-shrink-0"
+                className="rounded-lg border flex items-center px-4 gap-3 flex-shrink-0"
                 style={{ width: 240, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
               >
                 {totalActive > 0 ? (
@@ -672,7 +672,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                     recentOrders.map(ord => (
                       <div
                         key={ord.key}
-                        className="px-4 py-2.5 border-b flex items-center gap-2 transition-colors cursor-default"
+                        className="px-4 py-1.5 border-b flex items-center gap-2 transition-colors cursor-default"
                         style={{ borderColor: 'var(--ink-200)' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
@@ -729,7 +729,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                         return (
                           <div
                             key={c.container_number}
-                            className="px-4 py-1.5 border-b flex items-start gap-2.5 transition-colors"
+                            className="px-4 py-1 border-b flex items-start gap-2.5 transition-colors"
                             style={{ borderColor: 'var(--ink-200)' }}
                             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
                             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
@@ -777,7 +777,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

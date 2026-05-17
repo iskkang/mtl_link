@@ -168,9 +168,9 @@ function addSourceAndLayers(
     cluster:       true,
     clusterRadius: 50,
     clusterProperties: {
-      red:    ['+', ['case', ['==', ['get', 'signal'], 'red'],    1, 0]],
-      yellow: ['+', ['case', ['==', ['get', 'signal'], 'yellow'], 1, 0]],
-      green:  ['+', ['case', ['==', ['get', 'signal'], 'green'],  1, 0]],
+      redCount:    ['+', ['case', ['==', ['get', 'signal'], 'red'],    1, 0]],
+      yellowCount: ['+', ['case', ['==', ['get', 'signal'], 'yellow'], 1, 0]],
+      greenCount:  ['+', ['case', ['==', ['get', 'signal'], 'green'],  1, 0]],
     },
   })
 
@@ -182,9 +182,10 @@ function addSourceAndLayers(
     filter: ['has', 'point_count'],
     paint:  {
       'circle-color': ['case',
-        ['>', ['get', 'red'],    0], SIG_COLOR.red,
-        ['>', ['get', 'yellow'], 0], SIG_COLOR.yellow,
-        SIG_COLOR.green,
+        ['>=', ['get', 'redCount'], ['*', 0.5, ['get', 'point_count']]], '#ef4444',
+        ['>', ['get', 'redCount'], 0], '#f97316',
+        ['>', ['get', 'yellowCount'], 0], '#eab308',
+        '#14b8a6',
       ],
       'circle-radius':       ['step', ['get', 'point_count'], 14, 5, 18, 15, 22],
       'circle-stroke-width': 2.5,
@@ -204,6 +205,37 @@ function addSourceAndLayers(
       'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
       'text-size':          11,
       'text-allow-overlap': true,
+    },
+    paint: { 'text-color': '#ffffff' },
+  })
+
+  /* Red count badge — background circle */
+  map.addLayer({
+    id:     'cluster-red-badge-bg',
+    type:   'circle',
+    source: 'containers',
+    filter: ['all', ['has', 'point_count'], ['>', ['get', 'redCount'], 0]],
+    paint:  {
+      'circle-color':        '#dc2626',
+      'circle-radius':       7,
+      'circle-stroke-width': 1.5,
+      'circle-stroke-color': '#ffffff',
+      'circle-translate':    [14, -14],
+    },
+  })
+
+  /* Red count badge — text */
+  map.addLayer({
+    id:     'cluster-red-badge-text',
+    type:   'symbol',
+    source: 'containers',
+    filter: ['all', ['has', 'point_count'], ['>', ['get', 'redCount'], 0]],
+    layout: {
+      'text-field':         ['to-string', ['get', 'redCount']],
+      'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size':          9,
+      'text-allow-overlap': true,
+      'text-offset':        [1.4, -1.4],
     },
     paint: { 'text-color': '#ffffff' },
   })
