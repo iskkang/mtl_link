@@ -490,6 +490,27 @@ body, .chat-panel, .chat-header, .composer-panel,
 .fesco-status-pill.rejected { background: var(--signal-red-bg); color: var(--signal-red); }
 .fesco-status-pill.complete { background: var(--ink-100);       color: var(--ink-600); }
 
+/* ── dark mode overrides for fesco shell signal colours ── */
+.dark .fesco-bookings-shell {
+  --signal-green-bg:  rgba(13,148,136,0.18);
+  --signal-yellow-bg: rgba(217,119,6,0.18);
+  --signal-red-bg:    rgba(220,38,38,0.18);
+  --signal-gray-bg:   rgba(148,163,184,0.12);
+  --ink-50:  rgba(255,255,255,0.02);
+  --ink-100: rgba(255,255,255,0.05);
+  --ink-200: rgba(255,255,255,0.08);
+  --ink-300: rgba(255,255,255,0.14);
+  --ink-400: rgba(255,255,255,0.30);
+  --ink-500: rgba(255,255,255,0.45);
+  --ink-600: rgba(255,255,255,0.60);
+  --ink-700: rgba(255,255,255,0.75);
+  --ink-800: rgba(255,255,255,0.88);
+  --ink-900: #ffffff;
+  --mint-bg:     rgba(20,184,166,0.14);
+  --mint-border: rgba(94,234,212,0.22);
+  --paper: var(--bg-elevated);
+}
+
 /* ── Compact vertical card (v1.1) ── */
 .fesco-card-compact {
   display: block;

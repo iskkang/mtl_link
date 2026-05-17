@@ -214,7 +214,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 /* ── Main component ──────────────────────────────────────────────── */
-export function FescoTrackingPage() {
+export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
   /* list state */
   const [searchInput,    setSearchInput]    = useState('')
   const [q,              setQ]              = useState('')
@@ -345,6 +345,16 @@ export function FescoTrackingPage() {
       {/* Header */}
       <div className="fesco-header flex-shrink-0 flex items-start justify-between">
         <div>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="label-mono mb-2 flex items-center gap-1 transition-colors"
+              style={{ color: 'var(--mint-deep)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            >
+              ← Dashboard
+            </button>
+          )}
           <h1>FESCO <em>Bookings</em></h1>
           <div className="sub">
             {loading ? 'Loading…' : `${total.toLocaleString()} bookings synced from FESCO LK`}

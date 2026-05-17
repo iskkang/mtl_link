@@ -28,7 +28,7 @@ const AdminApprovalPage = lazy(() => import('../components/ai/AdminApprovalPage'
 const TrackingPage      = lazy(() => import('../components/ai/TrackingPage').then(m => ({ default: m.TrackingPage })))
 const RateFinderPage      = lazy(() => import('../components/ai/RateFinderPage').then(m => ({ default: m.RateFinderPage })))
 const AiChatWindow        = lazy(() => import('../components/ai/AiChatWindow').then(m => ({ default: m.AiChatWindow })))
-const FescoTrackingPage   = lazy(() => import('../components/tracking/FescoTrackingPage').then(m => ({ default: m.FescoTrackingPage })))
+const FescoTrackingShell  = lazy(() => import('../components/tracking/FescoTrackingShell').then(m => ({ default: m.FescoTrackingShell })))
 
 type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking'
 
@@ -295,7 +295,7 @@ export default function ChatPage() {
           ) : activeSection === 'threads' ? (
             <ThreadsPage onBack={() => setActiveSection('chat')} />
           ) : activeSection === 'tracking' ? (
-            <FescoTrackingPage />
+            <FescoTrackingShell />
           ) : activeSection === 'ai' ? (
             <AiChatWindow
               sessionId={activeSessionId}
