@@ -58,13 +58,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   for (const row of (trackingRes.data ?? []) as { current_to: string }[]) {
     const v = row.current_to?.trim()
-    if (v) rawLocations.add(v)
+    if (!v) continue
+    if (v.length < 3) {
+      console.warn(`[geocode] skip short current_to="${v}" (len=${v.length})`)
+      continue
+    }
+    rawLocations.add(v)
   }
 
   for (const row of (ordersRes.data ?? []) as { route_latin: string }[]) {
     const parsed = parseRoute(row.route_latin)
-    if (parsed.origin)      rawLocations.add(parsed.origin)
-    if (parsed.destination) rawLocations.add(parsed.destination)
+    if (parsed.origin) {
+      const o = parsed.origin.trim()
+      if (o.length < 3) {
+        console.warn(`[geocode] skip short origin="${o}" from route_latin="${row.route_latin}"`)
+      } else {
+        rawLocations.add(o)
+      }
+    }
+    if (parsed.destination) {
+      const d = parsed.destination.trim()
+      if (d.length < 3) {
+        console.warn(`[geocode] skip short destination="${d}" from route_latin="${row.route_latin}"`)
+      } else {
+        rawLocations.add(d)
+      }
+    }
   }
 
   const totalUniqueLocations = rawLocations.size

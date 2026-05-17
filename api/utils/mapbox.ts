@@ -1,6 +1,11 @@
 // Server-side only. MAPBOX_ACCESS_TOKEN must never reach the client bundle.
 
+import { FESCO_LOCATION_ALIASES } from './fescoAliases.js'
+
 const MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN
+
+// CIS + East Asia + Poland (transit). Excludes noise from other regions.
+const COUNTRY_FILTER = 'ru,uz,by,kz,kg,tj,tm,az,am,ge,kr,cn,jp,vn,th,pl'
 
 export interface GeocodeResult {
   latitude:    number
@@ -11,20 +16,14 @@ export interface GeocodeResult {
   placeType:   string
 }
 
-export async function geocodeLocation(
-  query: string,
-): Promise<GeocodeResult | null> {
-  const q = query.trim()
-  if (!q) return null
-
-  if (!MAPBOX_TOKEN) throw new Error('MAPBOX_ACCESS_TOKEN is not configured')
-
+async function callMapbox(q: string): Promise<GeocodeResult | null> {
   const url =
     `https://api.mapbox.com/search/geocode/v6/forward` +
     `?q=${encodeURIComponent(q)}` +
     `&access_token=${MAPBOX_TOKEN}` +
     `&limit=1` +
-    `&types=place,locality,district,region`
+    `&types=place,locality,district,region` +
+    `&country=${COUNTRY_FILTER}`
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 5_000)
@@ -70,4 +69,37 @@ export async function geocodeLocation(
   const placeType: string = feature.properties?.feature_type ?? ''
 
   return { latitude: lat, longitude: lng, countryCode, countryName, placeName, placeType }
+}
+
+// j→y transliteration: "j" before a vowel or at end-of-word → "y"
+function jToY(s: string): string {
+  return s
+    .replace(/j([aeiouAEIOU])/g, 'y$1')
+    .replace(/j$/i, 'y')
+}
+
+export async function geocodeLocation(
+  query: string,
+): Promise<GeocodeResult | null> {
+  if (!MAPBOX_TOKEN) throw new Error('MAPBOX_ACCESS_TOKEN is not configured')
+
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return null
+
+  const aliased = FESCO_LOCATION_ALIASES[normalized]
+  const searchQuery = aliased ?? query.trim()
+
+  // First Mapbox call
+  const result = await callMapbox(searchQuery)
+  if (result) return result
+
+  // j→y fallback — only when no alias was applied
+  if (!aliased) {
+    const transformed = jToY(searchQuery)
+    if (transformed !== searchQuery) {
+      return await callMapbox(transformed)
+    }
+  }
+
+  return null
 }
