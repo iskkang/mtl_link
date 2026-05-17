@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'current_from, current_to, current_segment_type, current_from_country, current_to_country, ' +
       'departure_date, planned_departure_date, destination_date, planned_destination_date, ' +
       'transport_name, voyage_number, ' +
-      'last_success_at, last_error_at, last_error_message, consecutive_errors',
+      'last_success_at, last_error_at, last_error_message, consecutive_errors, segments_json',
       { count: 'exact' },
     )
     .neq('status', 'completed')
@@ -70,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     last_error_at:            string | null
     last_error_message:       string | null
     consecutive_errors:       number | null
+    segments_json:            unknown[] | null
   }[]
 
   if (rows.length === 0) {
@@ -189,6 +190,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       departure_date:            r.departure_date ?? null,
       planned_destination_date:  r.planned_destination_date ?? null,
       alert_reason:              r.alert_reason ?? null,
+      // Full segments array (v1.10.0)
+      segments:                  r.segments_json ?? [],
       // extras
       origin_key:                origKey,
       current_from:              r.current_from,

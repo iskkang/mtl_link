@@ -522,6 +522,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         planned_destination_date:  curSeg?.planingDestinationDate           ?? null,
         transport_name:            curSeg?.transport?.nameLatin             ?? null,
         voyage_number:             curSeg?.transport?.voyageNumber          ?? null,
+        segments_json:             Array.isArray(item.segments) ? item.segments : [],
         raw_response:              item,
         last_checked_at:           now,
         last_success_at:           now,
