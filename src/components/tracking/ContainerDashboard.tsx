@@ -43,25 +43,26 @@ interface ContainerItem {
   voyage_number:            string | null
 }
 
+interface RecentOrderItem {
+  order_number:    string | null
+  route:           string | null
+  created_at:      string | null
+  container_count: number
+  signal:          string
+}
+
 interface DashboardResponse {
-  ok:     boolean
-  total:  number
-  limit:  number
-  offset: number
-  data:   ContainerItem[]
-  error?: string
+  ok:             boolean
+  total:          number
+  limit:          number
+  offset:         number
+  data:           ContainerItem[]
+  recent_orders?: RecentOrderItem[]
+  error?:         string
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
-const SIGNAL_RANK: Record<string, number> = { red: 3, yellow: 2, green: 1, gray: 0 }
 const DETAIL_RANK: Record<string, number> = { red: 0, yellow: 1, green: 2, gray: 3 }
-
-function worstSignal(signals: string[]): string {
-  return signals.reduce(
-    (w, s) => SIGNAL_RANK[s] > SIGNAL_RANK[w] ? s : w,
-    'gray',
-  )
-}
 
 function fmtRelTime(iso: string | null): string {
   if (!iso) return '—'
@@ -343,12 +344,13 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   const seaLabel  = t('tracking.dashboard.segment.sea')
   const railLabel = t('tracking.dashboard.segment.rail')
 
-  const [data,          setData]          = useState<ContainerItem[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [error,         setError]         = useState<string | null>(null)
-  const [lastFetch,     setLastFetch]     = useState<string | null>(null)
-  const [refreshing,    setRefreshing]    = useState(false)
-  const [showAllAction, setShowAllAction] = useState(false)
+  const [data,             setData]             = useState<ContainerItem[]>([])
+  const [recentOrders,     setRecentOrders]     = useState<RecentOrderItem[]>([])
+  const [loading,          setLoading]          = useState(true)
+  const [error,            setError]            = useState<string | null>(null)
+  const [lastFetch,        setLastFetch]        = useState<string | null>(null)
+  const [refreshing,       setRefreshing]       = useState(false)
+  const [showAllAction,    setShowAllAction]    = useState(false)
 
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
     () => new Set(['RU', 'UZ', 'BY', 'KZ']),
@@ -366,6 +368,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       const json = await res.json() as DashboardResponse
       if (!json.ok) throw new Error(json.error ?? 'Failed to load dashboard')
       setData(json.data)
+      setRecentOrders(json.recent_orders ?? [])
       setLastFetch(new Date().toISOString())
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -402,30 +405,6 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     }
     return m
   }, [data])
-
-  /* ── Recent orders ─────────────────────────────────────────────────── */
-  const recentOrders = useMemo(() => {
-    const map = new Map<string, ContainerItem[]>()
-    for (const c of filteredData) {
-      const key = c.order_number ?? `_${c.container_number}`
-      const arr = map.get(key) ?? []
-      arr.push(c)
-      map.set(key, arr)
-    }
-    return [...map.entries()]
-      .map(([key, ctrs]) => ({
-        key,
-        orderNum: ctrs[0].order_number ?? '—',
-        ctrs,
-        signal: worstSignal(ctrs.map(c => c.signal)),
-        latest: ctrs.map(c => c.last_success_at ?? '').sort().reverse()[0] ?? '',
-        route:  ctrs[0].origin_city && ctrs[0].destination_city
-          ? `${ctrs[0].origin_city} → ${ctrs[0].destination_city}`
-          : ctrs[0].destination_city ?? '—',
-      }))
-      .sort((a, b) => b.latest.localeCompare(a.latest))
-      .slice(0, 8)
-  }, [filteredData])
 
   /* ── Action needed (global red, sorted by errors desc) ──────────────── */
   const actionNeeded = useMemo(
@@ -674,7 +653,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                   ) : (
                     recentOrders.map(ord => (
                       <div
-                        key={ord.key}
+                        key={ord.order_number ?? ord.route ?? ord.created_at ?? ''}
                         className="px-4 py-1.5 border-b flex items-center gap-2 transition-colors cursor-default"
                         style={{ borderColor: 'var(--ink-200)' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
@@ -683,14 +662,14 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                         <SignalDot signal={ord.signal} />
                         <div className="flex-1 min-w-0">
                           <div className="text-[11px] font-mono font-medium truncate" style={{ color: 'var(--ink-900)' }}>
-                            {ord.orderNum}
+                            {ord.order_number ?? '—'}
                           </div>
                           <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
-                            {ord.route}
+                            {ord.route ?? '—'}
                           </div>
                         </div>
                         <span className="text-[9px] font-mono flex-shrink-0" style={{ color: 'var(--ink-400)' }}>
-                          {ord.ctrs.length}×
+                          {ord.container_count}×
                         </span>
                       </div>
                     ))
