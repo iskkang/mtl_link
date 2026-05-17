@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2, MapPin } from 'lucide-react'
+import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2, MapPin, Ship, Train } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ContainerMap } from './ContainerMap'
 
@@ -13,6 +13,11 @@ interface ContainerItem {
   destination_country_code: string | null
   destination_country_name: string | null
   current_location_text:    string | null
+  // Smart marker placement (v1.9.0b)
+  display_location_text:    string | null
+  display_latitude:         number | null
+  display_longitude:        number | null
+  // Deprecated, kept for backward compat
   current_latitude:         number | null
   current_longitude:        number | null
   eta:                      string | null
@@ -23,8 +28,15 @@ interface ContainerItem {
   consecutive_errors:       number
   open_alert_count:         number
   open_alert_types:         string[]
-  origin_key:               string | null
+  // Segment context (v1.9.0b)
   current_from:             string | null
+  current_to:               string | null
+  current_segment_type:     'SEA' | 'RR' | null
+  departure_date:           string | null
+  planned_destination_date: string | null
+  alert_reason:             string | null
+  // extras
+  origin_key:               string | null
   current_from_country:     string | null
   current_to_country:       string | null
   transport_name:           string | null
@@ -67,22 +79,49 @@ function daysSince(iso: string | null): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
 
-/* ── Alert type → i18n reason key ───────────────────────────────────── */
-const ALERT_REASON_KEY: Record<string, string> = {
-  container_tracking_unknown:     'trackingUnknown',
-  container_tracking_unavailable: 'trackingUnavailable',
-  awaiting_next_leg_overdue:      'awaitingNextLeg',
-  planned_arrival_overdue:        'arrivalOverdue',
-  planned_departure_overdue:      'departureOverdue',
-  stale_tracking_risk:            'stale',
+/* ── Segment icon ────────────────────────────────────────────────────── */
+function SegmentIcon({ type, seaLabel, railLabel }: {
+  type:      string | null
+  seaLabel:  string
+  railLabel: string
+}) {
+  if (type === 'SEA') return <Ship  size={9} aria-label={seaLabel}  style={{ flexShrink: 0, color: 'var(--ink-400)' }} />
+  if (type === 'RR')  return <Train size={9} aria-label={railLabel} style={{ flexShrink: 0, color: 'var(--ink-400)' }} />
+  return null
 }
 
-function alertReasonKey(types: string[]): string {
-  for (const t of types) {
-    const k = ALERT_REASON_KEY[t]
-    if (k) return k
-  }
-  return 'other'
+/* ── Segment context row (second line) ───────────────────────────────── */
+function SegmentLine({ c, seaLabel, railLabel }: {
+  c:         ContainerItem
+  seaLabel:  string
+  railLabel: string
+}) {
+  const hasSegment = c.current_segment_type != null
+  const hasReason  = !!c.alert_reason
+  return (
+    <div
+      className="text-[10px] flex items-center gap-1 overflow-hidden"
+      style={{ color: 'var(--ink-500)' }}
+    >
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
+        {c.current_from ?? '—'} → {c.current_to ?? '—'}
+      </span>
+      {hasSegment && (
+        <>
+          <span className="flex-shrink-0" style={{ color: 'var(--ink-300)' }}>·</span>
+          <SegmentIcon type={c.current_segment_type} seaLabel={seaLabel} railLabel={railLabel} />
+        </>
+      )}
+      {hasReason && (
+        <>
+          <span className="flex-shrink-0" style={{ color: 'var(--ink-300)' }}>·</span>
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 2 }}>
+            {c.alert_reason}
+          </span>
+        </>
+      )}
+    </div>
+  )
 }
 
 /* ── Signal dot ─────────────────────────────────────────────────────── */
@@ -106,6 +145,9 @@ function DetailCard({ items, onClear }: {
   onClear: () => void
 }) {
   const { t } = useTranslation()
+  const seaLabel  = t('tracking.dashboard.segment.sea')
+  const railLabel = t('tracking.dashboard.segment.rail')
+
   return (
     <div
       className="rounded-lg border flex flex-col overflow-hidden flex-shrink-0"
@@ -120,13 +162,13 @@ function DetailCard({ items, onClear }: {
         {items !== null && (
           <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
             <span>{t('tracking.dashboard.detail.containersSelected', { count: items.length })}</span>
-            <span style={{ color: 'var(--ink-300)' }}>·</span>
             <button
               type="button"
               onClick={onClear}
-              className="font-medium"
-              style={{ color: 'var(--mint-deep)' }}
+              className="flex items-center gap-0.5 font-medium"
+              style={{ color: 'var(--ink-400)' }}
             >
+              <X size={10} />
               {t('tracking.dashboard.detail.clear')}
             </button>
           </div>
@@ -149,34 +191,28 @@ function DetailCard({ items, onClear }: {
             </div>
           ) : (
             items.map(c => {
-              const reasonKey = c.open_alert_types?.length ? alertReasonKey(c.open_alert_types) : null
+              const days = daysSince(c.planned_destination_date ?? c.last_error_at)
               return (
                 <div
                   key={c.container_number}
-                  className="px-4 py-1.5 border-b flex items-center gap-2.5 transition-colors"
+                  className="px-4 py-1.5 border-b flex items-start gap-2.5 transition-colors"
                   style={{ borderColor: 'var(--ink-200)' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
                 >
                   <SignalDot signal={c.signal} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>
-                      {c.container_number}
-                    </div>
-                    <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
-                      {c.destination_city ?? '—'}
-                      {c.destination_country_code && (
-                        <span className="font-mono ml-1" style={{ color: 'var(--ink-400)' }}>
-                          {c.destination_country_code}
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>
+                        {c.container_number}
+                      </span>
+                      {days > 0 && (
+                        <span className="text-[9px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--red)' }}>
+                          {t('tracking.dashboard.actionNeeded.daysOverdue', { days })}
                         </span>
                       )}
-                      {reasonKey && (
-                        <>
-                          <span className="mx-1" style={{ color: 'var(--ink-300)' }}>·</span>
-                          <span>{t(`tracking.dashboard.actionNeeded.reason.${reasonKey}`)}</span>
-                        </>
-                      )}
                     </div>
+                    <SegmentLine c={c} seaLabel={seaLabel} railLabel={railLabel} />
                   </div>
                 </div>
               )
@@ -197,8 +233,8 @@ function DonutChart({ green, yellow, red, centerLabel }: {
 
   const R  = 52
   const SW = 12
-  const CX = R + SW / 2 + 2   // 60
-  const C  = 2 * Math.PI * R  // ≈ 326.73
+  const CX = R + SW / 2 + 2
+  const C  = 2 * Math.PI * R
 
   const redLen    = C * (red    / total)
   const yellowLen = C * (yellow / total)
@@ -208,7 +244,7 @@ function DonutChart({ green, yellow, red, centerLabel }: {
   const yellowOff = -redLen
   const greenOff  = -(redLen + yellowLen)
 
-  const size = CX * 2  // 120
+  const size = CX * 2
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
@@ -304,6 +340,8 @@ const ALL_COUNTRIES = ['RU', 'UZ', 'BY', 'KZ'] as const
 
 export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => void }) {
   const { t } = useTranslation()
+  const seaLabel  = t('tracking.dashboard.segment.sea')
+  const railLabel = t('tracking.dashboard.segment.rail')
 
   const [data,          setData]          = useState<ContainerItem[]>([])
   const [loading,       setLoading]       = useState(true)
@@ -355,7 +393,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     green:  filteredData.filter(c => c.signal === 'green').length,
   }), [filteredData])
 
-  /* ── Country counts (from full dataset, for chip badges) ───────────── */
+  /* ── Country counts ─────────────────────────────────────────────────── */
   const countryCounts = useMemo(() => {
     const m: Record<string, number> = {}
     for (const c of data) {
@@ -365,7 +403,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     return m
   }, [data])
 
-  /* ── Recent orders (grouped, sorted by latest activity) ─────────────  */
+  /* ── Recent orders ─────────────────────────────────────────────────── */
   const recentOrders = useMemo(() => {
     const map = new Map<string, ContainerItem[]>()
     for (const c of filteredData) {
@@ -389,7 +427,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       .slice(0, 8)
   }, [filteredData])
 
-  /* ── Action needed (global red, sorted by consecutive_errors desc) ─── */
+  /* ── Action needed (global red, sorted by errors desc) ──────────────── */
   const actionNeeded = useMemo(
     () => filteredData
       .filter(c => c.signal === 'red')
@@ -401,27 +439,30 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     [filteredData],
   )
 
-  /* ── Detail items (from map selection) ──────────────────────────────── */
+  /* ── Detail items: filtered by selection, sorted R→Y→G→gray then +Nd desc ── */
   const detailItems = useMemo(
     () => selectedContainerNumbers === null
       ? null
       : filteredData
           .filter(c => selectedContainerNumbers.includes(c.container_number))
-          .sort((a, b) =>
-            DETAIL_RANK[a.signal] - DETAIL_RANK[b.signal] ||
-            a.container_number.localeCompare(b.container_number),
-          ),
+          .sort((a, b) => {
+            const rankDiff = DETAIL_RANK[a.signal] - DETAIL_RANK[b.signal]
+            if (rankDiff !== 0) return rankDiff
+            const daysA = daysSince(a.planned_destination_date ?? a.last_error_at)
+            const daysB = daysSince(b.planned_destination_date ?? b.last_error_at)
+            return daysB - daysA
+          }),
     [selectedContainerNumbers, filteredData],
   )
 
-  /* ── Map points ─────────────────────────────────────────────────────── */
+  /* ── Map points: use display_* for smart marker placement ───────────── */
   const mapPoints = useMemo(
     () => filteredData
-      .filter(c => c.current_latitude != null && c.current_longitude != null)
+      .filter(c => c.display_latitude != null && c.display_longitude != null)
       .map(c => ({
         containerNumber: c.container_number,
-        latitude:        c.current_latitude!,
-        longitude:       c.current_longitude!,
+        latitude:        c.display_latitude!,
+        longitude:       c.display_longitude!,
         signal:          c.signal,
       })),
     [filteredData],
@@ -522,11 +563,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
           >
             <AlertCircle size={15} />
             <span className="flex-1">{error}</span>
-            <button
-              type="button"
-              className="text-xs underline underline-offset-2"
-              onClick={() => fetchData()}
-            >
+            <button type="button" className="text-xs underline underline-offset-2" onClick={() => fetchData()}>
               Retry
             </button>
           </div>
@@ -687,13 +724,12 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                   ) : (
                     <>
                       {(showAllAction ? actionNeeded : actionNeeded.slice(0, 5)).map(c => {
-                        const errorRef  = c.last_error_at ?? c.last_success_at
-                        const days      = daysSince(errorRef)
-                        const reasonKey = alertReasonKey(c.open_alert_types)
+                        const errorRef = c.last_error_at ?? c.last_success_at
+                        const days     = daysSince(errorRef)
                         return (
                           <div
                             key={c.container_number}
-                            className="px-4 py-1.5 border-b flex items-center gap-2.5 transition-colors"
+                            className="px-4 py-1.5 border-b flex items-start gap-2.5 transition-colors"
                             style={{ borderColor: 'var(--ink-200)' }}
                             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ink-50)' }}
                             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
@@ -716,20 +752,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[10px] truncate flex items-center gap-1" style={{ color: 'var(--ink-500)' }}>
-                                <span className="truncate">
-                                  {c.destination_city ?? '—'}
-                                  {c.destination_country_code && (
-                                    <span className="font-mono ml-1" style={{ color: 'var(--ink-400)' }}>
-                                      {c.destination_country_code}
-                                    </span>
-                                  )}
-                                </span>
-                                <span style={{ color: 'var(--ink-300)' }}>·</span>
-                                <span className="flex-shrink-0" style={{ color: 'var(--ink-400)' }}>
-                                  {t(`tracking.dashboard.actionNeeded.reason.${reasonKey}`)}
-                                </span>
-                              </div>
+                              <SegmentLine c={c} seaLabel={seaLabel} railLabel={railLabel} />
                             </div>
                           </div>
                         )
