@@ -20,6 +20,31 @@ function deriveSignal(
   return 'gray'
 }
 
+function computeTransitProgress(
+  departureDate: string | null,
+  plannedDestinationDate: string | null,
+  now: number = Date.now(),
+): number | null {
+  if (!departureDate || !plannedDestinationDate) return null
+  const dep = new Date(departureDate).getTime()
+  const eta = new Date(plannedDestinationDate).getTime()
+  if (!Number.isFinite(dep) || !Number.isFinite(eta) || eta <= dep) return null
+  const raw = (now - dep) / (eta - dep)
+  return Math.max(0, Math.min(1, raw))
+}
+
+function interpolateCoord(
+  fromLat: number, fromLng: number,
+  toLat: number, toLng: number,
+  progress: number,
+): { lat: number; lng: number } {
+  const p = Math.max(0, Math.min(1, progress))
+  return {
+    lat: fromLat + p * (toLat - fromLat),
+    lng: fromLng + p * (toLng - fromLng),
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -147,10 +172,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const parsed = parseRoute(order?.route_latin)
     const alerts = alertMap.get(r.container_number) ?? []
 
-    // Smart marker placement: departed → show current_to (heading there); not yet departed → current_from (still there)
-    const displayLocationText = r.departure_date ? r.current_to : r.current_from
-    const displayLocKey       = displayLocationText?.trim().toLowerCase() ?? null
-    const displayGeo          = displayLocKey ? geoMap.get(displayLocKey) ?? null : null
+    // Smart marker placement with time-based interpolation for in-transit containers
+    const fromKey   = r.current_from?.trim().toLowerCase() ?? null
+    const toKey     = r.current_to?.trim().toLowerCase() ?? null
+    const fromGeo   = fromKey ? geoMap.get(fromKey) ?? null : null
+    const toGeo     = toKey   ? geoMap.get(toKey)   ?? null : null
+    const fromCoord = fromGeo?.latitude != null && fromGeo?.longitude != null ? fromGeo : null
+    const toCoord   = toGeo?.latitude   != null && toGeo?.longitude   != null ? toGeo   : null
+
+    const departed = !!r.departure_date
+    const arrived  = !!r.destination_date
+
+    let displayLat:          number | null = null
+    let displayLng:          number | null = null
+    let displayLocationText: string | null = null
+    let transitProgress:     number | null = null
+
+    if (departed && !arrived && fromCoord && toCoord) {
+      const progress = computeTransitProgress(r.departure_date, r.planned_destination_date)
+      if (progress !== null) {
+        const pos = interpolateCoord(
+          fromCoord.latitude!, fromCoord.longitude!,
+          toCoord.latitude!,   toCoord.longitude!,
+          progress,
+        )
+        displayLat          = pos.lat
+        displayLng          = pos.lng
+        displayLocationText = r.current_to
+        transitProgress     = progress
+      } else {
+        displayLat          = toCoord.latitude
+        displayLng          = toCoord.longitude
+        displayLocationText = r.current_to
+      }
+    } else if (departed && toCoord) {
+      displayLat          = toCoord.latitude
+      displayLng          = toCoord.longitude
+      displayLocationText = r.current_to
+    } else if (!departed && fromCoord) {
+      displayLat          = fromCoord.latitude
+      displayLng          = fromCoord.longitude
+      displayLocationText = r.current_from
+    } else {
+      if (toCoord) {
+        displayLat          = toCoord.latitude
+        displayLng          = toCoord.longitude
+        displayLocationText = r.current_to
+      } else if (fromCoord) {
+        displayLat          = fromCoord.latitude
+        displayLng          = fromCoord.longitude
+        displayLocationText = r.current_from
+      }
+    }
 
     // Backward-compat: current_to-based coordinates (deprecated, use display_* for marker placement)
     const curLocKey = r.current_to?.trim().toLowerCase() ?? null
@@ -168,10 +241,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       destination_city:          parsed.destination  ?? null,
       destination_country_code:  destGeo?.country_code  ?? null,
       destination_country_name:  destGeo?.country_name  ?? null,
-      // Smart marker placement
-      display_location_text:     displayLocationText ?? null,
-      display_latitude:          displayGeo?.latitude  ?? null,
-      display_longitude:         displayGeo?.longitude ?? null,
+      // Smart marker placement with interpolation
+      display_location_text:     displayLocationText,
+      display_latitude:          displayLat,
+      display_longitude:         displayLng,
+      transit_progress:          transitProgress,
       // Deprecated (backward compat): current_to-based coordinates
       current_location_text:     r.current_to ?? null,
       current_latitude:          curGeo?.latitude  ?? null,
