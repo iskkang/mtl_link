@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { parseRoute } from '../utils/route'
+import { parseRoute } from '../utils/route.js'
 
 function deriveSignal(
   ctr: { status: string | null; last_success_at: string | null },
