@@ -84,6 +84,7 @@ export function ContainerMap({ containers, onSelectContainers, onClearSelection 
       style:           'mapbox://styles/mapbox/light-v11',
       center:          [60, 50],
       zoom:            3,
+      projection:      'mercator',
       pitchWithRotate: false,
       touchPitch:      false,
     })
