@@ -9,13 +9,13 @@ export interface ContainerPoint {
 }
 
 interface ContainerMapProps {
-  containers:     ContainerPoint[]
-  onMarkerClick?: (containerNumber: string) => void
+  containers:          ContainerPoint[]
+  onSelectContainers?: (containerNumbers: string[]) => void
+  onClearSelection?:   () => void
 }
 
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
 
-/* signal → hex color */
 const SIG_COLOR: Record<string, string> = {
   red:    '#dc2626',
   yellow: '#d97706',
@@ -23,57 +23,96 @@ const SIG_COLOR: Record<string, string> = {
   gray:   '#94a3b8',
 }
 
-export function ContainerMap({ containers, onMarkerClick }: ContainerMapProps) {
+/* ── Reset-view custom control ──────────────────────────────────────── */
+class ResetViewControl implements mapboxgl.IControl {
+  private _container?: HTMLDivElement
+  constructor(private onReset: () => void) {}
+
+  onAdd(map: mapboxgl.Map): HTMLElement {
+    this._container = document.createElement('div')
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group'
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'mapboxgl-ctrl-icon'
+    btn.setAttribute('aria-label', 'Reset view')
+    btn.title = 'Reset view'
+    btn.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>'
+    btn.addEventListener('click', () => {
+      map.flyTo({ center: [60, 50], zoom: 3, duration: 800 })
+      this.onReset()
+    })
+    this._container.appendChild(btn)
+    return this._container
+  }
+
+  onRemove(): void {
+    this._container?.parentNode?.removeChild(this._container)
+  }
+
+  getDefaultPosition(): mapboxgl.ControlPosition {
+    return 'top-right'
+  }
+}
+
+/* ── Component ──────────────────────────────────────────────────────── */
+export function ContainerMap({ containers, onSelectContainers, onClearSelection }: ContainerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<mapboxgl.Map | null>(null)
   const initialized  = useRef(false)
+
+  /* Stable refs so event handlers never capture stale props */
+  const selectRef = useRef(onSelectContainers)
+  const clearRef  = useRef(onClearSelection)
+  useEffect(() => { selectRef.current = onSelectContainers }, [onSelectContainers])
+  useEffect(() => { clearRef.current  = onClearSelection  }, [onClearSelection])
 
   /* ── Init map once ──────────────────────────────────────────────── */
   useEffect(() => {
     if (!containerRef.current || initialized.current) return
     if (!TOKEN) {
-      console.error('[ContainerMap] VITE_MAPBOX_PUBLIC_TOKEN is not set')
+      console.error('[ContainerMap] MAPBOX_ACCESS_TOKEN is not set')
       return
     }
 
-    initialized.current = true
+    initialized.current  = true
     mapboxgl.accessToken = TOKEN
 
     const map = new mapboxgl.Map({
-      container:   containerRef.current,
-      style:       'mapbox://styles/mapbox/light-v11',
-      center:      [60, 50],
-      zoom:        3,
+      container:       containerRef.current,
+      style:           'mapbox://styles/mapbox/light-v11',
+      center:          [60, 50],
+      zoom:            3,
       pitchWithRotate: false,
       touchPitch:      false,
     })
 
     map.keyboard.disable()
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(new ResetViewControl(() => clearRef.current?.()), 'top-right')
 
     mapRef.current = map
 
     map.on('load', () => {
-      addSourceAndLayers(map, containers, onMarkerClick)
+      addSourceAndLayers(map, containers, selectRef, clearRef)
       fitToContainers(map, containers)
     })
 
     return () => {
       map.remove()
-      mapRef.current = null
+      mapRef.current   = null
       initialized.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /* ── Update data when containers / filter changes ───────────────── */
+  /* ── Update GeoJSON when containers change ──────────────────────── */
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
-
     const src = map.getSource('containers') as mapboxgl.GeoJSONSource | undefined
     if (!src) return
-
     src.setData(toGeoJSON(containers))
     fitToContainers(map, containers)
   }, [containers])
@@ -82,7 +121,6 @@ export function ContainerMap({ containers, onMarkerClick }: ContainerMapProps) {
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Empty-filter overlay */}
       {containers.length === 0 && (
         <div
           style={{
@@ -107,25 +145,22 @@ function toGeoJSON(containers: ContainerPoint[]): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: containers.map(c => ({
-      type: 'Feature' as const,
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [c.longitude, c.latitude],
-      },
-      properties: {
-        containerNumber: c.containerNumber,
-        signal:          c.signal,
-      },
+      type:     'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [c.longitude, c.latitude] },
+      properties: { containerNumber: c.containerNumber, signal: c.signal },
     })),
   }
 }
 
+type CbRef<T> = { current: T | undefined }
+
 function addSourceAndLayers(
-  map: mapboxgl.Map,
+  map:       mapboxgl.Map,
   containers: ContainerPoint[],
-  onMarkerClick?: (cn: string) => void,
+  selectRef: CbRef<(nums: string[]) => void>,
+  clearRef:  CbRef<() => void>,
 ) {
-  /* ── Source ─────────────────────────────────────────────────────── */
+  /* Source */
   map.addSource('containers', {
     type:          'geojson',
     data:          toGeoJSON(containers),
@@ -138,7 +173,7 @@ function addSourceAndLayers(
     },
   })
 
-  /* ── Cluster circles ────────────────────────────────────────────── */
+  /* Cluster circles */
   map.addLayer({
     id:     'clusters',
     type:   'circle',
@@ -150,29 +185,29 @@ function addSourceAndLayers(
         ['>', ['get', 'yellow'], 0], SIG_COLOR.yellow,
         SIG_COLOR.green,
       ],
-      'circle-radius': ['step', ['get', 'point_count'], 14, 5, 18, 15, 22],
+      'circle-radius':       ['step', ['get', 'point_count'], 14, 5, 18, 15, 22],
       'circle-stroke-width': 2.5,
       'circle-stroke-color': '#ffffff',
-      'circle-opacity': 0.85,
+      'circle-opacity':      0.85,
     },
   })
 
-  /* ── Cluster count labels ───────────────────────────────────────── */
+  /* Cluster count labels */
   map.addLayer({
     id:     'cluster-count',
     type:   'symbol',
     source: 'containers',
     filter: ['has', 'point_count'],
     layout: {
-      'text-field':            '{point_count}',
-      'text-font':             ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-      'text-size':             11,
-      'text-allow-overlap':    true,
+      'text-field':         '{point_count}',
+      'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size':          11,
+      'text-allow-overlap': true,
     },
     paint: { 'text-color': '#ffffff' },
   })
 
-  /* ── Individual markers ─────────────────────────────────────────── */
+  /* Individual markers */
   map.addLayer({
     id:     'unclustered',
     type:   'circle',
@@ -191,30 +226,36 @@ function addSourceAndLayers(
     },
   })
 
-  /* ── Cluster click → zoom in ────────────────────────────────────── */
+  /* Cluster click → get all leaves → onSelectContainers */
   map.on('click', 'clusters', e => {
     const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
     if (!features.length) return
-
-    const clusterId = features[0].properties?.cluster_id as number
-    const geom = features[0].geometry as GeoJSON.Point
+    const feat      = features[0]
+    const clusterId = feat.properties?.cluster_id as number
+    const count     = feat.properties?.point_count as number
     ;(map.getSource('containers') as mapboxgl.GeoJSONSource)
-      .getClusterExpansionZoom(clusterId, (err, zoom) => {
-        if (err || zoom == null) return
-        map.easeTo({ center: geom.coordinates as [number, number], zoom })
+      .getClusterLeaves(clusterId, count, 0, (err, leaves) => {
+        if (err || !leaves) return
+        const nums = leaves
+          .map(l => (l.properties as { containerNumber?: string } | null)?.containerNumber)
+          .filter((n): n is string => typeof n === 'string' && n.length > 0)
+        if (nums.length) selectRef.current?.(nums)
       })
   })
 
-  /* ── Individual marker click ────────────────────────────────────── */
+  /* Single marker click → onSelectContainers */
   map.on('click', 'unclustered', e => {
     const cn = e.features?.[0]?.properties?.containerNumber as string | undefined
-    if (cn) {
-      console.log('[ContainerMap] marker click:', cn)
-      onMarkerClick?.(cn)
-    }
+    if (cn) selectRef.current?.([cn])
   })
 
-  /* ── Pointer cursor on hover ────────────────────────────────────── */
+  /* Empty area click → onClearSelection */
+  map.on('click', e => {
+    const hit = map.queryRenderedFeatures(e.point, { layers: ['clusters', 'unclustered'] })
+    if (hit.length === 0) clearRef.current?.()
+  })
+
+  /* Pointer cursor on hover */
   for (const layer of ['clusters', 'unclustered'] as const) {
     map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
@@ -223,9 +264,8 @@ function addSourceAndLayers(
 
 function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]) {
   if (containers.length === 0) return
-
   const lngs = containers.map(c => c.longitude)
-  const lats = containers.map(c => c.latitude)
+  const lats  = containers.map(c => c.latitude)
   const bounds: mapboxgl.LngLatBoundsLike = [
     [Math.min(...lngs), Math.min(...lats)],
     [Math.max(...lngs), Math.max(...lats)],
