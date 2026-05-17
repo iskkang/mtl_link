@@ -107,12 +107,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: orderRows } = await supabase
     .from('fesco_orders')
-    .select('id, external_1c_number, route_latin')
+    .select('id, external_1c_number, route_latin, created_at')
     .in('id', orderIds)
 
-  const orderMap = new Map<number, { external_1c_number: string | null; route_latin: string | null }>()
-  for (const o of (orderRows ?? []) as { id: number; external_1c_number: string | null; route_latin: string | null }[]) {
-    orderMap.set(o.id, { external_1c_number: o.external_1c_number, route_latin: o.route_latin })
+  const orderMap = new Map<number, { external_1c_number: string | null; route_latin: string | null; created_at: string | null }>()
+  for (const o of (orderRows ?? []) as { id: number; external_1c_number: string | null; route_latin: string | null; created_at: string | null }[]) {
+    orderMap.set(o.id, { external_1c_number: o.external_1c_number, route_latin: o.route_latin, created_at: o.created_at })
   }
 
   // ── 3. Geocoding lookups ───────────────────────────────────────────────────
@@ -276,5 +276,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   })
 
-  return res.json({ ok: true, total: count ?? 0, limit, offset, data })
+  // ── 6. Recent orders — grouped by order, sorted by created_at desc ──────────
+  const SIG_RANK: Record<string, number> = { red: 3, yellow: 2, green: 1, gray: 0 }
+
+  type RecentOrderEntry = {
+    order_number:    string | null
+    route:           string | null
+    created_at:      string | null
+    order_id:        number | null
+    container_count: number
+    signal:          string
+  }
+  const roMap = new Map<string, RecentOrderEntry>()
+
+  for (const r of rows) {
+    const order  = r.order_id != null ? orderMap.get(r.order_id) : null
+    const parsed = parseRoute(order?.route_latin)
+    const alerts = alertMap.get(r.container_number) ?? []
+    const sig    = deriveSignal(r, alerts)
+    const key    = order?.external_1c_number ?? r.external_1c_number ?? `_${r.container_number}`
+    const entry  = roMap.get(key)
+    if (entry) {
+      entry.container_count++
+      if (SIG_RANK[sig] > SIG_RANK[entry.signal]) entry.signal = sig
+    } else {
+      roMap.set(key, {
+        order_number:    order?.external_1c_number ?? r.external_1c_number ?? null,
+        route:           parsed.origin && parsed.destination
+          ? `${parsed.origin} → ${parsed.destination}`
+          : parsed.destination ?? null,
+        created_at:      order?.created_at ?? null,
+        order_id:        r.order_id,
+        container_count: 1,
+        signal:          sig,
+      })
+    }
+  }
+
+  const recent_orders = [...roMap.values()]
+    .sort((a, b) => {
+      if (a.created_at && b.created_at) return b.created_at.localeCompare(a.created_at)
+      if (a.created_at) return -1
+      if (b.created_at) return 1
+      return (b.order_id ?? 0) - (a.order_id ?? 0)
+    })
+    .slice(0, 8)
+    .map(o => ({
+      order_number:    o.order_number,
+      route:           o.route,
+      created_at:      o.created_at,
+      container_count: o.container_count,
+      signal:          o.signal,
+    }))
+
+  return res.json({ ok: true, total: count ?? 0, limit, offset, data, recent_orders })
 }
