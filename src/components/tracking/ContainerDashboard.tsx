@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ContainerMap } from './ContainerMap'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 interface ContainerItem {
@@ -81,71 +82,6 @@ function alertReasonKey(types: string[]): string {
     if (k) return k
   }
   return 'other'
-}
-
-/* ── Map placeholder SVG (decorative Eurasia + dots) ────────────────── */
-function MapPlaceholder({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden rounded-lg border"
-      style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minHeight: 200 }}>
-
-      {/* Decorative continent SVG */}
-      <svg
-        viewBox="0 0 520 240"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-        style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          opacity: 0.55,
-        }}
-      >
-        {/* Eurasia landmass — simplified outline */}
-        <path
-          d="M 58 115 C 62 88, 90 68, 118 72 L 132 58 C 148 44, 166 40, 186 48
-             L 204 42 C 222 32, 248 30, 272 38 L 298 30 C 322 22, 352 28, 374 44
-             L 400 38 C 420 30, 445 42, 458 62 L 466 82 C 472 98, 468 118, 454 128
-             L 432 138 C 414 148, 394 144, 374 136 L 352 150 C 332 162, 306 158, 282 148
-             L 258 156 C 238 164, 212 158, 192 146 L 164 150 C 140 154, 112 142, 94 126 Z"
-          fill="var(--ink-200)"
-          stroke="var(--ink-300)"
-          strokeWidth="0.8"
-        />
-        {/* Korean peninsula / Japan islands */}
-        <ellipse cx="448" cy="90" rx="14" ry="20"
-          fill="var(--ink-200)" stroke="var(--ink-300)" strokeWidth="0.8"
-          transform="rotate(-15 448 90)" />
-        <ellipse cx="466" cy="102" rx="8" ry="12"
-          fill="var(--ink-200)" stroke="var(--ink-300)" strokeWidth="0.6"
-          transform="rotate(-20 466 102)" />
-
-        {/* Dashed route line */}
-        <polyline
-          points="116,108  226,100  338,80  432,76"
-          stroke="var(--mint-light)"
-          strokeWidth="1"
-          strokeDasharray="5 4"
-          fill="none"
-          opacity="0.6"
-        />
-
-        {/* Container location dots */}
-        <circle cx="116" cy="108" r="5" fill="var(--mint-primary)" opacity="0.75" />
-        <circle cx="226" cy="100" r="5" fill="var(--mint-primary)" opacity="0.75" />
-        <circle cx="338" cy="80"  r="5" fill="var(--mint-primary)" opacity="0.75" />
-        <circle cx="432" cy="76"  r="5" fill="var(--mint-primary)" opacity="0.75" />
-
-        {/* Dot halos */}
-        <circle cx="116" cy="108" r="9" fill="var(--mint-primary)" opacity="0.18" />
-        <circle cx="432" cy="76"  r="9" fill="var(--mint-primary)" opacity="0.18" />
-      </svg>
-
-      {/* Text overlay */}
-      <div className="relative z-10 flex flex-col items-center gap-1 text-center px-4">
-        <p className="label-mono" style={{ color: 'var(--ink-500)' }}>{title}</p>
-        <p className="text-[13px]" style={{ color: 'var(--ink-400)' }}>{subtitle}</p>
-      </div>
-    </div>
-  )
 }
 
 /* ── Signal dot ─────────────────────────────────────────────────────── */
@@ -397,6 +333,19 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
   const resetFilter = () => setSelectedCountries(new Set(['RU', 'UZ', 'BY', 'KZ']))
 
+  /* ── Map points: only containers with valid coordinates ────────────── */
+  const mapPoints = useMemo(
+    () => filteredData
+      .filter(c => c.current_latitude != null && c.current_longitude != null)
+      .map(c => ({
+        containerNumber: c.container_number,
+        latitude:        c.current_latitude!,
+        longitude:       c.current_longitude!,
+        signal:          c.signal,
+      })),
+    [filteredData],
+  )
+
   const totalActive = stats.red + stats.yellow + stats.green
 
   /* ── Render ─────────────────────────────────────────────────────────── */
@@ -509,11 +458,16 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
             {/* ── Top row ─────────────────────────────────────────────── */}
             <div className="flex gap-4" style={{ minHeight: 280 }}>
 
-              {/* Map placeholder */}
-              <MapPlaceholder
-                title={t('tracking.dashboard.map.title')}
-                subtitle={t('tracking.dashboard.map.subtitle')}
-              />
+              {/* Live map */}
+              <div
+                className="flex-1 rounded-lg border overflow-hidden"
+                style={{ borderColor: 'var(--ink-200)', minHeight: 280 }}
+              >
+                <ContainerMap
+                  containers={mapPoints}
+                  onMarkerClick={cn => console.log('[dashboard] container click:', cn)}
+                />
+              </div>
 
               {/* Recent orders */}
               <div
@@ -648,7 +602,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                           >
                             <SignalDot signal="red" />
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center justify-between gap-1.5">
                                 <span
                                   className="font-mono text-[11px] font-medium"
                                   style={{ color: 'var(--ink-900)' }}
@@ -657,8 +611,8 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                                 </span>
                                 {days > 0 && (
                                   <span
-                                    className="px-1 py-0.5 rounded text-[9px] font-mono font-semibold flex-shrink-0"
-                                    style={{ background: 'var(--signal-red-bg)', color: 'var(--signal-red)' }}
+                                    className="px-1 py-0.5 rounded text-[9px] font-mono font-medium flex-shrink-0"
+                                    style={{ color: 'var(--red)' }}
                                   >
                                     {t('tracking.dashboard.actionNeeded.daysOverdue', { days })}
                                   </span>
