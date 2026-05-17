@@ -224,7 +224,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let displayLocationText: string | null = null
     let transitProgress:     number | null = null
 
-    if (eventCoord && lastEvent?.locationLatin) {
+    // Country mismatch sanity check (v1.10.2c): skip event coord when it geocodes to a
+    // different country than current_from — signals a geocode false match
+    // (e.g. "9-10 Prichaly VMTP" geocodes to LT while segment is Vladivostok RU → skip).
+    const countryMatch = !fromCoord
+      || !evGeo?.country_code
+      || !fromGeo?.country_code
+      || evGeo.country_code === fromGeo.country_code
+
+    if (eventCoord && lastEvent?.locationLatin && countryMatch) {
       // PRIORITY 1: actual last-event location (most accurate)
       displayLat          = eventCoord.latitude
       displayLng          = eventCoord.longitude
