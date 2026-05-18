@@ -9,9 +9,20 @@ export interface ContainerPoint {
   signal:          'red' | 'yellow' | 'green' | 'gray'
 }
 
+export interface ContainerPopupData {
+  signal:                   'red' | 'yellow' | 'green' | 'gray'
+  current_from:             string | null
+  current_to:               string | null
+  last_event_location:      string | null
+  last_success_at:          string | null
+  planned_destination_date: string | null
+  alert_reason:             string | null
+}
+
 interface ContainerMapProps {
   containers:           ContainerPoint[]
   allContainerNumbers?: string[]
+  containerDetails?:    Record<string, ContainerPopupData>
   onSelectContainers?:  (containerNumbers: string[]) => void
   onClearSelection?:    () => void
 }
@@ -23,6 +34,87 @@ const SIG_COLOR: Record<string, string> = {
   yellow: '#d97706',
   green:  '#0d9488',
   gray:   '#94a3b8',
+}
+
+/* ── Popup style injection (once per page) ──────────────────────────── */
+let popupStyleInjected = false
+function ensurePopupStyles() {
+  if (popupStyleInjected) return
+  popupStyleInjected = true
+  const el = document.createElement('style')
+  el.textContent = `
+    .container-popup .mapboxgl-popup-content {
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid #e2e8f0;
+    }
+    .container-popup .mapboxgl-popup-close-button {
+      font-size: 16px;
+      color: #94a3b8;
+      padding: 4px 8px;
+      line-height: 1;
+      border-radius: 0 12px 0 0;
+    }
+  `
+  document.head.appendChild(el)
+}
+
+/* ── Popup HTML builder ─────────────────────────────────────────────── */
+function buildPopupHtml(
+  cn:     string,
+  detail: ContainerPopupData | undefined,
+  i18n:   { route: string; lastEvent: string; eta: string; openInFesco: string },
+): string {
+  const sig = detail?.signal ?? 'gray'
+  const dotColor =
+    sig === 'red'    ? '#dc2626' :
+    sig === 'yellow' ? '#d97706' :
+    sig === 'green'  ? '#0d9488' : '#94a3b8'
+
+  const fmtDate = (iso: string | null): string => {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
+  const route     = detail ? `${detail.current_from ?? '—'} → ${detail.current_to ?? '—'}` : '—'
+  const lastEvent = detail?.last_event_location ?? '—'
+  const lastDate  = detail?.last_success_at ?? null
+  const eta       = detail?.planned_destination_date ?? null
+  const alert     = detail?.alert_reason ?? null
+
+  const etaHtml = eta ? `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${i18n.eta}</div>
+      <div style="font-size:12px;color:#1e293b">${fmtDate(eta)}</div>
+    </div>` : ''
+
+  const alertHtml = (alert && sig !== 'green' && sig !== 'gray') ? `
+    <div style="margin-top:8px;padding:4px 8px;border-radius:4px;background:#f8fafc;font-size:11px;color:#475569">
+      ${alert}
+    </div>` : ''
+
+  return `
+    <div style="font-family:var(--font-body,system-ui,sans-serif);min-width:240px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
+        <span style="font-weight:600;font-size:13px;color:#1e293b;font-family:var(--font-mono,monospace)">${cn}</span>
+        <a href="https://my.fesco.com/tracking?tab=${cn}" target="_blank" rel="noopener noreferrer"
+           style="margin-left:auto;font-size:11px;color:#0d9488;text-decoration:underline;white-space:nowrap">
+          ${i18n.openInFesco} ↗
+        </a>
+      </div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${i18n.route}</div>
+      <div style="font-size:12px;color:#1e293b;margin-bottom:10px">${route}</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${i18n.lastEvent}</div>
+      <div style="font-size:12px;color:#1e293b">
+        ${lastEvent}
+        ${lastDate ? `<span style="font-size:10px;color:#94a3b8;margin-left:4px">· ${fmtDate(lastDate)}</span>` : ''}
+      </div>
+      ${etaHtml}
+      ${alertHtml}
+    </div>
+  `
 }
 
 /* ── Reset-view custom control ──────────────────────────────────────── */
@@ -62,12 +154,14 @@ class ResetViewControl implements mapboxgl.IControl {
 function SearchOverlay({
   containers,
   allContainerNumbers,
-  onSelectContainers,
+  onSearchHit,
+  onSearchClear,
   mapRef,
 }: {
   containers:          ContainerPoint[]
   allContainerNumbers: string[]
-  onSelectContainers?: (nums: string[]) => void
+  onSearchHit:         (containerNumber: string, lng: number, lat: number) => void
+  onSearchClear:       () => void
   mapRef:              { current: mapboxgl.Map | null }
 }) {
   const { t } = useTranslation()
@@ -80,8 +174,8 @@ function SearchOverlay({
     if (!q) return
     const point = containers.find(c => c.containerNumber === q)
     if (point) {
-      mapRef.current?.flyTo({ center: [point.longitude, point.latitude], zoom: 7, duration: 1200 })
-      onSelectContainers?.([q])
+      mapRef.current?.flyTo({ center: [point.longitude, point.latitude], zoom: 8, duration: 1200 })
+      onSearchHit(q, point.longitude, point.latitude)
       setErrMsg(null)
       setFlash('ok')
       setTimeout(() => setFlash('idle'), 600)
@@ -94,6 +188,13 @@ function SearchOverlay({
     }
     setErrMsg(t('tracking.containerNotFound'))
     setFlash('error')
+  }
+
+  const handleClear = () => {
+    setQuery('')
+    setFlash('idle')
+    setErrMsg(null)
+    onSearchClear()
   }
 
   const shadowColor =
@@ -124,7 +225,7 @@ function SearchOverlay({
         {query && (
           <button
             type="button"
-            onClick={() => { setQuery(''); setFlash('idle'); setErrMsg(null) }}
+            onClick={handleClear}
             aria-label="Clear"
             style={{ color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', lineHeight: 1, fontSize: 15 }}
           >×</button>
@@ -154,16 +255,72 @@ function SearchOverlay({
 }
 
 /* ── Component ──────────────────────────────────────────────────────── */
-export function ContainerMap({ containers, allContainerNumbers = [], onSelectContainers, onClearSelection }: ContainerMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef       = useRef<mapboxgl.Map | null>(null)
-  const initialized  = useRef(false)
+export function ContainerMap({
+  containers,
+  allContainerNumbers = [],
+  containerDetails = {},
+  onSelectContainers,
+  onClearSelection,
+}: ContainerMapProps) {
+  const { t }         = useTranslation()
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const mapRef        = useRef<mapboxgl.Map | null>(null)
+  const initialized   = useRef(false)
+  const popupRef      = useRef<mapboxgl.Popup | null>(null)
 
   /* Stable refs so event handlers never capture stale props */
-  const selectRef = useRef(onSelectContainers)
-  const clearRef  = useRef(onClearSelection)
-  useEffect(() => { selectRef.current = onSelectContainers }, [onSelectContainers])
-  useEffect(() => { clearRef.current  = onClearSelection  }, [onClearSelection])
+  const selectRef  = useRef(onSelectContainers)
+  const clearRef   = useRef(onClearSelection)
+  const tRef       = useRef(t)
+  const detailsRef = useRef(containerDetails)
+  useEffect(() => { selectRef.current  = onSelectContainers }, [onSelectContainers])
+  useEffect(() => { clearRef.current   = onClearSelection  }, [onClearSelection])
+  useEffect(() => { tRef.current       = t                 }, [t])
+  useEffect(() => { detailsRef.current = containerDetails  }, [containerDetails])
+
+  /* show/clear search highlight — updated once, refs stable, body reads refs */
+  const showSearchRef  = useRef((_cn: string, _lng: number, _lat: number) => {})
+  const clearSearchRef = useRef(() => {})
+
+  useEffect(() => {
+    showSearchRef.current = (cn: string, lng: number, lat: number) => {
+      const map = mapRef.current
+      if (!map || !map.isStyleLoaded()) return
+      const src = map.getSource('searched-container') as mapboxgl.GeoJSONSource | undefined
+      if (!src) return
+      const detail = detailsRef.current[cn]
+      src.setData({
+        type: 'FeatureCollection',
+        features: [{
+          type:     'Feature',
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+          properties: { containerNumber: cn, signal: detail?.signal ?? 'gray' },
+        }],
+      })
+      popupRef.current?.remove()
+      const ti = tRef.current
+      popupRef.current = new mapboxgl.Popup({
+        anchor: 'bottom', offset: 30, closeButton: true, maxWidth: '320px', className: 'container-popup',
+      })
+        .setLngLat([lng, lat])
+        .setHTML(buildPopupHtml(cn, detail, {
+          route:        ti('tracking.route'),
+          lastEvent:    ti('tracking.lastEvent'),
+          eta:          ti('tracking.eta'),
+          openInFesco:  ti('tracking.openInFesco'),
+        }))
+        .addTo(map)
+    }
+
+    clearSearchRef.current = () => {
+      const map = mapRef.current
+      if (!map || !map.isStyleLoaded()) return
+      const src = map.getSource('searched-container') as mapboxgl.GeoJSONSource | undefined
+      src?.setData({ type: 'FeatureCollection', features: [] })
+      popupRef.current?.remove()
+      popupRef.current = null
+    }
+  }, [])
 
   /* ── Init map once ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -175,6 +332,7 @@ export function ContainerMap({ containers, allContainerNumbers = [], onSelectCon
 
     initialized.current  = true
     mapboxgl.accessToken = TOKEN
+    ensurePopupStyles()
 
     const map = new mapboxgl.Map({
       container:       containerRef.current,
@@ -188,18 +346,23 @@ export function ContainerMap({ containers, allContainerNumbers = [], onSelectCon
 
     map.keyboard.disable()
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
-    map.addControl(new ResetViewControl(() => clearRef.current?.()), 'top-right')
+    map.addControl(new ResetViewControl(() => {
+      clearRef.current?.()
+      clearSearchRef.current()
+    }), 'top-right')
 
     mapRef.current = map
 
     map.on('load', () => {
-      addSourceAndLayers(map, containers, selectRef, clearRef)
+      addSourceAndLayers(map, containers, selectRef, clearRef, showSearchRef, clearSearchRef)
       fitToContainers(map, containers)
     })
 
     return () => {
+      popupRef.current?.remove()
+      popupRef.current  = null
       map.remove()
-      mapRef.current   = null
+      mapRef.current    = null
       initialized.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,7 +385,8 @@ export function ContainerMap({ containers, allContainerNumbers = [], onSelectCon
       <SearchOverlay
         containers={containers}
         allContainerNumbers={allContainerNumbers}
-        onSelectContainers={onSelectContainers}
+        onSearchHit={(cn, lng, lat) => showSearchRef.current(cn, lng, lat)}
+        onSearchClear={() => clearSearchRef.current()}
         mapRef={mapRef}
       />
 
@@ -260,12 +424,14 @@ function toGeoJSON(containers: ContainerPoint[]): GeoJSON.FeatureCollection {
 type CbRef<T> = { current: T | undefined }
 
 function addSourceAndLayers(
-  map:       mapboxgl.Map,
-  containers: ContainerPoint[],
-  selectRef: CbRef<(nums: string[]) => void>,
-  clearRef:  CbRef<() => void>,
+  map:            mapboxgl.Map,
+  containers:     ContainerPoint[],
+  selectRef:      CbRef<(nums: string[]) => void>,
+  clearRef:       CbRef<() => void>,
+  showSearchRef:  { current: (cn: string, lng: number, lat: number) => void },
+  clearSearchRef: { current: () => void },
 ) {
-  /* Source */
+  /* Main containers source */
   map.addSource('containers', {
     type:          'geojson',
     data:          toGeoJSON(containers),
@@ -276,6 +442,12 @@ function addSourceAndLayers(
       yellowCount: ['+', ['case', ['==', ['get', 'signal'], 'yellow'], 1, 0]],
       greenCount:  ['+', ['case', ['==', ['get', 'signal'], 'green'],  1, 0]],
     },
+  })
+
+  /* Searched-container source (starts empty, filled on search hit) */
+  map.addSource('searched-container', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
   })
 
   /* Cluster circles */
@@ -363,6 +535,61 @@ function addSourceAndLayers(
     },
   })
 
+  /* Searched container — glow ring */
+  map.addLayer({
+    id:     'searched-glow',
+    type:   'circle',
+    source: 'searched-container',
+    paint:  {
+      'circle-color': ['case',
+        ['==', ['get', 'signal'], 'red'],    SIG_COLOR.red,
+        ['==', ['get', 'signal'], 'yellow'], SIG_COLOR.yellow,
+        ['==', ['get', 'signal'], 'green'],  SIG_COLOR.green,
+        SIG_COLOR.gray,
+      ],
+      'circle-radius':  18,
+      'circle-opacity': 0.18,
+    },
+  })
+
+  /* Searched container — main marker */
+  map.addLayer({
+    id:     'searched-marker',
+    type:   'circle',
+    source: 'searched-container',
+    paint:  {
+      'circle-color': ['case',
+        ['==', ['get', 'signal'], 'red'],    SIG_COLOR.red,
+        ['==', ['get', 'signal'], 'yellow'], SIG_COLOR.yellow,
+        ['==', ['get', 'signal'], 'green'],  SIG_COLOR.green,
+        SIG_COLOR.gray,
+      ],
+      'circle-radius':       10,
+      'circle-stroke-width': 2.5,
+      'circle-stroke-color': '#ffffff',
+    },
+  })
+
+  /* Searched container — container number label */
+  map.addLayer({
+    id:     'searched-label',
+    type:   'symbol',
+    source: 'searched-container',
+    layout: {
+      'text-field':         ['get', 'containerNumber'],
+      'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size':          11,
+      'text-offset':        [0, 1.8],
+      'text-anchor':        'top',
+      'text-allow-overlap': true,
+    },
+    paint: {
+      'text-color':       '#1e293b',
+      'text-halo-color':  '#ffffff',
+      'text-halo-width':  1.5,
+    },
+  })
+
   /* Cluster click → get all leaves → onSelectContainers */
   map.on('click', 'clusters', e => {
     const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
@@ -380,20 +607,34 @@ function addSourceAndLayers(
       })
   })
 
-  /* Single marker click → onSelectContainers */
+  /* Single marker click → onSelectContainers + popup */
   map.on('click', 'unclustered', e => {
     const cn = e.features?.[0]?.properties?.containerNumber as string | undefined
-    if (cn) selectRef.current?.([cn])
+    if (cn) {
+      selectRef.current?.([cn])
+      showSearchRef.current(cn, e.lngLat.lng, e.lngLat.lat)
+    }
   })
 
-  /* Empty area click → onClearSelection */
+  /* Searched marker click → re-open popup if closed */
+  map.on('click', 'searched-marker', e => {
+    const cn = e.features?.[0]?.properties?.containerNumber as string | undefined
+    if (cn) showSearchRef.current(cn, e.lngLat.lng, e.lngLat.lat)
+  })
+
+  /* Empty area click → clear selection + search highlight */
   map.on('click', e => {
-    const hit = map.queryRenderedFeatures(e.point, { layers: ['clusters', 'unclustered'] })
-    if (hit.length === 0) clearRef.current?.()
+    const hit = map.queryRenderedFeatures(e.point, {
+      layers: ['clusters', 'unclustered', 'searched-marker', 'searched-glow'],
+    })
+    if (hit.length === 0) {
+      clearRef.current?.()
+      clearSearchRef.current()
+    }
   })
 
   /* Pointer cursor on hover */
-  for (const layer of ['clusters', 'unclustered'] as const) {
+  for (const layer of ['clusters', 'unclustered', 'searched-marker'] as const) {
     map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
   }

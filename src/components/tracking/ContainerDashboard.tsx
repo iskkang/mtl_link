@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2, MapPin, Ship, Train } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { ContainerMap } from './ContainerMap'
+import { ContainerMap, ContainerPopupData } from './ContainerMap'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 interface ContainerItem {
@@ -195,34 +195,40 @@ function DetailCard({
         )}
       </div>
 
-      {/* Signal filter chips */}
-      <div
-        className="px-3 py-1.5 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0"
-        style={{ borderColor: 'var(--ink-200)' }}
-      >
-        {(['red', 'yellow', 'green'] as const).map(sig => (
-          <SignalChip
-            key={sig}
-            signal={sig}
-            count={stats[sig]}
-            label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
-            active={signalFilter === sig}
-            onClick={() => onSignalFilterToggle(sig)}
-          />
-        ))}
-        {signalFilter !== null && (
-          <button
-            type="button"
-            onClick={() => onSignalFilterToggle(signalFilter)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
-            style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+      {/* Signal filter chips — only when cluster selected AND has multiple signal colors */}
+      {mapSelectionCount !== null && (() => {
+        const presentColors = (['red', 'yellow', 'green'] as const).filter(s => stats[s] > 0)
+        if (presentColors.length <= 1) return null
+        return (
+          <div
+            className="px-3 py-1.5 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0"
+            style={{ borderColor: 'var(--ink-200)' }}
           >
-            <X size={11} /> {t('tracking.filterAll')}
-          </button>
-        )}
-      </div>
+            {presentColors.map(sig => (
+              <SignalChip
+                key={sig}
+                signal={sig}
+                count={stats[sig]}
+                label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
+                active={signalFilter === sig}
+                onClick={() => onSignalFilterToggle(sig)}
+              />
+            ))}
+            {signalFilter !== null && (
+              <button
+                type="button"
+                onClick={() => onSignalFilterToggle(signalFilter)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
+                style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+              >
+                <X size={11} /> {t('tracking.filterAll')}
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Body */}
       {items === null ? (
@@ -493,18 +499,23 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     [visibleContainers, selectedCountries],
   )
 
-  /* ── Signal filter (applied on top of country filter for map markers) ─ */
-  const signalFilteredData = useMemo(
-    () => signalFilter ? filteredData.filter(c => c.signal === signalFilter) : filteredData,
-    [filteredData, signalFilter],
-  )
-
-  /* ── Stats ─────────────────────────────────────────────────────────── */
+  /* ── Stats (global fleet, used for header pills) ────────────────────── */
   const stats = useMemo(() => ({
     red:    filteredData.filter(c => c.signal === 'red').length,
     yellow: filteredData.filter(c => c.signal === 'yellow').length,
     green:  filteredData.filter(c => c.signal === 'green').length,
   }), [filteredData])
+
+  /* ── Cluster-local stats (counts within selected cluster, for chips) ── */
+  const clusterStats = useMemo(() => {
+    if (selectedContainerNumbers === null) return { red: 0, yellow: 0, green: 0 }
+    const sel = filteredData.filter(c => selectedContainerNumbers.includes(c.container_number))
+    return {
+      red:    sel.filter(c => c.signal === 'red').length,
+      yellow: sel.filter(c => c.signal === 'yellow').length,
+      green:  sel.filter(c => c.signal === 'green').length,
+    }
+  }, [selectedContainerNumbers, filteredData])
 
   /* ── Country counts ─────────────────────────────────────────────────── */
   const countryCounts = useMemo(() => {
@@ -528,8 +539,9 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     [filteredData],
   )
 
-  /* ── Detail items: selection or signal-filter fleet, sorted R→Y→G then +Nd desc ── */
+  /* ── Detail items: cluster selection only, sorted R→Y→G then +Nd desc ── */
   const detailItems = useMemo(() => {
+    if (selectedContainerNumbers === null) return null
     const sortFn = (a: ContainerItem, b: ContainerItem) => {
       const rankDiff = DETAIL_RANK[a.signal] - DETAIL_RANK[b.signal]
       if (rankDiff !== 0) return rankDiff
@@ -537,19 +549,13 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       const daysB = daysSince(b.planned_destination_date ?? b.last_error_at)
       return daysB - daysA
     }
-    if (selectedContainerNumbers === null) {
-      if (signalFilter !== null) {
-        return [...filteredData.filter(c => c.signal === signalFilter)].sort(sortFn)
-      }
-      return null
-    }
     const base = filteredData.filter(c => selectedContainerNumbers.includes(c.container_number))
     return [...(signalFilter ? base.filter(c => c.signal === signalFilter) : base)].sort(sortFn)
   }, [selectedContainerNumbers, filteredData, signalFilter])
 
-  /* ── Map points: signal-filtered for marker rendering ───────────────── */
+  /* ── Map points: all country-filtered containers with coords ────────── */
   const mapPoints = useMemo(
-    () => signalFilteredData
+    () => filteredData
       .filter(c => c.display_latitude != null && c.display_longitude != null)
       .map(c => ({
         containerNumber: c.container_number,
@@ -557,8 +563,25 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
         longitude:       c.display_longitude!,
         signal:          c.signal,
       })),
-    [signalFilteredData],
+    [filteredData],
   )
+
+  /* ── Container details for popup ─────────────────────────────────────── */
+  const containerDetails = useMemo(() => {
+    const m: Record<string, ContainerPopupData> = {}
+    for (const c of filteredData) {
+      m[c.container_number] = {
+        signal:                   c.signal,
+        current_from:             c.current_from,
+        current_to:               c.current_to,
+        last_event_location:      c.last_event_location,
+        last_success_at:          c.last_success_at,
+        planned_destination_date: c.planned_destination_date,
+        alert_reason:             c.alert_reason,
+      }
+    }
+    return m
+  }, [filteredData])
 
   /* ── All container numbers (search: "exists but no coords" detection) ── */
   const allContainerNumbers = useMemo(
@@ -699,8 +722,12 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 <ContainerMap
                   containers={mapPoints}
                   allContainerNumbers={allContainerNumbers}
+                  containerDetails={containerDetails}
                   onSelectContainers={nums => setSelectedContainerNumbers(nums)}
-                  onClearSelection={() => setSelectedContainerNumbers(null)}
+                  onClearSelection={() => {
+                    setSelectedContainerNumbers(null)
+                    setSignalFilter(null)
+                  }}
                 />
               </div>
 
@@ -708,14 +735,16 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
               <DetailCard
                 items={detailItems}
                 mapSelectionCount={selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
-                stats={stats}
+                stats={clusterStats}
                 signalFilter={signalFilter}
                 onSignalFilterToggle={sig => {
                   setSignalFilter(prev => prev === sig ? null : sig)
-                  setSelectedContainerNumbers(null)
                 }}
                 excludedCount={excludedCount}
-                onClear={() => setSelectedContainerNumbers(null)}
+                onClear={() => {
+                  setSelectedContainerNumbers(null)
+                  setSignalFilter(null)
+                }}
               />
             </div>
 
