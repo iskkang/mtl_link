@@ -103,7 +103,7 @@ function SearchOverlay({
     'rgba(0,0,0,0.1)'
 
   return (
-    <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, width: 224, fontFamily: 'var(--font-body, sans-serif)' }}>
+    <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 10, width: 224, fontFamily: 'var(--font-body, sans-serif)' }}>
       <div
         className="mapboxgl-ctrl mapboxgl-ctrl-group"
         style={{ display: 'flex', alignItems: 'center', padding: '0 4px 0 8px', gap: 2,
@@ -178,7 +178,7 @@ export function ContainerMap({ containers, allContainerNumbers = [], onSelectCon
 
     const map = new mapboxgl.Map({
       container:       containerRef.current,
-      style:           'mapbox://styles/mapbox/light-v11',
+      style:           'mapbox://styles/mapbox/streets-v12',
       center:          [80, 55],
       zoom:            3,
       projection:      'mercator',

@@ -41,6 +41,7 @@ interface ContainerItem {
   current_to_country:       string | null
   transport_name:           string | null
   voyage_number:            string | null
+  last_event_location:      string | null
 }
 
 interface RecentOrderItem {
@@ -78,6 +79,10 @@ function fmtRelTime(iso: string | null): string {
 function daysSince(iso: string | null): number {
   if (!iso) return 0
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+}
+
+function hasRealLocation(c: ContainerItem): boolean {
+  return c.current_from !== null || c.current_to !== null || c.last_event_location !== null
 }
 
 /* ── Segment icon ────────────────────────────────────────────────────── */
@@ -141,9 +146,22 @@ function SignalDot({ signal }: { signal: string }) {
 }
 
 /* ── Detail card ─────────────────────────────────────────────────────── */
-function DetailCard({ items, onClear }: {
-  items:   ContainerItem[] | null
-  onClear: () => void
+function DetailCard({
+  items,
+  mapSelectionCount,
+  stats,
+  signalFilter,
+  onSignalFilterToggle,
+  excludedCount,
+  onClear,
+}: {
+  items:               ContainerItem[] | null
+  mapSelectionCount:   number | null
+  stats:               { red: number; yellow: number; green: number }
+  signalFilter:        'red' | 'yellow' | 'green' | null
+  onSignalFilterToggle:(sig: 'red' | 'yellow' | 'green') => void
+  excludedCount:       number
+  onClear:             () => void
 }) {
   const { t } = useTranslation()
   const seaLabel       = t('tracking.dashboard.segment.sea')
@@ -161,9 +179,9 @@ function DetailCard({ items, onClear }: {
         style={{ borderColor: 'var(--ink-200)' }}
       >
         <span className="label-mono">{t('tracking.dashboard.detail.title')}</span>
-        {items !== null && (
+        {mapSelectionCount !== null && (
           <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
-            <span>{t('tracking.dashboard.detail.containersSelected', { count: items.length })}</span>
+            <span>{t('tracking.dashboard.detail.containersSelected', { count: mapSelectionCount })}</span>
             <button
               type="button"
               onClick={onClear}
@@ -177,6 +195,35 @@ function DetailCard({ items, onClear }: {
         )}
       </div>
 
+      {/* Signal filter chips */}
+      <div
+        className="px-3 py-1.5 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0"
+        style={{ borderColor: 'var(--ink-200)' }}
+      >
+        {(['red', 'yellow', 'green'] as const).map(sig => (
+          <SignalChip
+            key={sig}
+            signal={sig}
+            count={stats[sig]}
+            label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
+            active={signalFilter === sig}
+            onClick={() => onSignalFilterToggle(sig)}
+          />
+        ))}
+        {signalFilter !== null && (
+          <button
+            type="button"
+            onClick={() => onSignalFilterToggle(signalFilter)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
+            style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+          >
+            <X size={11} /> {t('tracking.filterAll')}
+          </button>
+        )}
+      </div>
+
       {/* Body */}
       {items === null ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 px-4 text-center">
@@ -184,6 +231,11 @@ function DetailCard({ items, onClear }: {
           <p className="text-[11px]" style={{ color: 'var(--ink-400)' }}>
             {t('tracking.dashboard.detail.empty')}
           </p>
+          {excludedCount > 0 && (
+            <p className="text-[10px]" style={{ color: 'var(--ink-300)' }}>
+              {t('tracking.awaitingLocation', { count: excludedCount })}
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
@@ -425,13 +477,20 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  /* ── Exclude containers with no location info (e.g. junk geocode coords) */
+  const visibleContainers = useMemo(
+    () => data.filter(hasRealLocation),
+    [data],
+  )
+  const excludedCount = data.length - visibleContainers.length
+
   /* ── Filter: null country always shown ─────────────────────────────── */
   const filteredData = useMemo(
-    () => data.filter(c =>
+    () => visibleContainers.filter(c =>
       c.destination_country_code === null ||
       selectedCountries.has(c.destination_country_code),
     ),
-    [data, selectedCountries],
+    [visibleContainers, selectedCountries],
   )
 
   /* ── Signal filter (applied on top of country filter for map markers) ─ */
@@ -469,21 +528,24 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     [filteredData],
   )
 
-  /* ── Detail items: filtered by selection, sorted R→Y→G→gray then +Nd desc ── */
-  const detailItems = useMemo(
-    () => selectedContainerNumbers === null
-      ? null
-      : filteredData
-          .filter(c => selectedContainerNumbers.includes(c.container_number))
-          .sort((a, b) => {
-            const rankDiff = DETAIL_RANK[a.signal] - DETAIL_RANK[b.signal]
-            if (rankDiff !== 0) return rankDiff
-            const daysA = daysSince(a.planned_destination_date ?? a.last_error_at)
-            const daysB = daysSince(b.planned_destination_date ?? b.last_error_at)
-            return daysB - daysA
-          }),
-    [selectedContainerNumbers, filteredData],
-  )
+  /* ── Detail items: selection or signal-filter fleet, sorted R→Y→G then +Nd desc ── */
+  const detailItems = useMemo(() => {
+    const sortFn = (a: ContainerItem, b: ContainerItem) => {
+      const rankDiff = DETAIL_RANK[a.signal] - DETAIL_RANK[b.signal]
+      if (rankDiff !== 0) return rankDiff
+      const daysA = daysSince(a.planned_destination_date ?? a.last_error_at)
+      const daysB = daysSince(b.planned_destination_date ?? b.last_error_at)
+      return daysB - daysA
+    }
+    if (selectedContainerNumbers === null) {
+      if (signalFilter !== null) {
+        return [...filteredData.filter(c => c.signal === signalFilter)].sort(sortFn)
+      }
+      return null
+    }
+    const base = filteredData.filter(c => selectedContainerNumbers.includes(c.container_number))
+    return [...(signalFilter ? base.filter(c => c.signal === signalFilter) : base)].sort(sortFn)
+  }, [selectedContainerNumbers, filteredData, signalFilter])
 
   /* ── Map points: signal-filtered for marker rendering ───────────────── */
   const mapPoints = useMemo(
@@ -500,8 +562,8 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
   /* ── All container numbers (search: "exists but no coords" detection) ── */
   const allContainerNumbers = useMemo(
-    () => filteredData.map(c => c.container_number),
-    [filteredData],
+    () => data.map(c => c.container_number),
+    [data],
   )
 
   /* ── Filter helpers ─────────────────────────────────────────────────── */
@@ -590,32 +652,6 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
           </button>
         </div>
 
-        {/* Row 3: signal filter chips */}
-        <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6 }}>
-          {(['red', 'yellow', 'green'] as const).map(sig => (
-            <SignalChip
-              key={sig}
-              signal={sig}
-              count={stats[sig]}
-              label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
-              active={signalFilter === sig}
-              onClick={() => setSignalFilter(prev => prev === sig ? null : sig)}
-            />
-          ))}
-          {signalFilter !== null && (
-            <button
-              type="button"
-              onClick={() => setSignalFilter(null)}
-              aria-label={t('tracking.filterAll')}
-              className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
-              style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-            >
-              <X size={11} /> {t('tracking.dashboard.filter.clear')}
-            </button>
-          )}
-        </div>
       </div>
 
       {/* ── Body ───────────────────────────────────────────────────────── */}
@@ -671,6 +707,14 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
               {/* Detail — 320px */}
               <DetailCard
                 items={detailItems}
+                mapSelectionCount={selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+                stats={stats}
+                signalFilter={signalFilter}
+                onSignalFilterToggle={sig => {
+                  setSignalFilter(prev => prev === sig ? null : sig)
+                  setSelectedContainerNumbers(null)
+                }}
+                excludedCount={excludedCount}
                 onClear={() => setSelectedContainerNumbers(null)}
               />
             </div>
