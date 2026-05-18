@@ -361,7 +361,7 @@ export function ContainerMap({
       popupRef.current?.remove()
       const ti = tRef.current
       popupRef.current = new mapboxgl.Popup({
-        anchor: 'bottom', offset: 30, closeButton: true, maxWidth: '320px', className: 'container-popup',
+        anchor: 'left', offset: 15, closeButton: true, maxWidth: '320px', className: 'container-popup',
       })
         .setLngLat([lng, lat])
         .setHTML(buildLoadingPopupHtml(cn, detail, ti('tracking.loadingDetail')))
