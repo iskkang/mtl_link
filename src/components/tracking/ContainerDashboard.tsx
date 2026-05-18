@@ -347,6 +347,38 @@ function StatPill({ count, signal, label }: { count: number; signal: 'red' | 'ye
   )
 }
 
+/* ── Signal filter chip ─────────────────────────────────────────────── */
+function SignalChip({
+  signal, count, label, active, onClick,
+}: {
+  signal:  'red' | 'yellow' | 'green'
+  count:   number
+  label:   string
+  active:  boolean
+  onClick: () => void
+}) {
+  const dotColor    = `var(--signal-${signal})`
+  const activeBg    = `var(--signal-${signal}-bg)`
+  const activeBorder =
+    signal === 'red'    ? 'rgba(220,38,38,0.35)'  :
+    signal === 'yellow' ? 'rgba(217,119,6,0.35)'  :
+    'rgba(13,148,136,0.35)'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-medium transition-colors"
+      style={active
+        ? { background: activeBg, borderColor: activeBorder, color: dotColor }
+        : { background: 'transparent', borderColor: 'var(--ink-300)', color: 'var(--ink-500)' }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dotColor }} />
+      <span className="font-mono">{count}</span>
+      {' '}{label}
+    </button>
+  )
+}
+
 /* ── Main component ──────────────────────────────────────────────────── */
 const ALL_COUNTRIES = ['RU', 'UZ', 'BY', 'KZ'] as const
 
@@ -369,6 +401,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   )
 
   const [selectedContainerNumbers, setSelectedContainerNumbers] = useState<string[] | null>(null)
+  const [signalFilter,             setSignalFilter]             = useState<'red' | 'yellow' | 'green' | null>(null)
 
   /* ── Fetch ─────────────────────────────────────────────────────────── */
   const fetchData = useCallback(async (quiet = false) => {
@@ -399,6 +432,12 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       selectedCountries.has(c.destination_country_code),
     ),
     [data, selectedCountries],
+  )
+
+  /* ── Signal filter (applied on top of country filter for map markers) ─ */
+  const signalFilteredData = useMemo(
+    () => signalFilter ? filteredData.filter(c => c.signal === signalFilter) : filteredData,
+    [filteredData, signalFilter],
   )
 
   /* ── Stats ─────────────────────────────────────────────────────────── */
@@ -446,9 +485,9 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     [selectedContainerNumbers, filteredData],
   )
 
-  /* ── Map points: use display_* for smart marker placement ───────────── */
+  /* ── Map points: signal-filtered for marker rendering ───────────────── */
   const mapPoints = useMemo(
-    () => filteredData
+    () => signalFilteredData
       .filter(c => c.display_latitude != null && c.display_longitude != null)
       .map(c => ({
         containerNumber: c.container_number,
@@ -456,6 +495,12 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
         longitude:       c.display_longitude!,
         signal:          c.signal,
       })),
+    [signalFilteredData],
+  )
+
+  /* ── All container numbers (search: "exists but no coords" detection) ── */
+  const allContainerNumbers = useMemo(
+    () => filteredData.map(c => c.container_number),
     [filteredData],
   )
 
@@ -521,7 +566,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
           </div>
         </div>
 
-        {/* Row 2: filter chips */}
+        {/* Row 2: destination filter chips */}
         <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
           <span className="label-mono">{t('tracking.dashboard.filter.destination')}</span>
           {ALL_COUNTRIES.map(cc => (
@@ -543,6 +588,33 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
           >
             <X size={11} /> {t('tracking.dashboard.filter.clear')}
           </button>
+        </div>
+
+        {/* Row 3: signal filter chips */}
+        <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6 }}>
+          {(['red', 'yellow', 'green'] as const).map(sig => (
+            <SignalChip
+              key={sig}
+              signal={sig}
+              count={stats[sig]}
+              label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
+              active={signalFilter === sig}
+              onClick={() => setSignalFilter(prev => prev === sig ? null : sig)}
+            />
+          ))}
+          {signalFilter !== null && (
+            <button
+              type="button"
+              onClick={() => setSignalFilter(null)}
+              aria-label={t('tracking.filterAll')}
+              className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
+              style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              <X size={11} /> {t('tracking.dashboard.filter.clear')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -590,6 +662,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
               >
                 <ContainerMap
                   containers={mapPoints}
+                  allContainerNumbers={allContainerNumbers}
                   onSelectContainers={nums => setSelectedContainerNumbers(nums)}
                   onClearSelection={() => setSelectedContainerNumbers(null)}
                 />

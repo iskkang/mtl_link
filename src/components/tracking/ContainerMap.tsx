@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { useTranslation } from 'react-i18next'
 
 export interface ContainerPoint {
   containerNumber: string
@@ -9,9 +10,10 @@ export interface ContainerPoint {
 }
 
 interface ContainerMapProps {
-  containers:          ContainerPoint[]
-  onSelectContainers?: (containerNumbers: string[]) => void
-  onClearSelection?:   () => void
+  containers:           ContainerPoint[]
+  allContainerNumbers?: string[]
+  onSelectContainers?:  (containerNumbers: string[]) => void
+  onClearSelection?:    () => void
 }
 
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
@@ -56,8 +58,103 @@ class ResetViewControl implements mapboxgl.IControl {
   }
 }
 
+/* ── Search overlay ─────────────────────────────────────────────────── */
+function SearchOverlay({
+  containers,
+  allContainerNumbers,
+  onSelectContainers,
+  mapRef,
+}: {
+  containers:          ContainerPoint[]
+  allContainerNumbers: string[]
+  onSelectContainers?: (nums: string[]) => void
+  mapRef:              { current: mapboxgl.Map | null }
+}) {
+  const { t } = useTranslation()
+  const [query,  setQuery]  = useState('')
+  const [flash,  setFlash]  = useState<'idle' | 'ok' | 'error' | 'warn'>('idle')
+  const [errMsg, setErrMsg] = useState<string | null>(null)
+
+  const doSearch = () => {
+    const q = query.trim().toUpperCase()
+    if (!q) return
+    const point = containers.find(c => c.containerNumber === q)
+    if (point) {
+      mapRef.current?.flyTo({ center: [point.longitude, point.latitude], zoom: 7, duration: 1200 })
+      onSelectContainers?.([q])
+      setErrMsg(null)
+      setFlash('ok')
+      setTimeout(() => setFlash('idle'), 600)
+      return
+    }
+    if (allContainerNumbers.includes(q)) {
+      setErrMsg(t('tracking.containerNoLocation'))
+      setFlash('warn')
+      return
+    }
+    setErrMsg(t('tracking.containerNotFound'))
+    setFlash('error')
+  }
+
+  const shadowColor =
+    flash === 'ok'    ? 'rgba(13,148,136,0.5)' :
+    flash === 'error' ? 'rgba(220,38,38,0.4)'  :
+    flash === 'warn'  ? 'rgba(217,119,6,0.4)'  :
+    'rgba(0,0,0,0.1)'
+
+  return (
+    <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, width: 224, fontFamily: 'var(--font-body, sans-serif)' }}>
+      <div
+        className="mapboxgl-ctrl mapboxgl-ctrl-group"
+        style={{ display: 'flex', alignItems: 'center', padding: '0 4px 0 8px', gap: 2,
+                 boxShadow: `0 0 0 2px ${shadowColor}`, transition: 'box-shadow 0.25s' }}
+      >
+        <input
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value.toUpperCase()); setFlash('idle'); setErrMsg(null) }}
+          onKeyDown={e => { if (e.key === 'Enter') doSearch() }}
+          placeholder={t('tracking.searchContainerPlaceholder')}
+          style={{
+            flex: 1, border: 'none', outline: 'none', background: 'transparent',
+            fontSize: 11, fontFamily: 'var(--font-mono, monospace)',
+            color: '#374151', padding: '7px 0', minWidth: 0,
+          }}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); setFlash('idle'); setErrMsg(null) }}
+            aria-label="Clear"
+            style={{ color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', lineHeight: 1, fontSize: 15 }}
+          >×</button>
+        )}
+        <button
+          type="button"
+          onClick={doSearch}
+          aria-label="Search"
+          style={{ color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 5px' }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </button>
+      </div>
+      {errMsg && (
+        <div style={{
+          marginTop: 4, background: '#ffffff', borderRadius: 4, padding: '4px 8px',
+          fontSize: 10, color: flash === 'warn' ? '#d97706' : '#dc2626',
+          boxShadow: '0 0 0 2px rgba(0,0,0,0.08)',
+        }}>
+          {errMsg}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Component ──────────────────────────────────────────────────────── */
-export function ContainerMap({ containers, onSelectContainers, onClearSelection }: ContainerMapProps) {
+export function ContainerMap({ containers, allContainerNumbers = [], onSelectContainers, onClearSelection }: ContainerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<mapboxgl.Map | null>(null)
   const initialized  = useRef(false)
@@ -121,6 +218,13 @@ export function ContainerMap({ containers, onSelectContainers, onClearSelection 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+
+      <SearchOverlay
+        containers={containers}
+        allContainerNumbers={allContainerNumbers}
+        onSelectContainers={onSelectContainers}
+        mapRef={mapRef}
+      />
 
       {containers.length === 0 && (
         <div
