@@ -122,6 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const locationKeys = new Set<string>()
 
   type LastEventData = {
+    locationCyrillic:  string | null
     locationLatin:     string | null
     date:              string | null
     operationLatin:    string | null
@@ -136,13 +137,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (r.current_to?.trim())   locationKeys.add(r.current_to.trim().toLowerCase())
     if (r.current_from?.trim()) locationKeys.add(r.current_from.trim().toLowerCase())
 
-    // Extract last event and add its location to geocoding set
-    const evArr      = Array.isArray(r.events_json) ? r.events_json as Record<string, unknown>[] : []
-    const ev         = evArr.length > 0 ? evArr[0] : null
-    const evLocation = typeof ev?.locationLatin === 'string' ? ev.locationLatin : null
-    if (evLocation?.trim()) locationKeys.add(evLocation.trim().toLowerCase())
+    // Extract last event and add its location to geocoding set (v1.10.3: Cyrillic + Latin)
+    const evArr         = Array.isArray(r.events_json) ? r.events_json as Record<string, unknown>[] : []
+    const ev            = evArr.length > 0 ? evArr[0] : null
+    const evLocationCyr = typeof ev?.location      === 'string' ? ev.location      : null
+    const evLocation    = typeof ev?.locationLatin === 'string' ? ev.locationLatin : null
+    if (evLocationCyr?.trim()) locationKeys.add(evLocationCyr.trim().toLowerCase()) // Cyrillic (osm2esr)
+    if (evLocation?.trim())    locationKeys.add(evLocation.trim().toLowerCase())    // Latin (fallback)
 
     lastEventMap.set(r.container_number, {
+      locationCyrillic:  evLocationCyr,
       locationLatin:     evLocation,
       date:              typeof ev?.date            === 'string' ? ev.date            : null,
       operationLatin:    typeof ev?.operationLatin  === 'string' ? ev.operationLatin  : null,
@@ -212,9 +216,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const fromCoord = fromGeo?.latitude != null && fromGeo?.longitude != null ? fromGeo : null
     const toCoord   = toGeo?.latitude   != null && toGeo?.longitude   != null ? toGeo   : null
 
-    const evLocKey  = lastEvent?.locationLatin?.trim().toLowerCase() ?? null
-    const evGeo     = evLocKey ? geoMap.get(evLocKey) ?? null : null
-    const eventCoord = evGeo?.latitude != null && evGeo?.longitude != null ? evGeo : null
+    // v1.10.3: Cyrillic-first lookup (matches osm2esr seed), Latin as fallback
+    const evLocCyrKey  = lastEvent?.locationCyrillic?.trim().toLowerCase() ?? null
+    const evLocLatKey  = lastEvent?.locationLatin?.trim().toLowerCase() ?? null
+    const evGeoCyr     = evLocCyrKey ? geoMap.get(evLocCyrKey) ?? null : null
+    const evGeoLat     = evLocLatKey ? geoMap.get(evLocLatKey) ?? null : null
+    const evGeo        = (evGeoCyr?.latitude != null && evGeoCyr?.longitude != null) ? evGeoCyr : evGeoLat
+    const eventCoord   = evGeo?.latitude != null && evGeo?.longitude != null ? evGeo : null
 
     const departed = !!r.departure_date
     const arrived  = !!r.destination_date
