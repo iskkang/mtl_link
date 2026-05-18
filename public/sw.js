@@ -1,5 +1,5 @@
 // Bump CACHE_NAME on every deployment to invalidate all old caches.
-const CACHE_NAME = 'mtl-link-v4';
+const CACHE_NAME = 'mtl-link-v5';
 
 // Only precache static assets — never cache index.html here.
 // index.html must always come from the network so new deploys are reflected.
@@ -35,6 +35,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   // Only handle same-origin requests.
   if (url.origin !== self.location.origin) return;
+
+  // API requests: always network, never cache
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    return;
+  }
 
   if (event.request.mode === 'navigate') {
     // Navigation: network-first so the browser always gets the latest HTML.
