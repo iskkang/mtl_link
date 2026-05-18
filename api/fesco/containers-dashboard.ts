@@ -45,6 +45,21 @@ function interpolateCoord(
   }
 }
 
+// v1.10.5: long segments (TSR/Silk Road rail) curve above their straight-line bbox →
+// trust event-coord lookup instead of rejecting via bbox.
+const SEGMENT_LONG_THRESHOLD_KM = 1500
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
 // Must match the normalization applied when city_coordinates rows are written (geocode.ts seed).
 function normalizeLocationKey(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -251,9 +266,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // (e.g. "9-10 Prichaly VMTP" → Kaliningrad 21°E, while Vladivostok→Chukursaj spans
     // 69°E–132°E → bbox fail → fallback keeps marker at Vladivostok).
     const BBOX_BUFFER_DEG = 8  // ≈ 900 km latitude/longitude
+
+    // v1.10.5: TSR/Silk Road rail routes run at higher latitudes than the straight-line
+    // bbox between endpoints. Skip bbox for segments longer than the threshold so that
+    // Baikal-area events (Слюдянка, Выдрино) are not rejected.
+    const segmentDistKm = (fromCoord && toCoord)
+      ? haversineKm(fromCoord.latitude!, fromCoord.longitude!, toCoord.latitude!, toCoord.longitude!)
+      : null
+    const skipBbox = segmentDistKm === null || segmentDistKm > SEGMENT_LONG_THRESHOLD_KM
+
     let useEventCoord = false
     if (eventCoord && lastEvent?.locationLatin) {
-      if (fromCoord && toCoord) {
+      if (!skipBbox && fromCoord && toCoord) {
         const minLat = Math.min(fromCoord.latitude!,  toCoord.latitude!)  - BBOX_BUFFER_DEG
         const maxLat = Math.max(fromCoord.latitude!,  toCoord.latitude!)  + BBOX_BUFFER_DEG
         const minLng = Math.min(fromCoord.longitude!, toCoord.longitude!) - BBOX_BUFFER_DEG
@@ -262,7 +286,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           eventCoord.latitude!  >= minLat && eventCoord.latitude!  <= maxLat &&
           eventCoord.longitude! >= minLng && eventCoord.longitude! <= maxLng
       } else {
-        // Segment endpoints not geocoded → bbox check impossible → trust event coord
+        // Long segment or missing endpoints → bbox unreliable → trust event coord
         useEventCoord = true
       }
     }
