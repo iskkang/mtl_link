@@ -735,7 +735,10 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                   containers={mapPoints}
                   allContainerNumbers={allContainerNumbers}
                   containerDetails={containerDetails}
-                  onSelectContainers={nums => setSelectedContainerNumbers(nums)}
+                  onSelectContainers={nums => {
+                    setSelectedContainerNumbers(nums)
+                    setSignalFilter(null)
+                  }}
                   onClearSelection={() => {
                     setSelectedContainerNumbers(null)
                     setSignalFilter(null)

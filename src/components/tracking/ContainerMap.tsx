@@ -322,7 +322,6 @@ export function ContainerMap({
   const initialized   = useRef(false)
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
   const fetchAbortRef = useRef<AbortController | null>(null)
-  const trailRef      = useRef<TrailDetail | null>(null)
 
   /* Stable refs so event handlers never capture stale props */
   const selectRef  = useRef(onSelectContainers)
@@ -346,9 +345,6 @@ export function ContainerMap({
       fetchAbortRef.current?.abort()
       const ctrl = new AbortController()
       fetchAbortRef.current = ctrl
-
-      updateTrailLayers(map, null)
-      trailRef.current = null
 
       const src = map.getSource('searched-container') as mapboxgl.GeoJSONSource | undefined
       if (!src) return
@@ -395,11 +391,6 @@ export function ContainerMap({
           ? { events_timeline: data.events_timeline, remaining_km: data.remaining_km ?? null, total_km: data.total_km ?? null }
           : null
 
-        trailRef.current = trail
-        updateTrailLayers(map, trail)
-        if (trail && trail.events_timeline.length >= 2) {
-          fitToTrail(map, trail, lng, lat)
-        }
         popupRef.current?.setHTML(buildPopupHtml(cn, detail, trail, i18nKeys))
       } catch (err: unknown) {
         if ((err as { name?: string }).name === 'AbortError') return
@@ -411,9 +402,7 @@ export function ContainerMap({
       const map = mapRef.current
       fetchAbortRef.current?.abort()
       fetchAbortRef.current = null
-      trailRef.current = null
       if (!map || !map.isStyleLoaded()) return
-      updateTrailLayers(map, null)
       const src = map.getSource('searched-container') as mapboxgl.GeoJSONSource | undefined
       src?.setData({ type: 'FeatureCollection', features: [] })
       popupRef.current?.remove()
@@ -543,16 +532,6 @@ function addSourceAndLayers(
     },
   })
 
-  /* Trail sources (empty until a container is selected) */
-  map.addSource('container-trail-line', {
-    type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] },
-  })
-  map.addSource('container-trail-points', {
-    type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] },
-  })
-
   /* Searched-container source (starts empty, filled on search hit) */
   map.addSource('searched-container', {
     type: 'geojson',
@@ -641,34 +620,6 @@ function addSourceAndLayers(
       'circle-radius':       7,
       'circle-stroke-width': 2,
       'circle-stroke-color': '#ffffff',
-    },
-  })
-
-  /* Trail line (dashed mint) */
-  map.addLayer({
-    id:     'container-trail-line',
-    type:   'line',
-    source: 'container-trail-line',
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint:  {
-      'line-color':     '#0d9488',
-      'line-width':     2,
-      'line-opacity':   0.7,
-      'line-dasharray': [2, 3],
-    },
-  })
-
-  /* Trail waypoint circles (all events except the last = current position) */
-  map.addLayer({
-    id:     'container-trail-points',
-    type:   'circle',
-    source: 'container-trail-points',
-    paint:  {
-      'circle-color':        '#0d9488',
-      'circle-radius':       4,
-      'circle-stroke-width': 1.5,
-      'circle-stroke-color': '#ffffff',
-      'circle-opacity':      0.8,
     },
   })
 
@@ -788,38 +739,3 @@ function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]) {
   map.fitBounds(bounds, { padding: 40, maxZoom: 10, duration: 600 })
 }
 
-function updateTrailLayers(map: mapboxgl.Map, trail: TrailDetail | null) {
-  const lineSrc   = map.getSource('container-trail-line')   as mapboxgl.GeoJSONSource | undefined
-  const pointsSrc = map.getSource('container-trail-points') as mapboxgl.GeoJSONSource | undefined
-  const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
-  if (!trail || trail.events_timeline.length < 2) {
-    lineSrc?.setData(empty)
-    pointsSrc?.setData(empty)
-    return
-  }
-  const coords = trail.events_timeline.map(e => [e.lng, e.lat] as [number, number])
-  lineSrc?.setData({
-    type: 'FeatureCollection',
-    features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }],
-  })
-  const waypointFeatures: GeoJSON.Feature[] = trail.events_timeline.slice(0, -1).map(e => ({
-    type:     'Feature' as const,
-    geometry: { type: 'Point' as const, coordinates: [e.lng, e.lat] },
-    properties: { label: e.locationLabel },
-  }))
-  pointsSrc?.setData({ type: 'FeatureCollection', features: waypointFeatures })
-}
-
-function fitToTrail(map: mapboxgl.Map, trail: TrailDetail, fallbackLng: number, fallbackLat: number) {
-  const events = trail.events_timeline
-  if (events.length < 2) {
-    map.flyTo({ center: [fallbackLng, fallbackLat], zoom: 8, duration: 1200 })
-    return
-  }
-  const lngs = events.map(e => e.lng)
-  const lats  = events.map(e => e.lat)
-  map.fitBounds(
-    [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-    { padding: 60, maxZoom: 10, duration: 800 },
-  )
-}
