@@ -45,6 +45,14 @@ function interpolateCoord(
   }
 }
 
+// Must match the normalization applied when city_coordinates rows are written (geocode.ts seed).
+function normalizeLocationKey(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  return trimmed.toLowerCase().replace(/\s+/g, ' ')
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -134,16 +142,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const lastEventMap = new Map<string, LastEventData>()
 
   for (const r of rows) {
-    if (r.current_to?.trim())   locationKeys.add(r.current_to.trim().toLowerCase())
-    if (r.current_from?.trim()) locationKeys.add(r.current_from.trim().toLowerCase())
+    const toNorm   = normalizeLocationKey(r.current_to)
+    const fromNorm = normalizeLocationKey(r.current_from)
+    if (toNorm)   locationKeys.add(toNorm)
+    if (fromNorm) locationKeys.add(fromNorm)
 
     // Extract last event and add its location to geocoding set (v1.10.3: Cyrillic + Latin)
     const evArr         = Array.isArray(r.events_json) ? r.events_json as Record<string, unknown>[] : []
     const ev            = evArr.length > 0 ? evArr[0] : null
     const evLocationCyr = typeof ev?.location      === 'string' ? ev.location      : null
     const evLocation    = typeof ev?.locationLatin === 'string' ? ev.locationLatin : null
-    if (evLocationCyr?.trim()) locationKeys.add(evLocationCyr.trim().toLowerCase()) // Cyrillic (osm2esr)
-    if (evLocation?.trim())    locationKeys.add(evLocation.trim().toLowerCase())    // Latin (fallback)
+    const cyrKey = normalizeLocationKey(evLocationCyr)
+    const latKey = normalizeLocationKey(evLocation)
+    if (cyrKey) locationKeys.add(cyrKey) // Cyrillic (osm2esr)
+    if (latKey) locationKeys.add(latKey) // Latin (fallback)
 
     lastEventMap.set(r.container_number, {
       locationCyrillic:  evLocationCyr,
@@ -158,8 +170,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   for (const o of (orderRows ?? []) as { route_latin: string | null }[]) {
     const parsed = parseRoute(o.route_latin)
-    if (parsed.destination?.trim()) locationKeys.add(parsed.destination.trim().toLowerCase())
-    if (parsed.origin?.trim())      locationKeys.add(parsed.origin.trim().toLowerCase())
+    const destNorm = normalizeLocationKey(parsed.destination)
+    const origNorm = normalizeLocationKey(parsed.origin)
+    if (destNorm) locationKeys.add(destNorm)
+    if (origNorm) locationKeys.add(origNorm)
   }
 
   type GeoRow = {
@@ -209,16 +223,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Display position: priority chain (v1.10.2)
     const lastEvent = lastEventMap.get(r.container_number) ?? null
 
-    const fromKey   = r.current_from?.trim().toLowerCase() ?? null
-    const toKey     = r.current_to?.trim().toLowerCase() ?? null
+    const fromKey   = normalizeLocationKey(r.current_from)
+    const toKey     = normalizeLocationKey(r.current_to)
     const fromGeo   = fromKey ? geoMap.get(fromKey) ?? null : null
     const toGeo     = toKey   ? geoMap.get(toKey)   ?? null : null
     const fromCoord = fromGeo?.latitude != null && fromGeo?.longitude != null ? fromGeo : null
     const toCoord   = toGeo?.latitude   != null && toGeo?.longitude   != null ? toGeo   : null
 
     // v1.10.3: Cyrillic-first lookup (matches osm2esr seed), Latin as fallback
-    const evLocCyrKey  = lastEvent?.locationCyrillic?.trim().toLowerCase() ?? null
-    const evLocLatKey  = lastEvent?.locationLatin?.trim().toLowerCase() ?? null
+    const evLocCyrKey  = normalizeLocationKey(lastEvent?.locationCyrillic)
+    const evLocLatKey  = normalizeLocationKey(lastEvent?.locationLatin)
     const evGeoCyr     = evLocCyrKey ? geoMap.get(evLocCyrKey) ?? null : null
     const evGeoLat     = evLocLatKey ? geoMap.get(evLocLatKey) ?? null : null
     const evGeo        = (evGeoCyr?.latitude != null && evGeoCyr?.longitude != null) ? evGeoCyr : evGeoLat
@@ -304,11 +318,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Backward-compat: current_to-based coordinates (deprecated, use display_* for marker placement)
-    const curLocKey = r.current_to?.trim().toLowerCase() ?? null
+    const curLocKey = normalizeLocationKey(r.current_to)
     const curGeo    = curLocKey ? geoMap.get(curLocKey) ?? null : null
 
-    const destKey = parsed.destination?.trim().toLowerCase() ?? null
-    const origKey = parsed.origin?.trim().toLowerCase() ?? null
+    const destKey = normalizeLocationKey(parsed.destination)
+    const origKey = normalizeLocationKey(parsed.origin)
     const destGeo = destKey ? geoMap.get(destKey) ?? null : null
 
     return {
