@@ -19,6 +19,21 @@ export interface ContainerPopupData {
   alert_reason:             string | null
 }
 
+interface TrailEvent {
+  date:              string
+  locationLabel:     string
+  lat:               number
+  lng:               number
+  totalDistance:     number | null
+  remainingDistance: number | null
+}
+
+interface TrailDetail {
+  events_timeline: TrailEvent[]
+  remaining_km:    number | null
+  total_km:        number | null
+}
+
 interface ContainerMapProps {
   containers:           ContainerPoint[]
   allContainerNumbers?: string[]
@@ -61,10 +76,29 @@ function ensurePopupStyles() {
 }
 
 /* ── Popup HTML builder ─────────────────────────────────────────────── */
+function buildLoadingPopupHtml(
+  cn:           string,
+  detail:       ContainerPopupData | undefined,
+  loadingLabel: string,
+): string {
+  const sig = detail?.signal ?? 'gray'
+  const dotColor = sig === 'red' ? '#dc2626' : sig === 'yellow' ? '#d97706' : sig === 'green' ? '#0d9488' : '#94a3b8'
+  return `
+    <div style="font-family:var(--font-body,system-ui,sans-serif);min-width:240px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
+        <span style="font-weight:600;font-size:13px;color:#1e293b;font-family:var(--font-mono,monospace)">${cn}</span>
+      </div>
+      <div style="font-size:11px;color:#94a3b8">${loadingLabel}</div>
+    </div>
+  `
+}
+
 function buildPopupHtml(
   cn:     string,
   detail: ContainerPopupData | undefined,
-  i18n:   { route: string; lastEvent: string; eta: string; openInFesco: string },
+  trail:  TrailDetail | null,
+  i18n:   { route: string; lastEvent: string; eta: string; openInFesco: string; progress: string; remaining: string },
 ): string {
   const sig = detail?.signal ?? 'gray'
   const dotColor =
@@ -94,6 +128,25 @@ function buildPopupHtml(
       ${alert}
     </div>` : ''
 
+  let progressHtml = ''
+  if (trail && trail.remaining_km != null && trail.total_km != null && trail.total_km > 0) {
+    const pct = Math.round((1 - trail.remaining_km / trail.total_km) * 100)
+    const clampedPct = Math.max(0, Math.min(100, pct))
+    progressHtml = `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:4px">
+        <span>${i18n.progress}</span><span>${clampedPct}%</span>
+      </div>
+      <div style="height:4px;background:#f1f5f9;border-radius:99px;overflow:hidden">
+        <div style="height:100%;background:#0d9488;border-radius:99px;width:${clampedPct}%"></div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:#1e293b">
+        <span style="font-weight:600">${trail.remaining_km} km</span>
+        <span style="color:#94a3b8"> / ${trail.total_km} km ${i18n.remaining}</span>
+      </div>
+    </div>`
+  }
+
   return `
     <div style="font-family:var(--font-body,system-ui,sans-serif);min-width:240px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
@@ -113,6 +166,7 @@ function buildPopupHtml(
       </div>
       ${etaHtml}
       ${alertHtml}
+      ${progressHtml}
     </div>
   `
 }
@@ -267,6 +321,8 @@ export function ContainerMap({
   const mapRef        = useRef<mapboxgl.Map | null>(null)
   const initialized   = useRef(false)
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
+  const fetchAbortRef = useRef<AbortController | null>(null)
+  const trailRef      = useRef<TrailDetail | null>(null)
 
   /* Stable refs so event handlers never capture stale props */
   const selectRef  = useRef(onSelectContainers)
@@ -283,9 +339,17 @@ export function ContainerMap({
   const clearSearchRef = useRef(() => {})
 
   useEffect(() => {
-    showSearchRef.current = (cn: string, lng: number, lat: number) => {
+    showSearchRef.current = async (cn: string, lng: number, lat: number) => {
       const map = mapRef.current
       if (!map || !map.isStyleLoaded()) return
+
+      fetchAbortRef.current?.abort()
+      const ctrl = new AbortController()
+      fetchAbortRef.current = ctrl
+
+      updateTrailLayers(map, null)
+      trailRef.current = null
+
       const src = map.getSource('searched-container') as mapboxgl.GeoJSONSource | undefined
       if (!src) return
       const detail = detailsRef.current[cn]
@@ -297,24 +361,59 @@ export function ContainerMap({
           properties: { containerNumber: cn, signal: detail?.signal ?? 'gray' },
         }],
       })
+
       popupRef.current?.remove()
       const ti = tRef.current
       popupRef.current = new mapboxgl.Popup({
         anchor: 'bottom', offset: 30, closeButton: true, maxWidth: '320px', className: 'container-popup',
       })
         .setLngLat([lng, lat])
-        .setHTML(buildPopupHtml(cn, detail, {
-          route:        ti('tracking.route'),
-          lastEvent:    ti('tracking.lastEvent'),
-          eta:          ti('tracking.eta'),
-          openInFesco:  ti('tracking.openInFesco'),
-        }))
+        .setHTML(buildLoadingPopupHtml(cn, detail, ti('tracking.loadingDetail')))
         .addTo(map)
+
+      const i18nKeys = {
+        route:       ti('tracking.route'),
+        lastEvent:   ti('tracking.lastEvent'),
+        eta:         ti('tracking.eta'),
+        openInFesco: ti('tracking.openInFesco'),
+        progress:    ti('tracking.progress'),
+        remaining:   ti('tracking.remaining'),
+      }
+
+      try {
+        const resp = await fetch(`/api/fesco/container-detail?number=${encodeURIComponent(cn)}`, { signal: ctrl.signal })
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const data = await resp.json() as {
+          ok: boolean
+          events_timeline?: TrailEvent[]
+          remaining_km?: number | null
+          total_km?: number | null
+        }
+        if (ctrl.signal.aborted) return
+
+        const trail: TrailDetail | null = (data.ok && Array.isArray(data.events_timeline) && data.events_timeline.length > 0)
+          ? { events_timeline: data.events_timeline, remaining_km: data.remaining_km ?? null, total_km: data.total_km ?? null }
+          : null
+
+        trailRef.current = trail
+        updateTrailLayers(map, trail)
+        if (trail && trail.events_timeline.length >= 2) {
+          fitToTrail(map, trail, lng, lat)
+        }
+        popupRef.current?.setHTML(buildPopupHtml(cn, detail, trail, i18nKeys))
+      } catch (err: unknown) {
+        if ((err as { name?: string }).name === 'AbortError') return
+        popupRef.current?.setHTML(buildPopupHtml(cn, detail, null, i18nKeys))
+      }
     }
 
     clearSearchRef.current = () => {
       const map = mapRef.current
+      fetchAbortRef.current?.abort()
+      fetchAbortRef.current = null
+      trailRef.current = null
       if (!map || !map.isStyleLoaded()) return
+      updateTrailLayers(map, null)
       const src = map.getSource('searched-container') as mapboxgl.GeoJSONSource | undefined
       src?.setData({ type: 'FeatureCollection', features: [] })
       popupRef.current?.remove()
@@ -444,6 +543,16 @@ function addSourceAndLayers(
     },
   })
 
+  /* Trail sources (empty until a container is selected) */
+  map.addSource('container-trail-line', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  })
+  map.addSource('container-trail-points', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  })
+
   /* Searched-container source (starts empty, filled on search hit) */
   map.addSource('searched-container', {
     type: 'geojson',
@@ -532,6 +641,34 @@ function addSourceAndLayers(
       'circle-radius':       7,
       'circle-stroke-width': 2,
       'circle-stroke-color': '#ffffff',
+    },
+  })
+
+  /* Trail line (dashed mint) */
+  map.addLayer({
+    id:     'container-trail-line',
+    type:   'line',
+    source: 'container-trail-line',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint:  {
+      'line-color':     '#0d9488',
+      'line-width':     2,
+      'line-opacity':   0.7,
+      'line-dasharray': [2, 3],
+    },
+  })
+
+  /* Trail waypoint circles (all events except the last = current position) */
+  map.addLayer({
+    id:     'container-trail-points',
+    type:   'circle',
+    source: 'container-trail-points',
+    paint:  {
+      'circle-color':        '#0d9488',
+      'circle-radius':       4,
+      'circle-stroke-width': 1.5,
+      'circle-stroke-color': '#ffffff',
+      'circle-opacity':      0.8,
     },
   })
 
@@ -649,4 +786,40 @@ function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]) {
     [Math.max(...lngs), Math.max(...lats)],
   ]
   map.fitBounds(bounds, { padding: 40, maxZoom: 10, duration: 600 })
+}
+
+function updateTrailLayers(map: mapboxgl.Map, trail: TrailDetail | null) {
+  const lineSrc   = map.getSource('container-trail-line')   as mapboxgl.GeoJSONSource | undefined
+  const pointsSrc = map.getSource('container-trail-points') as mapboxgl.GeoJSONSource | undefined
+  const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
+  if (!trail || trail.events_timeline.length < 2) {
+    lineSrc?.setData(empty)
+    pointsSrc?.setData(empty)
+    return
+  }
+  const coords = trail.events_timeline.map(e => [e.lng, e.lat] as [number, number])
+  lineSrc?.setData({
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }],
+  })
+  const waypointFeatures: GeoJSON.Feature[] = trail.events_timeline.slice(0, -1).map(e => ({
+    type:     'Feature' as const,
+    geometry: { type: 'Point' as const, coordinates: [e.lng, e.lat] },
+    properties: { label: e.locationLabel },
+  }))
+  pointsSrc?.setData({ type: 'FeatureCollection', features: waypointFeatures })
+}
+
+function fitToTrail(map: mapboxgl.Map, trail: TrailDetail, fallbackLng: number, fallbackLat: number) {
+  const events = trail.events_timeline
+  if (events.length < 2) {
+    map.flyTo({ center: [fallbackLng, fallbackLat], zoom: 8, duration: 1200 })
+    return
+  }
+  const lngs = events.map(e => e.lng)
+  const lats  = events.map(e => e.lat)
+  map.fitBounds(
+    [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+    { padding: 60, maxZoom: 10, duration: 800 },
+  )
 }
