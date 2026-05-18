@@ -152,21 +152,27 @@ function DetailCard({
   stats,
   signalFilter,
   onSignalFilterToggle,
+  onSignalFilterClear,
   excludedCount,
   onClear,
 }: {
-  items:               ContainerItem[] | null
-  mapSelectionCount:   number | null
-  stats:               { red: number; yellow: number; green: number }
-  signalFilter:        'red' | 'yellow' | 'green' | null
-  onSignalFilterToggle:(sig: 'red' | 'yellow' | 'green') => void
-  excludedCount:       number
-  onClear:             () => void
+  items:                ContainerItem[] | null
+  mapSelectionCount:    number | null
+  stats:                { red: number; yellow: number; green: number }
+  signalFilter:         'red' | 'yellow' | 'green' | null
+  onSignalFilterToggle: (sig: 'red' | 'yellow' | 'green') => void
+  onSignalFilterClear:  () => void
+  excludedCount:        number
+  onClear:              () => void
 }) {
   const { t } = useTranslation()
-  const seaLabel       = t('tracking.dashboard.segment.sea')
-  const railLabel      = t('tracking.dashboard.segment.rail')
-  const openInFesco    = t('tracking.openInFesco')
+  const seaLabel    = t('tracking.dashboard.segment.sea')
+  const railLabel   = t('tracking.dashboard.segment.rail')
+  const openInFesco = t('tracking.openInFesco')
+
+  /* Chips: only when cluster selected AND 2+ distinct signal colors present */
+  const presentColors = (['red', 'yellow', 'green'] as const).filter(s => stats[s] > 0)
+  const showChips = mapSelectionCount !== null && presentColors.length >= 2
 
   return (
     <div
@@ -195,40 +201,36 @@ function DetailCard({
         )}
       </div>
 
-      {/* Signal filter chips — only when cluster selected AND has multiple signal colors */}
-      {mapSelectionCount !== null && (() => {
-        const presentColors = (['red', 'yellow', 'green'] as const).filter(s => stats[s] > 0)
-        if (presentColors.length <= 1) return null
-        return (
-          <div
-            className="px-3 py-1.5 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0"
-            style={{ borderColor: 'var(--ink-200)' }}
-          >
-            {presentColors.map(sig => (
-              <SignalChip
-                key={sig}
-                signal={sig}
-                count={stats[sig]}
-                label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
-                active={signalFilter === sig}
-                onClick={() => onSignalFilterToggle(sig)}
-              />
-            ))}
-            {signalFilter !== null && (
-              <button
-                type="button"
-                onClick={() => onSignalFilterToggle(signalFilter)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
-                style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-              >
-                <X size={11} /> {t('tracking.filterAll')}
-              </button>
-            )}
-          </div>
-        )
-      })()}
+      {/* Signal filter chips */}
+      {showChips && (
+        <div
+          className="px-3 py-1.5 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0"
+          style={{ borderColor: 'var(--ink-200)' }}
+        >
+          {presentColors.map(sig => (
+            <SignalChip
+              key={sig}
+              signal={sig}
+              count={stats[sig]}
+              label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
+              active={signalFilter === sig}
+              onClick={() => onSignalFilterToggle(sig)}
+            />
+          ))}
+          {signalFilter !== null && (
+            <button
+              type="button"
+              onClick={onSignalFilterClear}
+              className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
+              style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              <X size={11} /> {t('tracking.filterAll')}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Body */}
       {items === null ? (
@@ -246,8 +248,18 @@ function DetailCard({
       ) : (
         <div className="flex-1 overflow-y-auto">
           {items.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
-              {t('tracking.dashboard.empty.noActive')}
+            <div className="flex flex-col items-center justify-center h-full gap-1 text-[11px]" style={{ color: 'var(--ink-400)' }}>
+              <span>{t('tracking.dashboard.empty.noActive')}</span>
+              {signalFilter !== null && (
+                <button
+                  type="button"
+                  onClick={onSignalFilterClear}
+                  className="text-[10px] underline underline-offset-2"
+                  style={{ color: 'var(--mint-deep)' }}
+                >
+                  {t('tracking.filterAll')}
+                </button>
+              )}
             </div>
           ) : (
             items.map(c => {
@@ -737,9 +749,8 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 mapSelectionCount={selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
                 stats={clusterStats}
                 signalFilter={signalFilter}
-                onSignalFilterToggle={sig => {
-                  setSignalFilter(prev => prev === sig ? null : sig)
-                }}
+                onSignalFilterToggle={sig => setSignalFilter(prev => prev === sig ? null : sig)}
+                onSignalFilterClear={() => setSignalFilter(null)}
                 excludedCount={excludedCount}
                 onClear={() => {
                   setSelectedContainerNumbers(null)
