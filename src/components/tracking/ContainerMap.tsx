@@ -118,9 +118,9 @@ function buildPopupHtml(
   const alert     = detail?.alert_reason ?? null
 
   const etaHtml = eta ? `
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">
-      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${i18n.eta}</div>
-      <div style="font-size:12px;color:#1e293b">${fmtDate(eta)}</div>
+    <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
+      <span style="font-size:10px;color:#94a3b8;flex-shrink:0;min-width:52px">ETA</span>
+      <span style="font-size:11px;color:#1e293b">${fmtDate(eta)}</span>
     </div>` : ''
 
   const alertHtml = (alert && sig !== 'green' && sig !== 'gray') ? `
@@ -133,14 +133,14 @@ function buildPopupHtml(
     const pct = Math.round((1 - trail.remaining_km / trail.total_km) * 100)
     const clampedPct = Math.max(0, Math.min(100, pct))
     progressHtml = `
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">
+    <div style="margin-top:4px;padding-top:4px;border-top:1px solid #f1f5f9">
       <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:4px">
         <span>${i18n.progress}</span><span>${clampedPct}%</span>
       </div>
-      <div style="height:4px;background:#f1f5f9;border-radius:99px;overflow:hidden">
+      <div style="height:3px;background:#f1f5f9;border-radius:99px;overflow:hidden">
         <div style="height:100%;background:#0d9488;border-radius:99px;width:${clampedPct}%"></div>
       </div>
-      <div style="margin-top:6px;font-size:11px;color:#1e293b">
+      <div style="margin-top:4px;font-size:10px;color:#1e293b">
         <span style="font-weight:600">${trail.remaining_km} km</span>
         <span style="color:#94a3b8"> / ${trail.total_km} km ${i18n.remaining}</span>
       </div>
@@ -148,25 +148,26 @@ function buildPopupHtml(
   }
 
   return `
-    <div style="font-family:var(--font-body,system-ui,sans-serif);min-width:240px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
-        <span style="font-weight:600;font-size:13px;color:#1e293b;font-family:var(--font-mono,monospace)">${cn}</span>
+    <div style="font-family:var(--font-body,system-ui,sans-serif);min-width:200px;max-width:250px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
+        <span style="font-weight:600;font-size:12px;color:#1e293b;font-family:var(--font-mono,monospace)">${cn}</span>
         <a href="https://my.fesco.com/tracking?tab=${cn}" target="_blank" rel="noopener noreferrer"
-           style="margin-left:auto;font-size:11px;color:#0d9488;text-decoration:underline;white-space:nowrap">
+           style="margin-left:auto;font-size:10px;color:#0d9488;text-decoration:underline;white-space:nowrap">
           ${i18n.openInFesco} ↗
         </a>
       </div>
-      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${i18n.route}</div>
-      <div style="font-size:12px;color:#1e293b;margin-bottom:10px">${route}</div>
-      <div style="font-size:10px;color:#94a3b8;margin-bottom:3px">${i18n.lastEvent}</div>
-      <div style="font-size:12px;color:#1e293b">
-        ${lastEvent}
-        ${lastDate ? `<span style="font-size:10px;color:#94a3b8;margin-left:4px">· ${fmtDate(lastDate)}</span>` : ''}
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
+        <span style="font-size:10px;color:#94a3b8;flex-shrink:0;min-width:52px">${i18n.route}</span>
+        <span style="font-size:11px;color:#1e293b">${route}</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
+        <span style="font-size:10px;color:#94a3b8;flex-shrink:0;min-width:52px">${i18n.lastEvent}</span>
+        <span style="font-size:11px;color:#1e293b">${lastEvent}</span>
       </div>
       ${etaHtml}
-      ${alertHtml}
       ${progressHtml}
+      ${alertHtml}
     </div>
   `
 }
@@ -186,7 +187,7 @@ class ResetViewControl implements mapboxgl.IControl {
     btn.title = 'Reset view'
     btn.innerHTML =
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>'
+      '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>'
     btn.addEventListener('click', () => {
       map.flyTo({ center: [80, 55], zoom: 4, duration: 800 })
       this.onReset()
@@ -361,7 +362,7 @@ export function ContainerMap({
       popupRef.current?.remove()
       const ti = tRef.current
       popupRef.current = new mapboxgl.Popup({
-        anchor: 'top-left', offset: [12, 12], closeButton: true, maxWidth: '320px', className: 'container-popup',
+        offset: 14, closeButton: true, maxWidth: '260px', className: 'container-popup',
       })
         .setLngLat([lng, lat])
         .setHTML(buildLoadingPopupHtml(cn, detail, ti('tracking.loadingDetail')))
@@ -426,7 +427,7 @@ export function ContainerMap({
       container:       containerRef.current,
       style:           'mapbox://styles/mapbox/streets-v12',
       center:          [80, 55],
-      zoom:            3,
+      zoom:            4,
       projection:      'mercator',
       pitchWithRotate: false,
       touchPitch:      false,
@@ -678,21 +679,18 @@ function addSourceAndLayers(
     },
   })
 
-  /* Cluster click → get all leaves → onSelectContainers */
+  /* Cluster click → zoom in */
   map.on('click', 'clusters', e => {
     const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
     if (!features.length) return
     const feat      = features[0]
     const clusterId = feat.properties?.cluster_id as number
-    const count     = feat.properties?.point_count as number
-    ;(map.getSource('containers') as mapboxgl.GeoJSONSource)
-      .getClusterLeaves(clusterId, count, 0, (err, leaves) => {
-        if (err || !leaves) return
-        const nums = leaves
-          .map(l => (l.properties as { containerNumber?: string } | null)?.containerNumber)
-          .filter((n): n is string => typeof n === 'string' && n.length > 0)
-        if (nums.length) selectRef.current?.(nums)
-      })
+    const source    = map.getSource('containers') as mapboxgl.GeoJSONSource
+    source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+      if (err || zoom == null) return
+      const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number]
+      map.flyTo({ center: coords, zoom, duration: 500 })
+    })
   })
 
   /* Single marker click → onSelectContainers + popup */

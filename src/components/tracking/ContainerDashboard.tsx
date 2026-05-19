@@ -486,6 +486,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
   const [selectedContainerNumbers, setSelectedContainerNumbers] = useState<string[] | null>(null)
   const [signalFilter,             setSignalFilter]             = useState<'red' | 'yellow' | 'green' | null>(null)
+  const [actionSort,               setActionSort]               = useState<'waiting' | 'number'>('waiting')
 
   /* ── Fetch ─────────────────────────────────────────────────────────── */
   const fetchData = useCallback(async (quiet = false) => {
@@ -572,16 +573,21 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     return m
   }, [data])
 
-  /* ── Action needed (global red, sorted by errors desc) ──────────────── */
+  /* ── Action needed (global red) ─────────────────────────────────────── */
   const actionNeeded = useMemo(
     () => filteredData
       .filter(c => c.signal === 'red')
-      .sort((a, b) =>
-        (b.consecutive_errors ?? 0) - (a.consecutive_errors ?? 0) ||
-        (b.last_error_at ?? '').localeCompare(a.last_error_at ?? ''),
-      )
+      .sort((a, b) => {
+        if (actionSort === 'number')
+          return a.container_number.localeCompare(b.container_number)
+        const isAwA = (a.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+        const isAwB = (b.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+        const dA = isAwA ? daysSince(a.last_event_date) : daysSince(a.planned_destination_date ?? a.last_error_at)
+        const dB = isAwB ? daysSince(b.last_event_date) : daysSince(b.planned_destination_date ?? b.last_error_at)
+        return dB - dA
+      })
       .slice(0, 8),
-    [filteredData],
+    [filteredData, actionSort],
   )
 
   /* ── Detail items: cluster selection only, sorted R→Y→G then +Nd desc ── */
@@ -902,8 +908,15 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 >
                   <span className="label-mono">{t('tracking.dashboard.panel.actionNeeded')}</span>
                   {actionNeeded.length > 0 && (
-                    <span className="text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
+                    <span className="text-[10px] font-mono flex items-center gap-1" style={{ color: 'var(--ink-400)' }}>
                       {actionNeeded.length}
+                      <button
+                        type="button"
+                        onClick={() => setActionSort(s => s === 'waiting' ? 'number' : 'waiting')}
+                        style={{ fontSize: '9px', color: 'var(--ink-400)', cursor: 'pointer', background: 'transparent', border: 'none', padding: '0 0 0 4px' }}
+                      >
+                        {actionSort === 'waiting' ? '▼ 대기순' : '▼ 번호순'}
+                      </button>
                     </span>
                   )}
                 </div>

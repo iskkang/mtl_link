@@ -817,7 +817,7 @@ const resources = {
       filterAll:                  '전체',
       awaitingLocation:           '{{count}}개 컨테이너 위치 확인 중',
       route:                      '노선',
-      lastEvent:                  '최근 이벤트',
+      lastEvent:                  '현재 위치',
       eta:                        '도착 예정',
       progress:                   '진행',
       remaining:                  '남음',
