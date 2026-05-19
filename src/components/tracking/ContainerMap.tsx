@@ -113,7 +113,6 @@ function buildPopupHtml(
 
   const route     = detail ? `${detail.current_from ?? '—'} → ${detail.current_to ?? '—'}` : '—'
   const lastEvent = detail?.last_event_location ?? '—'
-  const lastDate  = detail?.last_success_at ?? null
   const eta       = detail?.planned_destination_date ?? null
   const alert     = detail?.alert_reason ?? null
 
