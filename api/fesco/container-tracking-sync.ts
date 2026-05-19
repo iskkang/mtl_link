@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { sendContainerAlertEmail } from '../utils/resend.js'
 // Safety policy: same conservative constraints as order sync.
 // Sequential fetching only. No parallelism. No mass container sweep by default.
 
@@ -680,6 +681,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               last_seen_at:       now,
             })
           alertsOpened++
+
+          // Phase 2: RED 알림 + 선박 지연 이메일
+          const shouldEmail =
+            alert.alert_level === 'red' ||
+            alert.alert_type?.startsWith('vessel_arrival')
+
+          if (shouldEmail && !dryRun) {
+            const route = [r.current_from, r.current_to]
+              .filter(Boolean).join(' → ')
+            sendContainerAlertEmail({
+              containerNumber: ctrNum,
+              alertType:       alert.alert_type ?? '',
+              message:         alert.message    ?? '',
+              route,
+            }).catch(err => console.error('[email] failed:', err))
+          }
+
           // Resolve open alerts of different types (stale alerts superseded by current one)
           const { data: staleOpenAlerts } = await supabase
             .from('fesco_alerts')
