@@ -689,7 +689,7 @@ function addSourceAndLayers(
     source.getClusterLeaves(clusterId, count, 0, (err, leaves) => {
       if (err || !leaves) return
       const cns = leaves.map(l => l.properties?.cn as string).filter(Boolean)
-      onSelectContainers(cns)
+      selectRef.current?.(cns)
     })
   })
 

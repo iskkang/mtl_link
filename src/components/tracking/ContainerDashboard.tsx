@@ -181,7 +181,7 @@ function DetailCard({
   const openInFesco = t('tracking.openInFesco')
 
   const sortedItems = useMemo(() => {
-    if (!items) return items
+    if (!items) return []
     return [...items].sort((a, b) => {
       if (detailSort === 'name')
         return a.container_number.localeCompare(b.container_number)
