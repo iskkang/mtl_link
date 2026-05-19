@@ -171,6 +171,32 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
 
   const now = Date.now()
 
+  // ── SEA vessel arrival delay (immediate, no floor rounding) ──────────────
+  // Separate from planned_arrival_overdue: applies only to SEA segments,
+  // uses fractional days (not floored) so 1-day ETA breach fires immediately.
+  for (const s of (item.segments ?? [])) {
+    if (
+      (s as any).segmentType === 'SEA' &&
+      s.planingDestinationDate &&
+      !s.destinationDate
+    ) {
+      const t = new Date(s.planingDestinationDate).getTime()
+      if (!isNaN(t)) {
+        const overdueDays = (now - t) / 86_400_000   // no Math.floor
+        if (overdueDays > 3) return {
+          alert_level: 'red',
+          alert_type:  'vessel_arrival_overdue',
+          message:     `Vessel has not arrived at destination. ETA ${s.planingDestinationDate} passed by ${Math.floor(overdueDays)} days.`,
+        }
+        if (overdueDays >= 1) return {
+          alert_level: 'yellow',
+          alert_type:  'vessel_arrival_watch',
+          message:     `Vessel arrival delayed. ETA was ${s.planingDestinationDate}.`,
+        }
+      }
+    }
+  }
+
   // Planned arrival overdue (check destination first — higher impact)
   for (const s of (item.segments ?? [])) {
     if (s.planingDestinationDate && !s.destinationDate) {
