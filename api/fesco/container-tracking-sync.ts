@@ -178,7 +178,8 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
     if (
       (s as any).segmentType === 'SEA' &&
       s.planingDestinationDate &&
-      !s.destinationDate
+      !s.destinationDate &&
+      !((s as any).completed && (s as any).inProgress)
     ) {
       const t = new Date(s.planingDestinationDate).getTime()
       if (!isNaN(t)) {
@@ -199,7 +200,8 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
 
   // Planned arrival overdue (check destination first — higher impact)
   for (const s of (item.segments ?? [])) {
-    if (s.planingDestinationDate && !s.destinationDate) {
+    if (s.planingDestinationDate && !s.destinationDate &&
+        !((s as any).completed && (s as any).inProgress)) {
       const t = new Date(s.planingDestinationDate).getTime()
       if (!isNaN(t)) {
         const overdueDays = Math.floor((now - t) / 86_400_000)
@@ -211,7 +213,8 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
 
   // Planned departure overdue
   for (const s of (item.segments ?? [])) {
-    if (s.planingDepartureDate && !s.departureDate) {
+    if (s.planingDepartureDate && !s.departureDate &&
+        !((s as any).completed && (s as any).inProgress)) {
       const t = new Date(s.planingDepartureDate).getTime()
       if (!isNaN(t)) {
         const overdueDays = Math.floor((now - t) / 86_400_000)
@@ -640,6 +643,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .update({ last_seen_at: now, raw_context: currentRow })
             .eq('id', existing.id)
           alertsUpdated++
+          // Resolve open alerts of different types (stale alerts superseded by current one)
+          const { data: staleOpenAlerts } = await supabase
+            .from('fesco_alerts')
+            .select('id')
+            .eq('container_number', r.container_number)
+            .eq('status', 'open')
+            .neq('alert_type', alert.alert_type)
+          if (staleOpenAlerts && staleOpenAlerts.length > 0) {
+            await supabase
+              .from('fesco_alerts')
+              .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+              .in('id', staleOpenAlerts.map(a => a.id))
+          }
         } else {
           await supabase
             .from('fesco_alerts')
@@ -656,6 +672,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               last_seen_at:       now,
             })
           alertsOpened++
+          // Resolve open alerts of different types (stale alerts superseded by current one)
+          const { data: staleOpenAlerts } = await supabase
+            .from('fesco_alerts')
+            .select('id')
+            .eq('container_number', r.container_number)
+            .eq('status', 'open')
+            .neq('alert_type', alert.alert_type)
+          if (staleOpenAlerts && staleOpenAlerts.length > 0) {
+            await supabase
+              .from('fesco_alerts')
+              .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+              .in('id', staleOpenAlerts.map(a => a.id))
+          }
         }
       } else {
         // No active alert condition — resolve any previously open alerts for this container
