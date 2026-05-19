@@ -400,6 +400,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   })
 
+  // ── 5b. Stale container candidates (20일+ 초과, 정리 대기) ──────────────────
+  const twentyDaysAgo = new Date(Date.now() - 20 * 86_400_000).toISOString().split('T')[0]
+  const nowIso        = new Date().toISOString()
+
+  const { data: staleRaw } = await supabase
+    .from('fesco_container_tracking_current')
+    .select('container_number, planned_destination_date, events_json, cleanup_dismissed_until, order_id')
+    .neq('status', 'completed')
+    .lt('planned_destination_date', twentyDaysAgo)
+    .eq('consecutive_errors', 0)
+    .or(`cleanup_dismissed_until.is.null,cleanup_dismissed_until.lt.${nowIso}`)
+
+  const stale_candidates: {
+    container_number: string
+    route: string | null
+    days_overdue: number
+    reason: 'no_events' | 'at_destination'
+  }[] = []
+
+  for (const r of (staleRaw ?? []) as any[]) {
+    const order      = r.order_id != null ? orderMap.get(r.order_id) : null
+    const routeLatin = order?.route_latin ?? null
+    const destRaw    = routeLatin ? routeLatin.replace(/^.+-/, '').trim() : null
+    const evArr      = Array.isArray(r.events_json) ? r.events_json as any[] : []
+    const lastLoc    = evArr[0]?.locationLatin?.toLowerCase() ?? null
+    const destLower  = destRaw?.toLowerCase() ?? null
+
+    const noEvents = evArr.length === 0
+    const atDest   = lastLoc && destLower
+      ? lastLoc.includes(destLower) || destLower.includes(lastLoc)
+      : false
+
+    if (!noEvents && !atDest) continue
+
+    stale_candidates.push({
+      container_number: r.container_number,
+      route:            routeLatin,
+      days_overdue:     Math.floor((Date.now() - new Date(r.planned_destination_date).getTime()) / 86_400_000),
+      reason:           noEvents ? 'no_events' : 'at_destination',
+    })
+  }
+
   // ── 6. Recent orders — grouped by order, sorted by created_at desc ──────────
   const SIG_RANK: Record<string, number> = { red: 3, yellow: 2, green: 1, gray: 0 }
 
@@ -448,5 +490,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       signal:          o.signal,
     }))
 
-  return res.json({ ok: true, total: count ?? 0, limit, offset, data, recent_orders })
+  return res.json({ ok: true, total: count ?? 0, limit, offset, data, recent_orders, stale_candidates })
 }

@@ -53,14 +53,22 @@ interface RecentOrderItem {
   signal:          string
 }
 
+interface StaleCandidateItem {
+  container_number: string
+  route:            string | null
+  days_overdue:     number
+  reason:           'no_events' | 'at_destination'
+}
+
 interface DashboardResponse {
-  ok:             boolean
-  total:          number
-  limit:          number
-  offset:         number
-  data:           ContainerItem[]
-  recent_orders?: RecentOrderItem[]
-  error?:         string
+  ok:               boolean
+  total:            number
+  limit:            number
+  offset:           number
+  data:             ContainerItem[]
+  recent_orders?:   RecentOrderItem[]
+  stale_candidates?: StaleCandidateItem[]
+  error?:           string
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
@@ -465,6 +473,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
   const [data,             setData]             = useState<ContainerItem[]>([])
   const [recentOrders,     setRecentOrders]     = useState<RecentOrderItem[]>([])
+  const [staleCandidates,  setStaleCandidates]  = useState<StaleCandidateItem[]>([])
   const [loading,          setLoading]          = useState(true)
   const [error,            setError]            = useState<string | null>(null)
   const [lastFetch,        setLastFetch]        = useState<string | null>(null)
@@ -489,6 +498,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
       if (!json.ok) throw new Error(json.error ?? 'Failed to load dashboard')
       setData(json.data)
       setRecentOrders(json.recent_orders ?? [])
+      setStaleCandidates(json.stale_candidates ?? [])
       setLastFetch(new Date().toISOString())
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -499,6 +509,23 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  /* ── Cleanup handlers ───────────────────────────────────────────────── */
+  const handleCleanupDelete = async (cn: string) => {
+    await fetch('/api/fesco/container-cleanup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', container_number: cn }),
+    })
+    setStaleCandidates(prev => prev.filter(c => c.container_number !== cn))
+  }
+
+  const handleCleanupDismiss = async (cn: string) => {
+    await fetch('/api/fesco/container-cleanup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'dismiss', container_number: cn }),
+    })
+    setStaleCandidates(prev => prev.filter(c => c.container_number !== cn))
+  }
 
   /* ── Exclude containers with no location info (e.g. junk geocode coords) */
   const visibleContainers = useMemo(
@@ -668,6 +695,15 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
             </button>
           </div>
         </div>
+
+        {/* Cleanup banner */}
+        {staleCandidates.length > 0 && (
+          <CleanupBanner
+            candidates={staleCandidates}
+            onDelete={handleCleanupDelete}
+            onDismiss={handleCleanupDismiss}
+          />
+        )}
 
         {/* Row 2: destination filter chips */}
         <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
@@ -949,6 +985,79 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/* ── CleanupBanner ───────────────────────────────────────────────────── */
+function CleanupBanner({
+  candidates,
+  onDelete,
+  onDismiss,
+}: {
+  candidates: StaleCandidateItem[]
+  onDelete:   (cn: string) => void
+  onDismiss:  (cn: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const firstRoute = candidates[0]?.route ?? null
+  const label = firstRoute
+    ? `${firstRoute}${candidates.length > 1 ? ` 외 ${candidates.length - 1}개` : ''}`
+    : `${candidates.length}개`
+
+  return (
+    <div style={{
+      marginTop: 8,
+      borderRadius: 6,
+      border: '1px solid #fde68a',
+      background: '#fffbeb',
+      overflow: 'hidden',
+      fontSize: 11,
+    }}>
+      <div
+        className="flex items-center justify-between gap-2"
+        style={{ padding: '6px 10px', cursor: 'pointer', color: '#d97706' }}
+        onClick={() => setOpen(v => !v)}
+      >
+        <span>⚠️ 정리 대기 {candidates.length}개 · {label}</span>
+        <span style={{ flexShrink: 0 }}>확인하기 {open ? '▴' : '▾'}</span>
+      </div>
+
+      {open && (
+        <div style={{ borderTop: '1px solid #fde68a' }}>
+          {candidates.map(c => (
+            <div
+              key={c.container_number}
+              className="flex items-center gap-2 flex-wrap"
+              style={{ padding: '5px 10px', borderBottom: '1px solid #fef3c7', color: '#92400e' }}
+            >
+              <span className="font-mono" style={{ flexShrink: 0, fontWeight: 600 }}>{c.container_number}</span>
+              <span style={{ flex: 1, minWidth: 80, color: '#b45309', fontSize: 10 }}>{c.route ?? '—'}</span>
+              <span style={{ flexShrink: 0, color: '#d97706', fontWeight: 600 }}>+{c.days_overdue}일</span>
+              <button
+                type="button"
+                onClick={() => onDelete(c.container_number)}
+                style={{
+                  flexShrink: 0, padding: '2px 7px', borderRadius: 4, border: 'none',
+                  background: '#ef4444', color: '#fff', cursor: 'pointer', fontSize: 10,
+                }}
+              >
+                도착 완료 (삭제)
+              </button>
+              <button
+                type="button"
+                onClick={() => onDismiss(c.container_number)}
+                style={{
+                  flexShrink: 0, padding: '2px 7px', borderRadius: 4, border: '1px solid #d1d5db',
+                  background: '#f9fafb', color: '#6b7280', cursor: 'pointer', fontSize: 10,
+                }}
+              >
+                30일 보류
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
