@@ -678,17 +678,18 @@ function addSourceAndLayers(
     },
   })
 
-  /* Cluster click → zoom in */
+  /* Cluster click → show leaves in detail panel */
   map.on('click', 'clusters', e => {
     const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
     if (!features.length) return
     const feat      = features[0]
     const clusterId = feat.properties?.cluster_id as number
+    const count     = feat.properties?.point_count as number
     const source    = map.getSource('containers') as mapboxgl.GeoJSONSource
-    source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-      if (err || zoom == null) return
-      const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number]
-      map.flyTo({ center: coords, zoom, duration: 500 })
+    source.getClusterLeaves(clusterId, count, 0, (err, leaves) => {
+      if (err || !leaves) return
+      const cns = leaves.map(l => l.properties?.cn as string).filter(Boolean)
+      onSelectContainers(cns)
     })
   })
 

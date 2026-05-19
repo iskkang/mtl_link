@@ -175,9 +175,23 @@ function DetailCard({
   onClear:              () => void
 }) {
   const { t } = useTranslation()
+  const [detailSort, setDetailSort] = useState<'waiting' | 'name'>('waiting')
   const seaLabel    = t('tracking.dashboard.segment.sea')
   const railLabel   = t('tracking.dashboard.segment.rail')
   const openInFesco = t('tracking.openInFesco')
+
+  const sortedItems = useMemo(() => {
+    if (!items) return items
+    return [...items].sort((a, b) => {
+      if (detailSort === 'name')
+        return a.container_number.localeCompare(b.container_number)
+      const isAwA = (a.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+      const isAwB = (b.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+      const dA = isAwA ? daysSince(a.last_event_date) : daysSince(a.planned_destination_date ?? a.last_error_at)
+      const dB = isAwB ? daysSince(b.last_event_date) : daysSince(b.planned_destination_date ?? b.last_error_at)
+      return dB - dA
+    })
+  }, [items, detailSort])
 
   /* Chips: only when cluster selected AND 2+ distinct signal colors present */
   const presentColors = (['red', 'yellow', 'green'] as const).filter(s => stats[s] > 0)
@@ -193,7 +207,16 @@ function DetailCard({
         className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
         style={{ borderColor: 'var(--ink-200)' }}
       >
-        <span className="label-mono">{t('tracking.dashboard.detail.title')}</span>
+        <div className="flex items-center gap-1">
+          <span className="label-mono">{t('tracking.dashboard.detail.title')}</span>
+          <button
+            type="button"
+            onClick={() => setDetailSort(s => s === 'waiting' ? 'name' : 'waiting')}
+            style={{ fontSize:'9px', color:'var(--ink-400)', cursor:'pointer',
+                     background:'transparent', border:'none', padding:'0 0 0 4px' }}>
+            {detailSort === 'waiting' ? '▼ 대기순' : '▼ 이름순'}
+          </button>
+        </div>
         {mapSelectionCount !== null && (
           <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
             <span>{t('tracking.dashboard.detail.containersSelected', { count: mapSelectionCount })}</span>
@@ -271,7 +294,7 @@ function DetailCard({
               )}
             </div>
           ) : (
-            items.map(c => {
+            sortedItems.map(c => {
               const isAwaiting = (c.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
               const days = isAwaiting
                 ? daysSince(c.last_event_date)
