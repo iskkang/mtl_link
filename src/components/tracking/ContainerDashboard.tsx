@@ -503,13 +503,14 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   const excludedCount = data.length - visibleContainers.length
 
   /* ── Filter: null country always shown ─────────────────────────────── */
-  const filteredData = useMemo(
-    () => visibleContainers.filter(c =>
-      c.destination_country_code === null ||
-      selectedCountries.has(c.destination_country_code),
-    ),
-    [visibleContainers, selectedCountries],
-  )
+  const filteredData = useMemo(() => {
+    const isShowAll = ['RU', 'UZ', 'BY', 'KZ'].every(c => selectedCountries.has(c))
+    return visibleContainers.filter(c =>
+      isShowAll
+        ? (c.destination_country_code === null || selectedCountries.has(c.destination_country_code))
+        : (c.destination_country_code !== null && selectedCountries.has(c.destination_country_code))
+    )
+  }, [visibleContainers, selectedCountries])
 
   /* ── Stats (global fleet, used for header pills) ────────────────────── */
   const stats = useMemo(() => ({
