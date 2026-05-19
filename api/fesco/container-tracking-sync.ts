@@ -647,7 +647,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const { data: staleOpenAlerts } = await supabase
             .from('fesco_alerts')
             .select('id')
-            .eq('container_number', r.container_number)
+            .eq('container_number', ctrNum)
             .eq('status', 'open')
             .neq('alert_type', alert.alert_type)
           if (staleOpenAlerts && staleOpenAlerts.length > 0) {
@@ -676,7 +676,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const { data: staleOpenAlerts } = await supabase
             .from('fesco_alerts')
             .select('id')
-            .eq('container_number', r.container_number)
+            .eq('container_number', ctrNum)
             .eq('status', 'open')
             .neq('alert_type', alert.alert_type)
           if (staleOpenAlerts && staleOpenAlerts.length > 0) {
