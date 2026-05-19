@@ -688,7 +688,7 @@ function addSourceAndLayers(
     const source    = map.getSource('containers') as mapboxgl.GeoJSONSource
     source.getClusterLeaves(clusterId, count, 0, (err, leaves) => {
       if (err || !leaves) return
-      const cns = leaves.map(l => l.properties?.cn as string).filter(Boolean)
+      const cns = leaves.map(l => l.properties?.containerNumber as string).filter(Boolean)
       selectRef.current?.(cns)
     })
   })
