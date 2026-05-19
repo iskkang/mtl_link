@@ -890,10 +890,10 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 )}
               </div>
 
-              {/* Recent orders — flex-1 */}
+              {/* Recent orders — 40% */}
               <div
-                className="flex-1 rounded-lg border flex flex-col overflow-hidden"
-                style={{ borderColor: 'var(--ink-200)', background: 'var(--card)' }}
+                className="rounded-lg border flex flex-col overflow-hidden"
+                style={{ order: 2, flex: '2 1 0', minWidth: 0, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
               >
                 <div
                   className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
@@ -943,10 +943,10 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                 </div>
               </div>
 
-              {/* Action needed — 320px */}
+              {/* Action needed — 60% */}
               <div
-                className="rounded-lg border flex flex-col overflow-hidden flex-shrink-0"
-                style={{ width: 320, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
+                className="rounded-lg border flex flex-col overflow-hidden"
+                style={{ order: 1, flex: '3 1 0', minWidth: 0, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
               >
                 <div
                   className="px-4 pt-3 pb-2 border-b flex-shrink-0 flex items-center justify-between"
