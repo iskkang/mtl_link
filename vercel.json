@@ -36,6 +36,10 @@
   ],
   "rewrites": [
     { "source": "/api/fesco/container-cleanup", "destination": "/api/fesco/container-cleanup.ts" },
+    { "source": "/api/fesco/weekly-report",     "destination": "/api/fesco/weekly-report.ts" },
     { "source": "/((?!api/|@|src/|node_modules/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/fesco/weekly-report", "schedule": "0 0 * * 1" }
   ]
 }
