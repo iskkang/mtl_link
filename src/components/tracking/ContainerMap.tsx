@@ -182,6 +182,9 @@ class ResetViewControl implements mapboxgl.IControl {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.className = 'mapboxgl-ctrl-icon'
+    btn.style.display = 'flex'
+    btn.style.alignItems = 'center'
+    btn.style.justifyContent = 'center'
     btn.setAttribute('aria-label', 'Reset view')
     btn.title = 'Reset view'
     btn.innerHTML =
