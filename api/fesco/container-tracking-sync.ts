@@ -688,7 +688,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             alert.alert_type?.startsWith('vessel_arrival')
 
           if (shouldEmail && !dryRun) {
-            const route = [r.current_from, r.current_to]
+            const route = [currentRow.current_from, currentRow.current_to]
               .filter(Boolean).join(' → ')
             sendContainerAlertEmail({
               containerNumber: ctrNum,
