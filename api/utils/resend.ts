@@ -1,6 +1,6 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? ''
 const FROM_EMAIL     = 'MTL Link <noreply@mtlb.co.kr>'
-const ALERT_TO       = 'iskang@mtlb.co.kr'
+const ALERT_TO       = 'mtlrus@mtlb.co.kr'
 
 export async function sendContainerAlertEmail(params: {
   containerNumber: string
