@@ -6,11 +6,11 @@ export interface ContainerPoint {
   containerNumber: string
   latitude:        number
   longitude:       number
-  signal:          'red' | 'yellow' | 'green' | 'gray'
+  signal:          'red' | 'yellow' | 'green' | 'gray' | 'unknown'
 }
 
 export interface ContainerPopupData {
-  signal:                   'red' | 'yellow' | 'green' | 'gray'
+  signal:                   'red' | 'yellow' | 'green' | 'gray' | 'unknown'
   current_from:             string | null
   current_to:               string | null
   last_event_location:      string | null
