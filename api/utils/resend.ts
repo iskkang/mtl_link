@@ -10,9 +10,22 @@ export async function sendContainerAlertEmail(params: {
 }): Promise<void> {
   if (!RESEND_API_KEY) return
 
+  const ALERT_LABELS: Record<string, string> = {
+    awaiting_next_leg_overdue:      '다음 구간 출발 10일 이상 대기',
+    awaiting_next_leg_watch:        '다음 구간 출발 5일 이상 대기',
+    planned_arrival_overdue:        '도착 예정일 3일 이상 초과',
+    planned_departure_overdue:      '출발 예정일 3일 이상 초과',
+    vessel_arrival_overdue:         '선박 도착 3일 이상 초과',
+    vessel_arrival_watch:           '선박 도착 1일 이상 초과',
+    stale_tracking_risk:            '트래킹 데이터 없음 (위험)',
+    stale_tracking_watch:           '트래킹 데이터 없음 (주의)',
+    container_tracking_unknown:     '컨테이너 위치 불명',
+    container_tracking_unavailable: '트래킹 불가',
+  }
+
+  const category = ALERT_LABELS[params.alertType] ?? params.alertType
   const isVessel = params.alertType.startsWith('vessel_arrival')
   const emoji    = isVessel ? '🚢' : '🔴'
-  const category = isVessel ? '선박 지연' : '운송 지연'
 
   const subject = `${emoji} [MTL Link] ${params.containerNumber} - ${category}`
 
@@ -37,7 +50,7 @@ export async function sendContainerAlertEmail(params: {
           </tr>
           <tr>
             <td style="padding:6px 0;color:#64748b">내용</td>
-            <td style="padding:6px 0;color:#dc2626">${params.message}</td>
+            <td style="padding:6px 0;color:#dc2626">${ALERT_LABELS[params.alertType] ?? params.message}</td>
           </tr>
         </table>
         <div style="margin-top:20px">
