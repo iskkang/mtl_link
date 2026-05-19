@@ -174,7 +174,10 @@ function buildPopupHtml(
 /* ── Reset-view custom control ──────────────────────────────────────── */
 class ResetViewControl implements mapboxgl.IControl {
   private _container?: HTMLDivElement
-  constructor(private onReset: () => void) {}
+  constructor(
+    private onReset: () => void,
+    private onResetView?: (map: mapboxgl.Map) => void
+  ) {}
 
   onAdd(map: mapboxgl.Map): HTMLElement {
     this._container = document.createElement('div')
@@ -191,7 +194,7 @@ class ResetViewControl implements mapboxgl.IControl {
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>'
     btn.addEventListener('click', () => {
-      map.flyTo({ center: [80, 55], zoom: 4, duration: 800 })
+      this.onResetView ? this.onResetView(map) : map.flyTo({ center: [80, 55], zoom: 4, duration: 800 })
       this.onReset()
     })
     this._container.appendChild(btn)
@@ -325,6 +328,7 @@ export function ContainerMap({
   const initialized   = useRef(false)
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
   const fetchAbortRef = useRef<AbortController | null>(null)
+  const savedBoundsRef = useRef<mapboxgl.LngLatBoundsLike | null>(null)
 
   /* Stable refs so event handlers never capture stale props */
   const selectRef  = useRef(onSelectContainers)
@@ -437,16 +441,27 @@ export function ContainerMap({
 
     map.keyboard.disable()
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
-    map.addControl(new ResetViewControl(() => {
-      clearRef.current?.()
-      clearSearchRef.current()
-    }), 'top-right')
+    map.addControl(
+      new ResetViewControl(
+        () => {
+          clearRef.current?.()
+          clearSearchRef.current()
+        },
+        (m) => {
+          if (savedBoundsRef.current) {
+            m.fitBounds(savedBoundsRef.current, { padding: 40, maxZoom: 10, duration: 600 })
+          }
+        }
+      ),
+      'top-right'
+    )
 
     mapRef.current = map
 
     map.on('load', () => {
       addSourceAndLayers(map, containers, selectRef, clearRef, showSearchRef, clearSearchRef)
-      fitToContainers(map, containers)
+      const b = fitToContainers(map, containers)
+      if (b) savedBoundsRef.current = b
     })
 
     return () => {
@@ -466,7 +481,8 @@ export function ContainerMap({
     const src = map.getSource('containers') as mapboxgl.GeoJSONSource | undefined
     if (!src) return
     src.setData(toGeoJSON(containers))
-    fitToContainers(map, containers)
+    const b = fitToContainers(map, containers)
+    if (b) savedBoundsRef.current = b
   }, [containers])
 
   return (
@@ -729,8 +745,8 @@ function addSourceAndLayers(
   }
 }
 
-function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]) {
-  if (containers.length === 0) return
+function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]): mapboxgl.LngLatBoundsLike | null {
+  if (containers.length === 0) return null
   const lngs = containers.map(c => c.longitude)
   const lats  = containers.map(c => c.latitude)
   const bounds: mapboxgl.LngLatBoundsLike = [
@@ -738,5 +754,6 @@ function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]) {
     [Math.max(...lngs), Math.max(...lats)],
   ]
   map.fitBounds(bounds, { padding: 40, maxZoom: 10, duration: 600 })
+  return bounds
 }
 
