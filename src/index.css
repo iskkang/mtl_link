@@ -1,3 +1,4 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import 'mapbox-gl/dist/mapbox-gl.css';
 
 @tailwind base;
@@ -405,7 +406,7 @@ body, .chat-panel, .chat-header, .composer-panel,
   --signal-gray-bg:   #f1f5f9;
 
   --font-display: 'Fraunces', Georgia, serif;
-  --font-body:    'Geist', 'Helvetica Neue', sans-serif;
+  --font-body:    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 
   font-family: var(--font-body);
