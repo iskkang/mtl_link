@@ -132,7 +132,7 @@ export function MessageInput({ value, onChange, onSend, disabled, hasPendingFile
       if (content) onChange(content)
     } finally {
       setSending(false)
-      textareaRef.current?.focus()
+      requestAnimationFrame(() => textareaRef.current?.focus())
     }
   }
 
