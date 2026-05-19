@@ -91,6 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { count: 'exact' },
     )
     .neq('status', 'completed')
+    .neq('manually_excluded', true)
     .order('container_number')
     .range(offset, offset + limit - 1)
 

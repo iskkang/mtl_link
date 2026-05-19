@@ -534,6 +534,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const now = new Date().toISOString()
 
     for (const { ctrNum, orderId, extNum, item } of fetched) {
+      // Skip manually excluded containers
+      const { data: excRow } = await supabase
+        .from('fesco_container_tracking_current')
+        .select('manually_excluded')
+        .eq('container_number', ctrNum)
+        .maybeSingle()
+      if (excRow?.manually_excluded) continue
+
       const segs   = item.segments ?? []
       const status = deriveStatus(item)
       const alert  = deriveAlert(item, status)
