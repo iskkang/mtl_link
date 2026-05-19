@@ -176,6 +176,7 @@ function DetailCard({
 }) {
   const { t } = useTranslation()
   const [detailSort, setDetailSort] = useState<'waiting' | 'name'>('waiting')
+  useEffect(() => { setDetailSort('waiting') }, [items])
   const seaLabel    = t('tracking.dashboard.segment.sea')
   const railLabel   = t('tracking.dashboard.segment.rail')
   const openInFesco = t('tracking.openInFesco')
