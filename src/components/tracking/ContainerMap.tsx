@@ -329,7 +329,8 @@ export function ContainerMap({
   const initialized   = useRef(false)
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
   const fetchAbortRef = useRef<AbortController | null>(null)
-  const savedBoundsRef = useRef<mapboxgl.LngLatBoundsLike | null>(null)
+  const containersRef = useRef(containers)
+  useEffect(() => { containersRef.current = containers }, [containers])
 
   /* Stable refs so event handlers never capture stale props */
   const selectRef  = useRef(onSelectContainers)
@@ -449,8 +450,15 @@ export function ContainerMap({
           clearSearchRef.current()
         },
         (m) => {
-          if (savedBoundsRef.current) {
-            m.fitBounds(savedBoundsRef.current, { padding: 40, maxZoom: 10, duration: 600 })
+          const valid = containersRef.current.filter(
+            c => c.longitude != null && c.latitude != null
+          )
+          if (valid.length > 0) {
+            const bounds = new mapboxgl.LngLatBounds()
+            valid.forEach(c => bounds.extend([c.longitude, c.latitude]))
+            m.fitBounds(bounds, { padding: 60, maxZoom: 8, duration: 800 })
+          } else {
+            m.flyTo({ center: [80, 55], zoom: 4, duration: 800 })
           }
         }
       ),
@@ -461,8 +469,7 @@ export function ContainerMap({
 
     map.on('load', () => {
       addSourceAndLayers(map, containers, selectRef, clearRef, showSearchRef, clearSearchRef)
-      const b = fitToContainers(map, containers)
-      if (b) savedBoundsRef.current = b
+      fitToContainers(map, containers)
     })
 
     return () => {
@@ -482,8 +489,7 @@ export function ContainerMap({
     const src = map.getSource('containers') as mapboxgl.GeoJSONSource | undefined
     if (!src) return
     src.setData(toGeoJSON(containers))
-    const b = fitToContainers(map, containers)
-    if (b) savedBoundsRef.current = b
+    fitToContainers(map, containers)
   }, [containers])
 
   return (
@@ -544,7 +550,7 @@ function addSourceAndLayers(
     type:          'geojson',
     data:          toGeoJSON(containers),
     cluster:       true,
-    clusterRadius: 50,
+    clusterRadius: 10,
     clusterProperties: {
       redCount:    ['+', ['case', ['==', ['get', 'signal'], 'red'],    1, 0]],
       yellowCount: ['+', ['case', ['==', ['get', 'signal'], 'yellow'], 1, 0]],
@@ -638,9 +644,39 @@ function addSourceAndLayers(
         ['==', ['get', 'signal'], 'unknown'], SIG_COLOR.unknown,
         SIG_COLOR.green,
       ],
-      'circle-radius':       7,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'],
+        3, 4,
+        5, 6,
+        7, 8,
+        10, 11,
+      ],
       'circle-stroke-width': 2,
       'circle-stroke-color': '#ffffff',
+    },
+  })
+
+  /* Individual marker labels — appear on zoom-in */
+  map.addLayer({
+    id:     'unclustered-label',
+    type:   'symbol',
+    source: 'containers',
+    filter: ['!', ['has', 'point_count']],
+    layout: {
+      'text-field':         ['get', 'containerNumber'],
+      'text-font':          ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size':          ['interpolate', ['linear'], ['zoom'],
+        5, 0,
+        7, 9,
+        10, 11,
+      ],
+      'text-offset':        [0, 1.4],
+      'text-anchor':        'top',
+      'text-allow-overlap': false,
+    },
+    paint: {
+      'text-color':       '#1e293b',
+      'text-halo-color':  '#ffffff',
+      'text-halo-width':  1.5,
     },
   })
 
