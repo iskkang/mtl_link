@@ -438,7 +438,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const recent_orders = [...roMap.values()]
-    .sort((a, b) => (b.order_id ?? 0) - (a.order_id ?? 0))
+    .sort((a, b) => (b.order_number ?? '').localeCompare(a.order_number ?? ''))
     .slice(0, 8)
     .map(o => ({
       order_number:    o.order_number,
