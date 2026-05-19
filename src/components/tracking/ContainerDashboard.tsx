@@ -42,6 +42,7 @@ interface ContainerItem {
   transport_name:           string | null
   voyage_number:            string | null
   last_event_location:      string | null
+  last_event_date:          string | null
 }
 
 interface RecentOrderItem {
@@ -263,7 +264,11 @@ function DetailCard({
             </div>
           ) : (
             items.map(c => {
-              const days = daysSince(c.planned_destination_date ?? c.last_error_at)
+              const isAwaiting = (c.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+              const days = isAwaiting
+                ? daysSince(c.last_event_date)
+                : daysSince(c.planned_destination_date ?? c.last_error_at)
+              const daysColor = isAwaiting ? 'var(--signal-yellow)' : 'var(--red)'
               return (
                 <div
                   key={c.container_number}
@@ -289,7 +294,7 @@ function DetailCard({
                         {c.container_number}
                       </a>
                       {days > 0 && (
-                        <span className="text-[9px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--red)' }}>
+                        <span className="text-[9px] font-mono font-medium flex-shrink-0" style={{ color: daysColor }}>
                           {t('tracking.dashboard.actionNeeded.daysOverdue', { days })}
                         </span>
                       )}
@@ -879,8 +884,10 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
                   ) : (
                     <>
                       {(showAllAction ? actionNeeded : actionNeeded.slice(0, 5)).map(c => {
-                        const errorRef = c.last_error_at ?? c.last_success_at
-                        const days     = daysSince(errorRef)
+                        const isAwaiting = (c.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+                        const days = isAwaiting
+                          ? daysSince(c.last_event_date)
+                          : daysSince(c.last_error_at ?? c.last_success_at)
                         return (
                           <div
                             key={c.container_number}
