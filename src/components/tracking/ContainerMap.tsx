@@ -45,10 +45,11 @@ interface ContainerMapProps {
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
 
 const SIG_COLOR: Record<string, string> = {
-  red:    '#dc2626',
-  yellow: '#d97706',
-  green:  '#0d9488',
-  gray:   '#94a3b8',
+  red:     '#dc2626',
+  yellow:  '#d97706',
+  green:   '#0d9488',
+  gray:    '#94a3b8',
+  unknown: '#475569',
 }
 
 /* ── Popup style injection (once per page) ──────────────────────────── */
@@ -631,9 +632,10 @@ function addSourceAndLayers(
     filter: ['!', ['has', 'point_count']],
     paint:  {
       'circle-color': ['case',
-        ['==', ['get', 'signal'], 'red'],    SIG_COLOR.red,
-        ['==', ['get', 'signal'], 'yellow'], SIG_COLOR.yellow,
-        ['==', ['get', 'signal'], 'gray'],   SIG_COLOR.gray,
+        ['==', ['get', 'signal'], 'red'],     SIG_COLOR.red,
+        ['==', ['get', 'signal'], 'yellow'],  SIG_COLOR.yellow,
+        ['==', ['get', 'signal'], 'gray'],    SIG_COLOR.gray,
+        ['==', ['get', 'signal'], 'unknown'], SIG_COLOR.unknown,
         SIG_COLOR.green,
       ],
       'circle-radius':       7,

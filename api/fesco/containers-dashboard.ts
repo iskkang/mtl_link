@@ -218,11 +218,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: alertRows } = await supabase
     .from('fesco_alerts')
-    .select('container_number, severity, alert_type')
+    .select('container_number, severity, alert_type, first_seen_at')
     .in('container_number', containerNumbers)
     .eq('status', 'open')
 
-  type AlertRow = { container_number: string; severity: string; alert_type: string | null }
+  type AlertRow = { container_number: string; severity: string; alert_type: string | null; first_seen_at: string | null }
   const alertMap = new Map<string, AlertRow[]>()
   for (const a of (alertRows ?? []) as AlertRow[]) {
     const list = alertMap.get(a.container_number) ?? []
@@ -368,7 +368,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       current_latitude:          curGeo?.latitude  ?? null,
       current_longitude:         curGeo?.longitude ?? null,
       eta:                       r.planned_destination_date ?? null,
-      signal:                    deriveSignal(r, alerts),
+      signal: alerts.some(a => a.alert_type === 'container_tracking_unknown')
+        ? 'unknown'
+        : deriveSignal(r, alerts),
+      unknown_since: alerts.find(a => a.alert_type === 'container_tracking_unknown')?.first_seen_at ?? null,
       last_success_at:           r.last_success_at,
       last_error_at:             r.last_error_at,
       last_error_message:        r.last_error_message,

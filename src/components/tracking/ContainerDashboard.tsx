@@ -21,7 +21,8 @@ interface ContainerItem {
   current_latitude:         number | null
   current_longitude:        number | null
   eta:                      string | null
-  signal:                   'red' | 'yellow' | 'green' | 'gray'
+  signal:                   'red' | 'yellow' | 'green' | 'gray' | 'unknown'
+  unknown_since:            string | null
   last_success_at:          string | null
   last_error_at:            string | null
   last_error_message:       string | null
@@ -72,7 +73,20 @@ interface DashboardResponse {
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
-const DETAIL_RANK: Record<string, number> = { red: 0, yellow: 1, green: 2, gray: 3 }
+const DETAIL_RANK: Record<string, number> = { red: 0, unknown: 0, yellow: 1, green: 2, gray: 3 }
+
+const ALERT_KO: Record<string, string> = {
+  awaiting_next_leg_overdue:      '다음 구간 출발 10일 이상 대기',
+  awaiting_next_leg_watch:        '다음 구간 출발 5일 이상 대기',
+  planned_arrival_overdue:        '도착 예정일 초과',
+  planned_departure_overdue:      '출발 예정일 초과',
+  vessel_arrival_overdue:         '선박 도착 지연 (3일+)',
+  vessel_arrival_watch:           '선박 도착 지연 (1일+)',
+  container_tracking_unknown:     '추적 데이터 없음',
+  container_tracking_unavailable: '트래킹 불가',
+  stale_tracking_risk:            '장기 미업데이트 (위험)',
+  stale_tracking_watch:           '장기 미업데이트 (주의)',
+}
 
 function fmtRelTime(iso: string | null): string {
   if (!iso) return '—'
@@ -112,7 +126,8 @@ function SegmentLine({ c, seaLabel, railLabel }: {
   railLabel: string
 }) {
   const hasSegment = c.current_segment_type != null
-  const hasReason  = !!c.alert_reason
+  const alertLabel = ALERT_KO[c.open_alert_types?.[0] ?? ''] ?? c.alert_reason
+  const hasReason  = !!alertLabel
   return (
     <div
       className="text-[10px] flex items-center gap-1 overflow-hidden"
@@ -131,7 +146,7 @@ function SegmentLine({ c, seaLabel, railLabel }: {
         <>
           <span className="flex-shrink-0" style={{ color: 'var(--ink-300)' }}>·</span>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 2 }}>
-            {c.alert_reason}
+            {alertLabel}
           </span>
         </>
       )}
@@ -142,10 +157,11 @@ function SegmentLine({ c, seaLabel, railLabel }: {
 /* ── Signal dot ─────────────────────────────────────────────────────── */
 function SignalDot({ signal }: { signal: string }) {
   const color =
-    signal === 'red'    ? '#dc2626' :
-    signal === 'yellow' ? '#d97706' :
-    signal === 'green'  ? '#0d9488' : '#94a3b8'
-  const glow = signal !== 'gray' ? `0 0 0 2.5px ${color}30` : undefined
+    signal === 'red'     ? '#dc2626' :
+    signal === 'yellow'  ? '#d97706' :
+    signal === 'green'   ? '#0d9488' :
+    signal === 'unknown' ? '#475569' : '#94a3b8'
+  const glow = (signal !== 'gray' && signal !== 'unknown') ? `0 0 0 2.5px ${color}30` : undefined
   return (
     <span
       className={`fesco-signal flex-shrink-0${signal === 'red' ? ' fesco-signal-pulse-red' : ''}`}
@@ -167,9 +183,9 @@ function DetailCard({
 }: {
   items:                ContainerItem[] | null
   mapSelectionCount:    number | null
-  stats:                { red: number; yellow: number; green: number }
-  signalFilter:         'red' | 'yellow' | 'green' | null
-  onSignalFilterToggle: (sig: 'red' | 'yellow' | 'green') => void
+  stats:                { red: number; yellow: number; green: number; unknown: number }
+  signalFilter:         'red' | 'yellow' | 'green' | 'unknown' | null
+  onSignalFilterToggle: (sig: 'red' | 'yellow' | 'green' | 'unknown') => void
   onSignalFilterClear:  () => void
   excludedCount:        number
   onClear:              () => void
@@ -195,7 +211,7 @@ function DetailCard({
   }, [items, detailSort])
 
   /* Chips: only when cluster selected AND 2+ distinct signal colors present */
-  const presentColors = (['red', 'yellow', 'green'] as const).filter(s => stats[s] > 0)
+  const presentColors = (['red', 'yellow', 'green', 'unknown'] as const).filter(s => stats[s] > 0)
   const showChips = mapSelectionCount !== null && presentColors.length >= 2
 
   return (
@@ -245,7 +261,7 @@ function DetailCard({
               key={sig}
               signal={sig}
               count={stats[sig]}
-              label={t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
+              label={sig === 'unknown' ? '추적불가' : t(`tracking.signal${sig.charAt(0).toUpperCase()}${sig.slice(1)}`)}
               active={signalFilter === sig}
               onClick={() => onSignalFilterToggle(sig)}
             />
@@ -296,11 +312,14 @@ function DetailCard({
             </div>
           ) : (
             sortedItems.map(c => {
-              const isAwaiting = (c.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
-              const days = isAwaiting
-                ? daysSince(c.last_event_date)
-                : daysSince(c.planned_destination_date ?? c.last_error_at)
-              const daysColor = isAwaiting ? 'var(--signal-yellow)' : 'var(--red)'
+              const isUnknown  = c.signal === 'unknown'
+              const isAwaiting = !isUnknown && (c.open_alert_types ?? []).some(t => t.startsWith('awaiting_next_leg'))
+              const days = isUnknown
+                ? daysSince(c.unknown_since ?? c.last_event_date)
+                : isAwaiting
+                  ? daysSince(c.last_event_date)
+                  : daysSince(c.planned_destination_date ?? c.last_error_at)
+              const daysColor = isUnknown ? '#475569' : isAwaiting ? 'var(--signal-yellow)' : 'var(--red)'
               return (
                 <div
                   key={c.container_number}
@@ -458,17 +477,18 @@ function StatPill({ count, signal, label }: { count: number; signal: 'red' | 'ye
 function SignalChip({
   signal, count, label, active, onClick,
 }: {
-  signal:  'red' | 'yellow' | 'green'
+  signal:  'red' | 'yellow' | 'green' | 'unknown'
   count:   number
   label:   string
   active:  boolean
   onClick: () => void
 }) {
-  const dotColor    = `var(--signal-${signal})`
-  const activeBg    = `var(--signal-${signal}-bg)`
+  const dotColor    = signal === 'unknown' ? '#475569' : `var(--signal-${signal})`
+  const activeBg    = signal === 'unknown' ? 'rgba(71,85,105,0.08)' : `var(--signal-${signal}-bg)`
   const activeBorder =
-    signal === 'red'    ? 'rgba(220,38,38,0.35)'  :
-    signal === 'yellow' ? 'rgba(217,119,6,0.35)'  :
+    signal === 'red'     ? 'rgba(220,38,38,0.35)'  :
+    signal === 'yellow'  ? 'rgba(217,119,6,0.35)'  :
+    signal === 'unknown' ? 'rgba(71,85,105,0.35)'  :
     'rgba(13,148,136,0.35)'
   return (
     <button
@@ -509,7 +529,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   )
 
   const [selectedContainerNumbers, setSelectedContainerNumbers] = useState<string[] | null>(null)
-  const [signalFilter,             setSignalFilter]             = useState<'red' | 'yellow' | 'green' | null>(null)
+  const [signalFilter,             setSignalFilter]             = useState<'red' | 'yellow' | 'green' | 'unknown' | null>(null)
   const [actionSort,               setActionSort]               = useState<'waiting' | 'number'>('waiting')
 
   /* ── Fetch ─────────────────────────────────────────────────────────── */
@@ -571,19 +591,21 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
 
   /* ── Stats (global fleet, used for header pills) ────────────────────── */
   const stats = useMemo(() => ({
-    red:    filteredData.filter(c => c.signal === 'red').length,
-    yellow: filteredData.filter(c => c.signal === 'yellow').length,
-    green:  filteredData.filter(c => c.signal === 'green').length,
+    red:     filteredData.filter(c => c.signal === 'red').length,
+    yellow:  filteredData.filter(c => c.signal === 'yellow').length,
+    green:   filteredData.filter(c => c.signal === 'green').length,
+    unknown: filteredData.filter(c => c.signal === 'unknown').length,
   }), [filteredData])
 
   /* ── Cluster-local stats (counts within selected cluster, for chips) ── */
   const clusterStats = useMemo(() => {
-    if (selectedContainerNumbers === null) return { red: 0, yellow: 0, green: 0 }
+    if (selectedContainerNumbers === null) return { red: 0, yellow: 0, green: 0, unknown: 0 }
     const sel = filteredData.filter(c => selectedContainerNumbers.includes(c.container_number))
     return {
-      red:    sel.filter(c => c.signal === 'red').length,
-      yellow: sel.filter(c => c.signal === 'yellow').length,
-      green:  sel.filter(c => c.signal === 'green').length,
+      red:     sel.filter(c => c.signal === 'red').length,
+      yellow:  sel.filter(c => c.signal === 'yellow').length,
+      green:   sel.filter(c => c.signal === 'green').length,
+      unknown: sel.filter(c => c.signal === 'unknown').length,
     }
   }, [selectedContainerNumbers, filteredData])
 
@@ -600,7 +622,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   /* ── Action needed (global red) ─────────────────────────────────────── */
   const actionNeeded = useMemo(
     () => filteredData
-      .filter(c => c.signal === 'red')
+      .filter(c => c.signal === 'red' || c.signal === 'unknown')
       .sort((a, b) => {
         if (actionSort === 'number')
           return a.container_number.localeCompare(b.container_number)
