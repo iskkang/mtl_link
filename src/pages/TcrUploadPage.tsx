@@ -54,20 +54,36 @@ const FILE_TYPE_LABELS: Record<FileType, string> = {
 }
 
 const LOC_MAP: Record<string, string | null> = {
-  'JIAYUGUAN,CN':    'Jiayuguan',
-  'Jiayuguan,CN':    'Jiayuguan',
-  'HAMIDONG,CN':     'Hami',
-  'HAMIDONG.CN':     'Hami',
-  'Kartaly I, YuUR': 'Kartaly',
-  'Nildy,KZH':       'Nildy',
-  'Xian':            "Xi'an",
-  'MALA':            'Małaszewicze',
-  'finish':          'Małaszewicze',
-  'Finish':          'Małaszewicze',
-  'FINISH':          'Małaszewicze',
-  'Unloaded':        null,
-  'Brest':           'Brest',
-  'Dostyk':          'Dostyk',
+  'JIAYUGUAN,CN':           'Jiayuguan',
+  'Jiayuguan,CN':           'Jiayuguan',
+  'HAMIDONG,CN':            'Hami',
+  'HAMIDONG.CN':            'Hami',
+  'hamidong':               'Hami',
+  'Kartaly I, YuUR':        'Kartaly',
+  'Kartaly I,YuUR':         'Kartaly',
+  'Nildy,KZH':              'Nildy',
+  'Nildy,KZ':               'Nildy',
+  'Xian':                   "Xi'an",
+  'XIAN':                   "Xi'an",
+  'MALA':                   'Małaszewicze',
+  'mala':                   'Małaszewicze',
+  'finish':                 'Małaszewicze',
+  'Finish':                 'Małaszewicze',
+  'FINISH':                 'Małaszewicze',
+  'Brest':                  'Brest',
+  'BREST':                  'Brest',
+  'Dostyk':                 'Dostyk',
+  'DOSTYK':                 'Dostyk',
+  'DOSTUK':                 'Dostyk',
+  'Unloaded':               null,
+  'Arived':                 null,
+  '3142 km to Brest':       'Brest',
+  '4190 km to Brest':       'Brest',
+  'waiting for reloading':  'Dostyk',
+  'liushuquan':             'Kashgar',
+  'linqing':                'Kashgar',
+  'shijiazhuangxi':         'Kashgar',
+  'ANDIJON':                'Andijan',
 }
 
 function str(v: unknown): string {
@@ -75,10 +91,10 @@ function str(v: unknown): string {
   return String(v).trim()
 }
 
-function normLoc(raw: unknown): string | null {
+function normalizeLoc(raw: unknown): string | null {
   const s = str(raw)
   if (!s) return null
-  if (s in LOC_MAP) return LOC_MAP[s]
+  if (Object.prototype.hasOwnProperty.call(LOC_MAP, s)) return LOC_MAP[s]
   return s
 }
 
@@ -164,11 +180,11 @@ function parseKrUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
     const cno = str(r[15]).toUpperCase()
     if (!cno) continue
 
-    const origin      = normLoc(r[8])
-    const destination = normLoc(r[9])
+    const origin      = normalizeLoc(r[8])
+    const destination = normalizeLoc(r[9])
     const ata_final   = xlDate(r[25])
     const cur_raw     = str(r[28])
-    const cur_loc     = normLoc(cur_raw) ?? (ata_final ? destination : null)
+    const cur_loc     = normalizeLoc(cur_raw) ?? (ata_final ? destination : null)
 
     containers.push({
       container_no:      cno,
@@ -224,7 +240,7 @@ function parseCnUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
 
     const ata_final = xlDate(r[21])
     const cur_raw   = str(r[24])
-    const cur_loc   = normLoc(cur_raw)
+    const cur_loc   = normalizeLoc(cur_raw)
 
     containers.push({
       container_no:      cno,
@@ -270,7 +286,7 @@ function parseKrKzTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; segmen
 
     const ata_almaty = xlDate(r[13])
     const cur_raw    = str(r[14])
-    const cur_loc    = normLoc(cur_raw)
+    const cur_loc    = normalizeLoc(cur_raw)
 
     containers.push({
       container_no:      cno,
@@ -349,7 +365,7 @@ function parseKrKg(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
 
       const ata_dest = iAtaDest !== -1 ? xlDate(r[iAtaDest]) : null
       const cur_raw  = iCurLoc !== -1 ? str(r[iCurLoc]) : ''
-      const cur_loc  = normLoc(cur_raw)
+      const cur_loc  = normalizeLoc(cur_raw)
 
       containers.push({
         container_no:      cno,
@@ -423,7 +439,7 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
 
     const ata_final = iAtaMala !== -1 ? xlDate(r[iAtaMala]) : null
     const cur_raw   = iStopBy !== -1 ? str(r[iStopBy]) : ''
-    const cur_loc   = normLoc(cur_raw)
+    const cur_loc   = normalizeLoc(cur_raw)
 
     containers.push({
       container_no:      cno,
