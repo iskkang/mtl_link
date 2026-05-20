@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (ctrErr || !ctr) return res.status(404).json({ ok: false, error: 'Container not found' })
 
-  const row = ctr as {
+  const row = ctr as unknown as {
     container_number:         string
     order_id:                 number | null
     status:                   string | null
