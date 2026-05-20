@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { RefreshCw, AlertCircle, X, Train, Package, Upload } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
 import type { ContainerPoint, ContainerPopupData, WeatherAlert } from '../components/tracking/ContainerMap'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 type TcrSignal = 'green' | 'red' | 'yellow' | 'blue'
@@ -769,6 +770,10 @@ export function TcrTrackingPage() {
     [containers],
   )
 
+  const isMobile = useIsMobile()
+  const showDetailOverlay =
+    searchResults !== null || selectedNo !== null || selectedContainerNumbers !== null
+
   /* ── Filter helpers ─────────────────────────────────────────────────── */
   const toggleCountry = (cc: CountryCode) => {
     setSelCountries(prev => {
@@ -788,35 +793,41 @@ export function TcrTrackingPage() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div
         className="fesco-header flex-shrink-0"
-        style={{ padding: '12px 28px 10px', marginBottom: 0 }}
+        style={{ padding: isMobile ? '8px 12px' : '12px 28px 10px', marginBottom: 0 }}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <div className="flex items-center gap-2.5">
               <Train size={18} style={{ color: '#3b82f6', flexShrink: 0 }} />
-              <h1 style={{ fontSize: 20, margin: 0, flexShrink: 0 }}>
+              <h1 style={{ fontSize: isMobile ? 16 : 20, margin: 0, flexShrink: 0 }}>
                 중국경유 컨테이너 (TCR)
               </h1>
             </div>
-            <span className="sub truncate" style={{ fontSize: 12, color: 'var(--ink-400)' }}>
-              {loading ? 'Loading…' : `${containers.length}개 · 운송중 + 60일 이내 도착 · ${fmtRelTime(lastFetch)}`}
-            </span>
+            {!isMobile && (
+              <span className="sub truncate" style={{ fontSize: 12, color: 'var(--ink-400)' }}>
+                {loading ? 'Loading…' : `${containers.length}개 · 운송중 + 60일 이내 도착 · ${fmtRelTime(lastFetch)}`}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {stats.red    > 0 && <StatPill count={stats.red}    color="#ef4444" label="조치필요" />}
-            {stats.yellow > 0 && <StatPill count={stats.yellow} color="#eab308" label="주의" />}
-            {stats.green  > 0 && <StatPill count={stats.green}  color="#22c55e" label="도착완료" />}
+            {!isMobile && stats.red    > 0 && <StatPill count={stats.red}    color="#ef4444" label="조치필요" />}
+            {!isMobile && stats.yellow > 0 && <StatPill count={stats.yellow} color="#eab308" label="주의" />}
+            {!isMobile && stats.green  > 0 && <StatPill count={stats.green}  color="#22c55e" label="도착완료" />}
             <button
               type="button"
               onClick={() => navigate('/tcr-upload')}
               title="파일 업로드"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] transition-colors"
-              style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+              className="flex items-center gap-1.5 rounded-lg border transition-colors"
+              style={{
+                borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent',
+                padding: isMobile ? '5px 6px' : '4px 10px',
+                fontSize: 12,
+              }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
             >
-              <Upload size={13} /> 파일 업로드
+              <Upload size={13} />{!isMobile && <span style={{ marginLeft: 4 }}>파일 업로드</span>}
             </button>
             <button
               type="button"
@@ -899,7 +910,10 @@ export function TcrTrackingPage() {
       </div>
 
       {/* ── Body ───────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden p-4 flex flex-col gap-4 min-h-0">
+      <div
+        className="flex-1 overflow-hidden flex flex-col min-h-0"
+        style={{ padding: isMobile ? 8 : 16, gap: isMobile ? 8 : 16 }}
+      >
 
         {error && (
           <div
@@ -924,16 +938,13 @@ export function TcrTrackingPage() {
         )}
 
         {!loading && !error && (() => {
-          const showDetailOverlay =
-            searchResults !== null || selectedNo !== null || selectedContainerNumbers !== null
-
           return (
-            <div className="flex-1 min-h-0 flex flex-col gap-4">
+            <div className="flex-1 min-h-0 flex flex-col" style={{ gap: isMobile ? 8 : 16 }}>
 
-              {/* ── Top: full-width map + slide-in overlay detail ── */}
+              {/* ── Top: full-width map ── */}
               <div
-                className="flex-1 min-h-0 rounded-lg border overflow-hidden"
-                style={{ position: 'relative', borderColor: 'var(--ink-200)' }}
+                className={`${isMobile ? 'flex-shrink-0' : 'flex-1 min-h-0'} rounded-lg border overflow-hidden`}
+                style={{ position: 'relative', borderColor: 'var(--ink-200)', ...(isMobile ? { height: '45vh' } : {}) }}
               >
                 <ContainerMap
                   containers={mapPoints}
@@ -947,46 +958,59 @@ export function TcrTrackingPage() {
                   weatherAlerts={weatherAlerts}
                 />
 
-                {/* Slide-in detail overlay */}
-                <div
-                  style={{
-                    position:       'absolute',
-                    top:            0,
-                    right:          0,
-                    width:          320,
-                    height:         '100%',
-                    transform:      showDetailOverlay ? 'translateX(0)' : 'translateX(100%)',
-                    transition:     'transform 0.22s cubic-bezier(.4,0,.2,1)',
-                    zIndex:         10,
-                    pointerEvents:  showDetailOverlay ? 'auto' : 'none',
-                    boxShadow:      showDetailOverlay ? '-4px 0 16px rgba(0,0,0,0.12)' : 'none',
-                  }}
-                >
-                  <DetailPanel
-                    containers={detailPanelContainers}
-                    mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
-                    sigFilter={sigFilter}
-                    onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
-                    stats={panelStats}
-                    onSelect={handleSelect}
-                    selectedNo={selectedNo}
-                    detail={detail}
-                    detailLoading={detailLoading}
-                    onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
-                    onClearMapSelection={handleClearSelection}
-                    searchActive={searchResults !== null}
-                    onClearSearch={clearSearch}
-                  />
-                </div>
+                {/* Desktop: slide-in overlay from right */}
+                {!isMobile && (
+                  <div
+                    style={{
+                      position:       'absolute',
+                      top:            0,
+                      right:          0,
+                      width:          320,
+                      height:         '100%',
+                      transform:      showDetailOverlay ? 'translateX(0)' : 'translateX(100%)',
+                      transition:     'transform 0.22s cubic-bezier(.4,0,.2,1)',
+                      zIndex:         10,
+                      pointerEvents:  showDetailOverlay ? 'auto' : 'none',
+                      boxShadow:      showDetailOverlay ? '-4px 0 16px rgba(0,0,0,0.12)' : 'none',
+                    }}
+                  >
+                    <DetailPanel
+                      containers={detailPanelContainers}
+                      mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+                      sigFilter={sigFilter}
+                      onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
+                      stats={panelStats}
+                      onSelect={handleSelect}
+                      selectedNo={selectedNo}
+                      detail={detail}
+                      detailLoading={detailLoading}
+                      onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
+                      onClearMapSelection={handleClearSelection}
+                      searchActive={searchResults !== null}
+                      onClearSearch={clearSearch}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* ── Bottom: Donut | 현황 | ETA ─────────────────────────── */}
-              <div className="flex-shrink-0 flex gap-4" style={{ height: 180 }}>
+              <div
+                className="flex-shrink-0 flex gap-4"
+                style={{
+                  height: isMobile ? undefined : 180,
+                  ...(isMobile ? {
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollSnapType: 'x mandatory',
+                    paddingBottom: 4,
+                  } : {}),
+                }}
+              >
 
                 {/* Card 1 — Donut */}
                 <div
                   className="flex-1 rounded-lg border flex items-center px-4 gap-3"
-                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0, ...(isMobile ? { minWidth: '75vw', scrollSnapAlign: 'start', height: 160, flexShrink: 0 } : {}) }}
                 >
                   {totalActive > 0 ? (
                     <>
@@ -1011,7 +1035,7 @@ export function TcrTrackingPage() {
                 {/* Card 2 — 컨테이너 현황 (목적지별) */}
                 <div
                   className="flex-1 rounded-lg border flex flex-col overflow-hidden"
-                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0, ...(isMobile ? { minWidth: '75vw', scrollSnapAlign: 'start', height: 160, flexShrink: 0 } : {}) }}
                 >
                   <div
                     className="px-4 pt-3 pb-2 border-b flex-shrink-0"
@@ -1052,7 +1076,7 @@ export function TcrTrackingPage() {
                 {/* Card 3 — ETA 임박 */}
                 <div
                   className="flex-1 rounded-lg border flex flex-col overflow-hidden"
-                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0, ...(isMobile ? { minWidth: '75vw', scrollSnapAlign: 'start', height: 160, flexShrink: 0 } : {}) }}
                 >
                   <div
                     className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
@@ -1102,6 +1126,57 @@ export function TcrTrackingPage() {
           )
         })()}
       </div>
+
+      {/* Mobile: fixed slide-up detail panel */}
+      {isMobile && (
+        <div
+          style={{
+            position:      'fixed',
+            bottom:        56,
+            left:          0,
+            right:         0,
+            height:        '85vh',
+            borderRadius:  '16px 16px 0 0',
+            transform:     showDetailOverlay ? 'translateY(0)' : 'translateY(100%)',
+            transition:    'transform 0.3s cubic-bezier(.4,0,.2,1)',
+            zIndex:        100,
+            pointerEvents: showDetailOverlay ? 'auto' : 'none',
+            boxShadow:     showDetailOverlay ? '0 -4px 24px rgba(0,0,0,0.16)' : 'none',
+            background:    'var(--card)',
+            display:       'flex',
+            flexDirection: 'column',
+            overflow:      'hidden',
+          }}
+        >
+          <div style={{ height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, paddingTop: 8 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ink-300)' }} />
+          </div>
+          <button
+            type="button"
+            onClick={handleClearSelection}
+            style={{ position: 'absolute', top: 4, right: 12, color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 6 }}
+          >
+            <X size={16} />
+          </button>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <DetailPanel
+              containers={detailPanelContainers}
+              mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+              sigFilter={sigFilter}
+              onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
+              stats={panelStats}
+              onSelect={handleSelect}
+              selectedNo={selectedNo}
+              detail={detail}
+              detailLoading={detailLoading}
+              onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
+              onClearMapSelection={handleClearSelection}
+              searchActive={searchResults !== null}
+              onClearSearch={clearSearch}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

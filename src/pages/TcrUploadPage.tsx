@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, ArrowLeft, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 type FileType = 'KR_UZ' | 'CN_UZ' | 'KR_KZ_TRUCK' | 'KR_KG' | 'KR_EU' | 'UNKNOWN'
@@ -651,6 +652,7 @@ function ParsedCard({ parsed, onRemove }: { parsed: ParsedFile; onRemove: () => 
 /* ── Main Page ──────────────────────────────────────────────────────── */
 export function TcrUploadPage() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -737,7 +739,7 @@ export function TcrUploadPage() {
   return (
     <div className="fesco-bookings-shell flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
       {/* Header */}
-      <div className="fesco-header flex-shrink-0" style={{ padding: '12px 28px 10px' }}>
+      <div className="fesco-header flex-shrink-0" style={{ padding: isMobile ? '8px 12px' : '12px 28px 10px' }}>
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -760,7 +762,7 @@ export function TcrUploadPage() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: '16px 28px' }}>
+      <div className="flex-1 overflow-y-auto" style={{ padding: isMobile ? '12px' : '16px 28px' }}>
 
         {/* Drop zone */}
         <div
@@ -768,7 +770,7 @@ export function TcrUploadPage() {
           style={{
             borderColor: isDragOver ? 'var(--brand)' : 'var(--ink-300)',
             background:  isDragOver ? 'rgba(59,130,246,0.05)' : 'var(--card)',
-            minHeight: 160,
+            minHeight: isMobile ? 120 : 160,
             marginBottom: 20,
           }}
           onDragOver={e => { e.preventDefault(); setIsDragOver(true) }}
@@ -777,13 +779,33 @@ export function TcrUploadPage() {
           onClick={() => inputRef.current?.click()}
         >
           <input ref={inputRef} type="file" multiple accept=".xlsx,.xls,.xlsm" onChange={onFileInput} style={{ display: 'none' }} />
-          <Upload size={32} style={{ color: isDragOver ? 'var(--brand)' : 'var(--ink-300)', marginBottom: 12 }} />
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-600)' }}>
-            Excel 파일을 드래그하거나 클릭하여 선택
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--ink-400)', marginTop: 6 }}>
-            KR→UZ · CN→UZ · KR→KZ Truck · KR→KG · KR→EU · 최대 5개 동시 업로드
-          </div>
+          <Upload size={isMobile ? 28 : 32} style={{ color: isDragOver ? 'var(--brand)' : 'var(--ink-300)', marginBottom: isMobile ? 8 : 12 }} />
+          {isMobile ? (
+            <>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '80%', height: 48, borderRadius: 10,
+                  background: '#3b82f6', color: '#fff',
+                  fontSize: 15, fontWeight: 600, gap: 8,
+                }}
+              >
+                <Upload size={16} /> 파일 선택
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 8 }}>
+                KR→UZ · CN→UZ · KR→KZ · KR→KG · KR→EU
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-600)' }}>
+                Excel 파일을 드래그하거나 클릭하여 선택
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--ink-400)', marginTop: 6 }}>
+                KR→UZ · CN→UZ · KR→KZ Truck · KR→KG · KR→EU · 최대 5개 동시 업로드
+              </div>
+            </>
+          )}
         </div>
 
         {/* Parsed file cards */}

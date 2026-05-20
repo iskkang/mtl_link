@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
+import { MessageSquare } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { MenuRail } from './MenuRail'
 import { ChatSidebar } from './ChatSidebar'
@@ -8,6 +9,9 @@ import { useActionItems } from '../../hooks/useActionItems'
 import { useDueDateNotifications } from '../../hooks/useDueDateNotifications'
 import { usePresenceSubscription } from '../../hooks/usePresenceSubscription'
 import { useRequestStore } from '../../stores/requestStore'
+import { TcrIcon } from '../icons/TcrIcon'
+import { FescoFIcon } from '../ui/FescoFIcon'
+import { MintIcon } from '../ui/MarvisIcon'
 import type { Section } from './MenuRail'
 import type { SidebarTab } from '../chat/SidebarTabs'
 
@@ -137,10 +141,22 @@ export function AppLayout({
       {/* ── Main content ── */}
       <main
         className={`flex-1 flex flex-col min-w-0 ${showChat || isDesktop ? 'flex' : 'hidden'}`}
-        style={{ background: 'var(--chat-bg)' }}
+        style={{
+          background:    'var(--chat-bg)',
+          paddingBottom: !isDesktop && showChat ? 56 : undefined,
+        }}
       >
         {children}
       </main>
+
+      {/* ── Mobile bottom tab bar (full-screen sections only) ── */}
+      {!isDesktop && showChat && (
+        <MobileTabBar
+          activeSection={activeSection}
+          onSectionChange={onSectionChange}
+          totalUnread={totalUnread}
+        />
+      )}
 
       <ProfileEditPage open={profileEditOpen} onClose={() => setProfileEditOpen(false)} />
     </div>
@@ -243,5 +259,84 @@ function DesktopColumns({
         </div>
       )}
     </>
+  )
+}
+
+/* ── Mobile bottom tab bar ─────────────────────────────────────── */
+const MOBILE_TABS: { id: Section; Icon: React.ElementType; label: string; activeColor: string }[] = [
+  { id: 'chat',         Icon: MessageSquare, label: '채팅',  activeColor: 'var(--brand)'  },
+  { id: 'tracking',     Icon: FescoFIcon,    label: 'FESCO', activeColor: '#0d9488'       },
+  { id: 'tcr-tracking', Icon: TcrIcon,       label: 'TCR',   activeColor: '#3b82f6'       },
+  { id: 'ai',           Icon: MintIcon,      label: 'MINT+', activeColor: 'var(--brand)'  },
+]
+
+function MobileTabBar({
+  activeSection, onSectionChange, totalUnread,
+}: {
+  activeSection:   Section
+  onSectionChange: (s: Section) => void
+  totalUnread:     number
+}) {
+  return (
+    <nav
+      style={{
+        position:     'fixed',
+        bottom:       0,
+        left:         0,
+        right:        0,
+        height:       56,
+        display:      'flex',
+        alignItems:   'stretch',
+        background:   'var(--rail-bg)',
+        borderTop:    '1px solid var(--side-line)',
+        zIndex:       200,
+      }}
+    >
+      {MOBILE_TABS.map(({ id, Icon, label, activeColor }) => {
+        const active = activeSection === id || (id === 'chat' && !['tracking', 'tcr-tracking', 'ai'].includes(activeSection))
+        const showBadge = id === 'chat' && totalUnread > 0
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onSectionChange(id)}
+            aria-label={label}
+            style={{
+              flex:           1,
+              display:        'flex',
+              flexDirection:  'column',
+              alignItems:     'center',
+              justifyContent: 'center',
+              gap:            2,
+              background:     'transparent',
+              border:         'none',
+              cursor:         'pointer',
+              color:          active ? activeColor : 'var(--side-mute)',
+              position:       'relative',
+              minHeight:      44,
+            }}
+          >
+            <Icon size={20} />
+            <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, lineHeight: 1, letterSpacing: '0.02em' }}>
+              {label}
+            </span>
+            {showBadge && (
+              <span
+                style={{
+                  position: 'absolute', top: 6, right: '25%',
+                  minWidth: 14, height: 14, borderRadius: 7,
+                  background: '#EF3F1A', color: '#fff',
+                  fontSize: 9, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 3px',
+                }}
+              >
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </nav>
   )
 }
