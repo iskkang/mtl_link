@@ -336,8 +336,8 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
       ? (r.current_location ? locMap.get(r.current_location) : undefined) ??
         (r.destination      ? locMap.get(r.destination)      : undefined) ??
         null
-      : (segToName          ? locMap.get(segToName)          : undefined) ??
-        (r.current_location ? locMap.get(r.current_location) : undefined) ??
+      : (r.current_location ? locMap.get(r.current_location) : undefined) ??
+        (segToName          ? locMap.get(segToName)          : undefined) ??
         null
 
     const alerts = alertMap.get(r.container_no) ?? []

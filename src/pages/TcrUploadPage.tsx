@@ -144,11 +144,18 @@ function fixCurrentSegments(segments: SegmentRow[]) {
     byCno.set(s.container_no, arr)
   }
   for (const segs of byCno.values()) {
-    const active = segs.filter(s => s.is_current_segment)
-    if (active.length > 1) {
-      const first = active.sort((a, b) => a.segment_no - b.segment_no)[0]
-      for (const s of active) if (s !== first) s.is_current_segment = false
-    }
+    // Reset all — we recalculate from scratch
+    for (const s of segs) s.is_current_segment = false
+
+    const sorted = segs.slice().sort((a, b) => a.segment_no - b.segment_no)
+
+    // 1st choice: last segment that has started (atd) but not finished (no ata)
+    const inProgress = [...sorted].reverse().find(s => !!s.atd && !s.ata)
+    if (inProgress) { inProgress.is_current_segment = true; continue }
+
+    // 2nd choice (all complete or all not started): last segment with any atd
+    const lastStarted = [...sorted].reverse().find(s => !!s.atd)
+    if (lastStarted) lastStarted.is_current_segment = true
   }
 }
 
