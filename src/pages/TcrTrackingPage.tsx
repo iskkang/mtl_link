@@ -230,8 +230,8 @@ function DonutChart({ green, blue, yellow, red }: { green: number; blue: number;
   )
 }
 
-/* ── Detail panel ────────────────────────────────────────────────────── */
-function DetailPanel({
+/* ── Right panel ─────────────────────────────────────────────────────── */
+function RightPanel({
   containers,
   mapSelectionCount,
   sigFilter,
@@ -245,6 +245,7 @@ function DetailPanel({
   onClearMapSelection,
   searchActive,
   onClearSearch,
+  destStats,
 }: {
   containers:          TcrContainer[]
   mapSelectionCount:   number | null
@@ -259,33 +260,28 @@ function DetailPanel({
   onClearMapSelection: () => void
   searchActive:        boolean
   onClearSearch:       () => void
+  destStats:           Record<CountryCode, { active: number; arrived: number }>
 }) {
   const [tab, setTab] = useState<'segments' | 'items' | 'alerts'>('segments')
 
-  // When search is active, show results as-is (no sig filter, no sort override needed)
-  const filtered = useMemo(() =>
-    searchActive || !sigFilter ? containers : containers.filter(c => c.signal === sigFilter),
-    [containers, sigFilter, searchActive],
-  )
   const sorted = useMemo(() =>
-    [...filtered].sort((a, b) => SIG_RANK[a.signal] - SIG_RANK[b.signal]),
-    [filtered],
+    [...containers].sort((a, b) => SIG_RANK[a.signal] - SIG_RANK[b.signal]),
+    [containers],
   )
 
   useEffect(() => { if (detail) setTab('segments') }, [detail])
 
   const showDetail = !!(selectedNo && detail)
+  // Default status table: no selection, no cluster, no search
+  const showStatus = !selectedNo && !detailLoading && mapSelectionCount === null && !searchActive
 
   return (
     <div
-      className="rounded-lg border flex flex-col overflow-hidden"
-      style={{ width: '100%', height: '100%', borderColor: 'var(--ink-200)', background: 'var(--card)' }}
+      className="rounded-lg border flex flex-col overflow-hidden flex-shrink-0"
+      style={{ width: 300, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
     >
-      {/* Header */}
-      <div
-        className="px-4 pt-3 pb-2 border-b flex-shrink-0"
-        style={{ borderColor: 'var(--ink-200)' }}
-      >
+      {/* ── Header ── */}
+      <div className="px-4 pt-3 pb-2 border-b flex-shrink-0" style={{ borderColor: 'var(--ink-200)' }}>
         {showDetail ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -309,76 +305,57 @@ function DetailPanel({
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between">
             <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-              {searchActive ? '검색 결과' : '컨테이너 현황'}
+              {searchActive ? '검색 결과' : mapSelectionCount !== null ? '선택된 컨테이너' : '컨테이너 현황'}
             </span>
             {searchActive ? (
               <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
                 <span className="font-mono">{containers.length}개</span>
-                <button
-                  type="button"
-                  onClick={onClearSearch}
-                  className="flex items-center gap-0.5 font-medium"
-                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                >
+                <button type="button" onClick={onClearSearch} className="flex items-center gap-0.5 font-medium"
+                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                   <X size={10} /> 초기화
                 </button>
               </div>
             ) : mapSelectionCount !== null ? (
               <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
-                <span>{mapSelectionCount}개 선택됨</span>
-                <button
-                  type="button"
-                  onClick={onClearMapSelection}
-                  className="flex items-center gap-0.5 font-medium"
-                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                >
+                <span className="font-mono">{mapSelectionCount}개</span>
+                <button type="button" onClick={onClearMapSelection} className="flex items-center gap-0.5 font-medium"
+                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                   <X size={10} /> 해제
                 </button>
               </div>
             ) : sigFilter ? (
-              <button
-                type="button"
-                onClick={() => onSigFilter(sigFilter)}
-                className="text-[10px] flex items-center gap-1"
-                style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-              >
+              <button type="button" onClick={() => onSigFilter(sigFilter)} className="text-[10px] flex items-center gap-1"
+                style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <X size={9} /> 필터 해제
               </button>
             ) : null}
           </div>
         )}
 
-        {!showDetail && !searchActive && (
-          <div className="flex gap-1.5 flex-wrap mt-1">
+        {!showDetail && !showStatus && !searchActive && (
+          <div className="flex gap-1.5 flex-wrap mt-1.5">
             {(Object.keys(SIG_RANK) as TcrSignal[]).filter(s => stats[s] > 0).map(s => (
-              <SignalChip
-                key={s}
-                signal={s}
-                count={stats[s]}
-                label={SIG_LABEL[s]}
-                active={sigFilter === s}
-                onClick={() => onSigFilter(s)}
-              />
+              <SignalChip key={s} signal={s} count={stats[s]} label={SIG_LABEL[s]}
+                active={sigFilter === s} onClick={() => onSigFilter(s)} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Body */}
+      {/* ── Body ── */}
       {selectedNo && detailLoading && !detail ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="w-5 h-5 rounded-full border-2 animate-spin"
             style={{ borderColor: '#3b82f6', borderTopColor: 'transparent' }} />
         </div>
+
       ) : showDetail ? (
         <>
-          {/* Route info */}
-          <div
-            className="px-4 py-2 border-b flex-shrink-0 flex gap-4"
-            style={{ borderColor: 'var(--ink-200)', background: 'var(--ink-50)' }}
-          >
+          {/* Route summary */}
+          <div className="px-4 py-2 border-b flex-shrink-0 flex gap-4"
+            style={{ borderColor: 'var(--ink-200)', background: 'var(--ink-50)' }}>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
                 {detail!.container.origin ?? '—'} → {detail!.container.destination ?? '—'}
@@ -406,23 +383,13 @@ function DetailPanel({
           {/* Tabs */}
           <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--ink-200)' }}>
             {(['segments', 'items', 'alerts'] as const).map(t => {
-              const badge = t === 'items'
-                ? detail!.items.length
-                : t === 'alerts'
-                  ? detail!.alerts.filter(a => a.status === 'Open').length
-                  : 0
+              const badge = t === 'items' ? detail!.items.length
+                : t === 'alerts' ? detail!.alerts.filter(a => a.status === 'Open').length : 0
               return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
+                <button key={t} type="button" onClick={() => setTab(t)}
                   className="flex-1 py-2 text-[11px] font-semibold border-b-2 transition-colors"
-                  style={{
-                    borderColor: tab === t ? 'var(--brand)' : 'transparent',
-                    color:       tab === t ? 'var(--ink-900)' : 'var(--ink-400)',
-                    background:  'transparent',
-                  }}
-                >
+                  style={{ borderColor: tab === t ? 'var(--brand)' : 'transparent',
+                           color: tab === t ? 'var(--ink-900)' : 'var(--ink-400)', background: 'transparent' }}>
                   {t === 'segments' ? '구간' : t === 'items' ? `화물${badge > 0 ? ` ${badge}` : ''}` : `경고${badge > 0 ? ` ${badge}` : ''}`}
                 </button>
               )
@@ -432,123 +399,136 @@ function DetailPanel({
           <div className="flex-1 overflow-y-auto">
             {tab === 'segments' && (
               <div className="py-2">
-                {detail!.segments.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
-                ) : detail!.segments.map((s, idx) => (
-                  <div
-                    key={s.segment_no ?? idx}
-                    className="flex items-start gap-3 px-4 py-2"
-                    style={{ opacity: s.is_current_segment || !s.atd ? 1 : 0.55 }}
-                  >
-                    <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 16 }}>
-                      <span style={{
-                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                        background: s.ata ? '#22c55e' : s.is_current_segment ? '#3b82f6' : 'var(--ink-300)',
-                        border: s.is_current_segment ? '2px solid #3b82f680' : 'none',
-                        boxSizing: 'border-box',
-                      }} />
-                      {idx < detail!.segments.length - 1 && (
-                        <div style={{ width: 1, flex: 1, minHeight: 16, background: 'var(--ink-200)', marginTop: 3 }} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 pb-2">
-                      <div className="text-[11px] font-semibold" style={{ color: s.is_current_segment ? '#3b82f6' : 'var(--ink-800)' }}>
-                        {s.segment_name ?? `구간 ${s.segment_no}`}
-                        {s.is_current_segment && (
-                          <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background: '#3b82f615', color: '#3b82f6' }}>현재</span>
+                {detail!.segments.length === 0
+                  ? <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
+                  : detail!.segments.map((s, idx) => (
+                    <div key={s.segment_no ?? idx} className="flex items-start gap-3 px-4 py-2"
+                      style={{ opacity: s.is_current_segment || !s.atd ? 1 : 0.55 }}>
+                      <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 16 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                          background: s.ata ? '#22c55e' : s.is_current_segment ? '#3b82f6' : 'var(--ink-300)',
+                          border: s.is_current_segment ? '2px solid #3b82f680' : 'none', boxSizing: 'border-box' }} />
+                        {idx < detail!.segments.length - 1 && (
+                          <div style={{ width: 1, flex: 1, minHeight: 16, background: 'var(--ink-200)', marginTop: 3 }} />
                         )}
                       </div>
-                      <div className="flex gap-3 mt-0.5">
-                        {s.atd && <span className="text-[10px]" style={{ color: 'var(--ink-400)' }}>출발 {fmtDate(s.atd)}</span>}
-                        {s.ata && <span className="text-[10px]" style={{ color: '#22c55e' }}>도착 {fmtDate(s.ata)}</span>}
+                      <div className="flex-1 min-w-0 pb-2">
+                        <div className="text-[11px] font-semibold" style={{ color: s.is_current_segment ? '#3b82f6' : 'var(--ink-800)' }}>
+                          {s.segment_name ?? `구간 ${s.segment_no}`}
+                          {s.is_current_segment && (
+                            <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background: '#3b82f615', color: '#3b82f6' }}>현재</span>
+                          )}
+                        </div>
+                        <div className="flex gap-3 mt-0.5">
+                          {s.atd && <span className="text-[10px]" style={{ color: 'var(--ink-400)' }}>출발 {fmtDate(s.atd)}</span>}
+                          {s.ata && <span className="text-[10px]" style={{ color: '#22c55e' }}>도착 {fmtDate(s.ata)}</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
             {tab === 'items' && (
               <div className="py-2">
-                {detail!.items.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                    <Package size={20} style={{ margin: '0 auto 8px', color: 'var(--ink-300)' }} />
-                    화물 정보 없음
-                  </div>
-                ) : detail!.items.map((item, idx) => (
-                  <div key={item.item_no ?? idx} className="px-4 py-2 border-b" style={{ borderColor: 'var(--ink-100)' }}>
-                    <div className="text-[11px] font-medium" style={{ color: 'var(--ink-800)' }}>{item.description ?? `화물 ${idx + 1}`}</div>
-                    <div className="flex gap-3 mt-0.5">
-                      {item.hs_code     && <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>HS {item.hs_code}</span>}
-                      {item.quantity  != null && <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>{item.quantity}개</span>}
-                      {item.weight_kg != null && <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>{item.weight_kg} kg</span>}
+                {detail!.items.length === 0
+                  ? <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
+                      <Package size={20} style={{ margin: '0 auto 8px', color: 'var(--ink-300)' }} />
+                      화물 정보 없음
                     </div>
-                  </div>
-                ))}
+                  : detail!.items.map((item, idx) => (
+                    <div key={item.item_no ?? idx} className="px-4 py-2 border-b" style={{ borderColor: 'var(--ink-100)' }}>
+                      <div className="text-[11px] font-medium" style={{ color: 'var(--ink-800)' }}>{item.description ?? `화물 ${idx + 1}`}</div>
+                      <div className="flex gap-3 mt-0.5">
+                        {item.hs_code     && <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>HS {item.hs_code}</span>}
+                        {item.quantity  != null && <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>{item.quantity}개</span>}
+                        {item.weight_kg != null && <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>{item.weight_kg} kg</span>}
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
             {tab === 'alerts' && (
               <div className="py-2">
-                {detail!.alerts.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>경고 없음</div>
-                ) : detail!.alerts.map((a, idx) => {
-                  const color = a.severity === 'Critical' ? '#ef4444' : a.severity === 'Watch' ? '#eab308' : 'var(--ink-500)'
-                  return (
-                    <div
-                      key={a.alert_id ?? idx}
-                      className="px-4 py-2 border-b flex items-start gap-2"
-                      style={{ borderColor: 'var(--ink-100)', opacity: a.status !== 'Open' ? 0.55 : 1 }}
-                    >
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 4 }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-semibold" style={{ color }}>{a.severity}</div>
-                        {a.message    && <div className="text-[10px] mt-0.5" style={{ color: 'var(--ink-600)' }}>{a.message}</div>}
-                        {a.alert_type && <div className="text-[9px] mt-0.5" style={{ color: 'var(--ink-400)' }}>{a.alert_type}</div>}
+                {detail!.alerts.length === 0
+                  ? <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>경고 없음</div>
+                  : detail!.alerts.map((a, idx) => {
+                    const color = a.severity === 'Critical' ? '#ef4444' : a.severity === 'Watch' ? '#eab308' : 'var(--ink-500)'
+                    return (
+                      <div key={a.alert_id ?? idx} className="px-4 py-2 border-b flex items-start gap-2"
+                        style={{ borderColor: 'var(--ink-100)', opacity: a.status !== 'Open' ? 0.55 : 1 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 4 }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-semibold" style={{ color }}>{a.severity}</div>
+                          {a.message    && <div className="text-[10px] mt-0.5" style={{ color: 'var(--ink-600)' }}>{a.message}</div>}
+                          {a.alert_type && <div className="text-[9px] mt-0.5" style={{ color: 'var(--ink-400)' }}>{a.alert_type}</div>}
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
               </div>
             )}
           </div>
         </>
+
+      ) : showStatus ? (
+        /* ── Default: 컨테이너 현황 table ── */
+        <div className="flex-1 overflow-auto px-4 py-3">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left pb-2 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-400)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>목적지</th>
+                <th className="text-right pb-2 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#3b82f6' }}>운송중</th>
+                <th className="text-right pb-2 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#22c55e' }}>도착완료</th>
+                <th className="text-right pb-2 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-500)' }}>합계</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DEST_COUNTRIES.map(({ code, label }) => {
+                const s = destStats[code as CountryCode]
+                const total = s.active + s.arrived
+                return (
+                  <tr key={code} className="border-t" style={{ borderColor: 'var(--ink-100)' }}>
+                    <td className="py-2 text-[11px]" style={{ color: 'var(--ink-700)' }}>{label}</td>
+                    <td className="py-2 text-right font-mono text-[11px]" style={{ color: s.active > 0 ? '#3b82f6' : 'var(--ink-300)' }}>{s.active > 0 ? s.active : '—'}</td>
+                    <td className="py-2 text-right font-mono text-[11px]" style={{ color: s.arrived > 0 ? '#22c55e' : 'var(--ink-300)' }}>{s.arrived > 0 ? s.arrived : '—'}</td>
+                    <td className="py-2 text-right font-mono font-semibold text-[11px]" style={{ color: total > 0 ? 'var(--ink-900)' : 'var(--ink-300)' }}>{total > 0 ? total : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
       ) : (
-        /* Container list */
+        /* ── Container list: cluster selection or search results ── */
         <div className="flex-1 overflow-y-auto">
-          {sorted.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
-              컨테이너 없음
-            </div>
-          ) : sorted.map(c => (
-            <button
-              key={c.container_no}
-              type="button"
-              onClick={() => onSelect(c.container_no)}
-              className="w-full text-left px-4 py-2 border-b flex items-start gap-2.5 transition-colors"
-              style={{ borderColor: 'var(--ink-100)', background: 'transparent' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-            >
-              <div style={{ paddingTop: 3 }}><SignalDot signal={c.signal} /></div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="font-mono text-[11px] font-semibold truncate" style={{ color: 'var(--ink-900)' }}>
-                    {c.container_no}
-                  </span>
-                  {c.open_alert_count > 0 && (
-                    <span className="text-[9px] font-mono font-bold flex-shrink-0 px-1 py-0.5 rounded" style={{ background: '#ef444415', color: '#ef4444' }}>
-                      !{c.open_alert_count}
-                    </span>
+          {sorted.length === 0
+            ? <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>컨테이너 없음</div>
+            : sorted.map(c => (
+              <button key={c.container_no} type="button" onClick={() => onSelect(c.container_no)}
+                className="w-full text-left px-4 py-2 border-b flex items-start gap-2.5 transition-colors"
+                style={{ borderColor: 'var(--ink-100)', background: 'transparent' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                <div style={{ paddingTop: 3 }}><SignalDot signal={c.signal} /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-mono text-[11px] font-semibold truncate" style={{ color: 'var(--ink-900)' }}>{c.container_no}</span>
+                    {c.open_alert_count > 0 && (
+                      <span className="text-[9px] font-mono font-bold flex-shrink-0 px-1 py-0.5 rounded" style={{ background: '#ef444415', color: '#ef4444' }}>
+                        !{c.open_alert_count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
+                    {c.origin ?? '—'} → {c.destination ?? '—'}
+                  </div>
+                  {c.current_location && (
+                    <div className="text-[10px] truncate" style={{ color: 'var(--ink-400)' }}>{c.current_location}</div>
                   )}
                 </div>
-                <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
-                  {c.origin ?? '—'} → {c.destination ?? '—'}
-                </div>
-                {c.current_location && (
-                  <div className="text-[10px] truncate" style={{ color: 'var(--ink-400)' }}>{c.current_location}</div>
-                )}
-              </div>
-            </button>
-          ))}
+              </button>
+            ))}
         </div>
       )}
     </div>
@@ -694,7 +674,7 @@ export function TcrTrackingPage() {
     return filteredData
   }, [searchResults, selectedContainerNumbers, filteredData])
 
-  // Stats for the detail panel signal chips
+  // Signal counts for cluster/search list header chips
   const panelStats = useMemo(() => {
     const m: Record<TcrSignal, number> = { green: 0, blue: 0, yellow: 0, red: 0 }
     detailPanelContainers.forEach(c => { m[c.signal]++ })
@@ -902,18 +882,12 @@ export function TcrTrackingPage() {
           </div>
         )}
 
-        {!loading && !error && (() => {
-          const showDetailOverlay =
-            searchResults !== null || selectedNo !== null || selectedContainerNumbers !== null
+        {!loading && !error && (
+          <div className="flex-1 min-h-0 flex flex-col gap-4">
 
-          return (
-            <div className="flex-1 min-h-0 flex flex-col gap-4">
-
-              {/* ── Top: full-width map + slide-in overlay detail ── */}
-              <div
-                className="flex-1 min-h-0 rounded-lg border overflow-hidden"
-                style={{ position: 'relative', borderColor: 'var(--ink-200)' }}
-              >
+            {/* ── Top: map (flex-1) + right panel (300px) ── */}
+            <div className="flex-1 min-h-0 flex gap-4">
+              <div className="flex-1 rounded-lg border overflow-hidden" style={{ borderColor: 'var(--ink-200)' }}>
                 <ContainerMap
                   containers={mapPoints}
                   allContainerNumbers={allContainerNumbers}
@@ -923,161 +897,94 @@ export function TcrTrackingPage() {
                   showFescoLink={false}
                   onSearchSelect={cn => handleSelectContainers([cn])}
                 />
-
-                {/* Slide-in detail overlay */}
-                <div
-                  style={{
-                    position:       'absolute',
-                    top:            0,
-                    right:          0,
-                    width:          320,
-                    height:         '100%',
-                    transform:      showDetailOverlay ? 'translateX(0)' : 'translateX(100%)',
-                    transition:     'transform 0.22s cubic-bezier(.4,0,.2,1)',
-                    zIndex:         10,
-                    pointerEvents:  showDetailOverlay ? 'auto' : 'none',
-                    boxShadow:      showDetailOverlay ? '-4px 0 16px rgba(0,0,0,0.12)' : 'none',
-                  }}
-                >
-                  <DetailPanel
-                    containers={detailPanelContainers}
-                    mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
-                    sigFilter={sigFilter}
-                    onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
-                    stats={panelStats}
-                    onSelect={handleSelect}
-                    selectedNo={selectedNo}
-                    detail={detail}
-                    detailLoading={detailLoading}
-                    onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
-                    onClearMapSelection={handleClearSelection}
-                    searchActive={searchResults !== null}
-                    onClearSearch={clearSearch}
-                  />
-                </div>
               </div>
-
-              {/* ── Bottom: Donut | 현황 | ETA ─────────────────────────── */}
-              <div className="flex-shrink-0 flex gap-4" style={{ height: 180 }}>
-
-                {/* Card 1 — Donut */}
-                <div
-                  className="flex-1 rounded-lg border flex items-center px-4 gap-3"
-                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
-                >
-                  {totalActive > 0 ? (
-                    <>
-                      <DonutChart green={stats.green} blue={stats.blue} yellow={stats.yellow} red={stats.red} />
-                      <div className="flex flex-col gap-1.5 min-w-0">
-                        <LegendRow color="#22c55e" label="도착완료" count={stats.green} />
-                        <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
-                        <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
-                        <LegendRow color="#ef4444" label="경고"     count={stats.red} />
-                        <div className="mt-0.5 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
-                          운송중 {Math.round((stats.blue / totalActive) * 100)}%
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                      활성 컨테이너 없음
-                    </div>
-                  )}
-                </div>
-
-                {/* Card 2 — 컨테이너 현황 (목적지별) */}
-                <div
-                  className="flex-1 rounded-lg border flex flex-col overflow-hidden"
-                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
-                >
-                  <div
-                    className="px-4 pt-3 pb-2 border-b flex-shrink-0"
-                    style={{ borderColor: 'var(--ink-200)' }}
-                  >
-                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                      컨테이너 현황
-                    </span>
-                  </div>
-                  <div className="flex-1 overflow-auto px-4 py-1.5">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr>
-                          <th className="text-left pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-400)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>목적지</th>
-                          <th className="text-right pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#3b82f6' }}>운송중</th>
-                          <th className="text-right pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#22c55e' }}>도착완료</th>
-                          <th className="text-right pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-500)' }}>합계</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {DEST_COUNTRIES.map(({ code, label }) => {
-                          const s = destStats[code as CountryCode]
-                          const total = s.active + s.arrived
-                          return (
-                            <tr key={code} className="border-t" style={{ borderColor: 'var(--ink-100)' }}>
-                              <td className="py-1.5 text-[11px]" style={{ color: 'var(--ink-700)' }}>{label}</td>
-                              <td className="py-1.5 text-right font-mono text-[11px]" style={{ color: s.active > 0 ? '#3b82f6' : 'var(--ink-300)' }}>{s.active > 0 ? s.active : '—'}</td>
-                              <td className="py-1.5 text-right font-mono text-[11px]" style={{ color: s.arrived > 0 ? '#22c55e' : 'var(--ink-300)' }}>{s.arrived > 0 ? s.arrived : '—'}</td>
-                              <td className="py-1.5 text-right font-mono font-semibold text-[11px]" style={{ color: total > 0 ? 'var(--ink-900)' : 'var(--ink-300)' }}>{total > 0 ? total : '—'}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Card 3 — ETA 임박 */}
-                <div
-                  className="flex-1 rounded-lg border flex flex-col overflow-hidden"
-                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
-                >
-                  <div
-                    className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
-                    style={{ borderColor: 'var(--ink-200)' }}
-                  >
-                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                      ETA 임박
-                    </span>
-                    <span className="text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>{recentContainers.length}개</span>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                    {recentContainers.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                        운송중 컨테이너 없음
-                      </div>
-                    ) : recentContainers.map(c => (
-                      <button
-                        key={c.container_no}
-                        type="button"
-                        onClick={() => handleSelect(c.container_no)}
-                        className="w-full text-left px-4 py-1.5 border-b flex items-center gap-2 transition-colors"
-                        style={{ borderColor: 'var(--ink-100)', background: 'transparent' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                      >
-                        <SignalDot signal={c.signal} />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>
-                            {c.container_no}
-                          </div>
-                          <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
-                            {c.origin ?? '—'} → {c.destination ?? '—'}
-                          </div>
-                        </div>
-                        {c.eta_final && (
-                          <span className="flex-shrink-0 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
-                            {fmtDate(c.eta_final)}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
+              <RightPanel
+                containers={detailPanelContainers}
+                mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+                sigFilter={sigFilter}
+                onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
+                stats={panelStats}
+                onSelect={handleSelect}
+                selectedNo={selectedNo}
+                detail={detail}
+                detailLoading={detailLoading}
+                onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
+                onClearMapSelection={handleClearSelection}
+                searchActive={searchResults !== null}
+                onClearSearch={clearSearch}
+                destStats={destStats}
+              />
             </div>
-          )
-        })()}
+
+            {/* ── Bottom: Donut | ETA ─────────────────────────────────── */}
+            <div className="flex-shrink-0 flex gap-4" style={{ height: 180 }}>
+
+              {/* Card 1 — Donut */}
+              <div
+                className="flex-1 rounded-lg border flex items-center px-4 gap-3"
+                style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+              >
+                {totalActive > 0 ? (
+                  <>
+                    <DonutChart green={stats.green} blue={stats.blue} yellow={stats.yellow} red={stats.red} />
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <LegendRow color="#22c55e" label="도착완료" count={stats.green} />
+                      <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
+                      <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
+                      <LegendRow color="#ef4444" label="경고"     count={stats.red} />
+                      <div className="mt-0.5 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
+                        운송중 {Math.round((stats.blue / totalActive) * 100)}%
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
+                    활성 컨테이너 없음
+                  </div>
+                )}
+              </div>
+
+              {/* Card 2 — ETA 임박 */}
+              <div
+                className="flex-1 rounded-lg border flex flex-col overflow-hidden"
+                style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+              >
+                <div className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
+                  style={{ borderColor: 'var(--ink-200)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                    ETA 임박
+                  </span>
+                  <span className="text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>{recentContainers.length}개</span>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {recentContainers.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
+                      운송중 컨테이너 없음
+                    </div>
+                  ) : recentContainers.map(c => (
+                    <button key={c.container_no} type="button" onClick={() => handleSelect(c.container_no)}
+                      className="w-full text-left px-4 py-1.5 border-b flex items-center gap-2 transition-colors"
+                      style={{ borderColor: 'var(--ink-100)', background: 'transparent' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                      <SignalDot signal={c.signal} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>{c.container_no}</div>
+                        <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
+                          {c.origin ?? '—'} → {c.destination ?? '—'}
+                        </div>
+                      </div>
+                      {c.eta_final && (
+                        <span className="flex-shrink-0 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>{fmtDate(c.eta_final)}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
