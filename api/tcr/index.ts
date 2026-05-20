@@ -107,14 +107,16 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
   }
 
   const containers = rows.map(r => {
-    // Coalesce: seg_to → cur_loc → dest → orig
     const segToName = segToLocMap.get(r.container_no) ?? null
-    const geo =
-      (segToName          ? locMap.get(segToName)          : undefined) ??
-      (r.current_location ? locMap.get(r.current_location) : undefined) ??
-      (r.destination      ? locMap.get(r.destination)      : undefined) ??
-      (r.origin           ? locMap.get(r.origin)           : undefined) ??
-      null
+    // In-transit: seg_to → cur_loc (no dest fallback — hasn't arrived yet)
+    // Arrived:    cur_loc → dest   (destination fallback for arrived containers)
+    const geo = r.arrived_yn
+      ? (r.current_location ? locMap.get(r.current_location) : undefined) ??
+        (r.destination      ? locMap.get(r.destination)      : undefined) ??
+        null
+      : (segToName          ? locMap.get(segToName)          : undefined) ??
+        (r.current_location ? locMap.get(r.current_location) : undefined) ??
+        null
 
     const alerts = alertMap.get(r.container_no) ?? []
     return {
