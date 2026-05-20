@@ -23,19 +23,19 @@ interface TcrContainer {
 }
 
 interface TcrSegment {
-  segment_no:        number
-  segment_name:      string | null
-  atd:               string | null
-  ata:               string | null
+  segment_no:         number
+  segment_name:       string | null
+  atd:                string | null
+  ata:                string | null
   is_current_segment: boolean
 }
 
 interface TcrItem {
-  item_no:      number
-  description:  string | null
-  quantity:     number | null
-  weight_kg:    number | null
-  hs_code:      string | null
+  item_no:     number
+  description: string | null
+  quantity:    number | null
+  weight_kg:   number | null
+  hs_code:     string | null
 }
 
 interface TcrAlert {
@@ -143,10 +143,10 @@ function ContainerCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left px-4 py-2.5 border-b flex items-start gap-2.5 transition-colors"
+      className="w-full text-left px-4 py-2.5 flex items-start gap-2.5 transition-colors"
       style={{
-        borderColor: 'var(--ink-200)',
-        background:  selected ? 'var(--ink-50)' : 'transparent',
+        borderBottom: selected ? 'none' : '1px solid var(--ink-200)',
+        background:   selected ? 'var(--ink-50)' : 'transparent',
       }}
       onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
       onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
@@ -193,63 +193,46 @@ function ContainerCard({
   )
 }
 
-/* ── Detail panel ────────────────────────────────────────────────────── */
-function DetailPanel({
+/* ── Inline detail (expands below selected card) ─────────────────────── */
+function InlineDetail({
   detail,
+  detailLoading,
   onClose,
 }: {
-  detail:  DetailData
-  onClose: () => void
+  detail:        DetailData | null
+  detailLoading: boolean
+  onClose:       () => void
 }) {
-  const { container: c, segments, items, alerts } = detail
   const [tab, setTab] = useState<'segments' | 'items' | 'alerts'>('segments')
+
+  if (detailLoading && !detail) {
+    return (
+      <div
+        className="flex items-center justify-center border-b"
+        style={{ padding: '16px 0', borderColor: 'var(--ink-200)', background: 'var(--ink-50)' }}
+      >
+        <div
+          className="w-4 h-4 rounded-full border-2 animate-spin"
+          style={{ borderColor: '#3b82f6', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
+  }
+
+  if (!detail) return null
+
+  const { container: c, segments, items, alerts } = detail
   const openAlerts = alerts.filter(a => a.status === 'Open')
 
   return (
     <div
-      className="flex-shrink-0 flex flex-col rounded-lg border overflow-hidden"
-      style={{ width: 340, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
+      className="border-b"
+      style={{ borderColor: 'var(--ink-200)', background: 'var(--ink-50)' }}
     >
-      {/* Header */}
+      {/* Info + close row */}
       <div
-        className="px-4 pt-3 pb-2 border-b flex items-start justify-between flex-shrink-0"
-        style={{ borderColor: 'var(--ink-200)' }}
-      >
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <SignalDot signal={c.signal} size={9} />
-            <span className="font-mono text-[13px] font-bold" style={{ color: 'var(--ink-900)' }}>
-              {c.container_no}
-            </span>
-            <span
-              className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-              style={{ background: `${SIG_COLOR[c.signal]}15`, color: SIG_COLOR[c.signal] }}
-            >
-              {SIG_LABEL[c.signal]}
-            </span>
-          </div>
-          <div className="text-[10px]" style={{ color: 'var(--ink-500)' }}>
-            {c.origin ?? '—'} → {c.destination ?? '—'}
-          </div>
-          {c.current_segment_name && (
-            <div className="text-[10px] mt-0.5" style={{ color: 'var(--ink-400)' }}>
-              현재 구간: {c.current_segment_name}
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      {/* Info row */}
-      <div
-        className="px-4 py-2 flex gap-4 border-b flex-shrink-0"
-        style={{ borderColor: 'var(--ink-200)', background: 'var(--ink-50)' }}
+        className="px-4 py-2 flex items-center gap-4 border-b"
+        style={{ borderColor: 'var(--ink-200)', background: 'var(--card)' }}
       >
         {c.eta_final && !c.ata_final && (
           <div>
@@ -275,80 +258,80 @@ function DetailPanel({
             <div className="text-[11px]" style={{ color: 'var(--ink-700)' }}>{c.load_type}</div>
           </div>
         )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-auto"
+          style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 2 }}
+        >
+          <X size={12} />
+        </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--ink-200)' }}>
+      <div className="flex border-b" style={{ borderColor: 'var(--ink-200)' }}>
         {(['segments', 'items', 'alerts'] as const).map(t => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className="flex-1 py-2 text-[11px] font-semibold border-b-2 transition-colors"
+            className="flex-1 py-1.5 text-[10px] font-semibold border-b-2 transition-colors"
             style={{
               borderColor: tab === t ? 'var(--brand)' : 'transparent',
               color:       tab === t ? 'var(--ink-900)' : 'var(--ink-400)',
               background:  'transparent',
             }}
           >
-            {t === 'segments' ? '구간' : t === 'items' ? `화물${items.length > 0 ? ` ${items.length}` : ''}` : `경고${openAlerts.length > 0 ? ` ${openAlerts.length}` : ''}`}
+            {t === 'segments'
+              ? '구간'
+              : t === 'items'
+                ? `화물${items.length > 0 ? ` ${items.length}` : ''}`
+                : `경고${openAlerts.length > 0 ? ` ${openAlerts.length}` : ''}`}
           </button>
         ))}
       </div>
 
       {/* Tab body */}
-      <div className="flex-1 overflow-y-auto">
+      <div style={{ maxHeight: 220, overflowY: 'auto' }}>
         {tab === 'segments' && (
-          <div className="py-2">
+          <div className="py-1">
             {segments.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
+              <div className="px-4 py-4 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
             ) : (
               segments.map((s, idx) => (
                 <div
                   key={s.segment_no ?? idx}
-                  className="flex items-start gap-3 px-4 py-2"
+                  className="flex items-start gap-2 px-4 py-1.5"
                   style={{ opacity: s.is_current_segment || !s.atd ? 1 : 0.55 }}
                 >
-                  {/* timeline dot + line */}
-                  <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 16 }}>
+                  <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 12 }}>
                     <span
                       style={{
-                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                        width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
                         background: s.ata ? '#22c55e' : s.is_current_segment ? '#3b82f6' : 'var(--ink-300)',
-                        border: s.is_current_segment ? '2px solid #3b82f680' : 'none',
                         boxSizing: 'border-box',
                       }}
                     />
                     {idx < segments.length - 1 && (
-                      <div style={{ width: 1, flex: 1, minHeight: 16, background: 'var(--ink-200)', marginTop: 3 }} />
+                      <div style={{ width: 1, flex: 1, minHeight: 10, background: 'var(--ink-200)', marginTop: 2 }} />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 pb-2">
+                  <div className="flex-1 min-w-0 pb-1">
                     <div
-                      className="text-[11px] font-semibold"
+                      className="text-[10px] font-semibold"
                       style={{ color: s.is_current_segment ? '#3b82f6' : 'var(--ink-800)' }}
                     >
                       {s.segment_name ?? `구간 ${s.segment_no}`}
                       {s.is_current_segment && (
                         <span
-                          className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded font-semibold"
+                          className="ml-1 text-[8px] px-1 py-0.5 rounded"
                           style={{ background: '#3b82f615', color: '#3b82f6' }}
-                        >
-                          현재
-                        </span>
+                        >현재</span>
                       )}
                     </div>
-                    <div className="flex gap-3 mt-0.5">
-                      {s.atd && (
-                        <span className="text-[10px]" style={{ color: 'var(--ink-400)' }}>
-                          출발 {fmtDate(s.atd)}
-                        </span>
-                      )}
-                      {s.ata && (
-                        <span className="text-[10px]" style={{ color: '#22c55e' }}>
-                          도착 {fmtDate(s.ata)}
-                        </span>
-                      )}
+                    <div className="flex gap-2 mt-0.5">
+                      {s.atd && <span className="text-[9px]" style={{ color: 'var(--ink-400)' }}>출발 {fmtDate(s.atd)}</span>}
+                      {s.ata && <span className="text-[9px]" style={{ color: '#22c55e' }}>도착 {fmtDate(s.ata)}</span>}
                     </div>
                   </div>
                 </div>
@@ -358,32 +341,26 @@ function DetailPanel({
         )}
 
         {tab === 'items' && (
-          <div className="py-2">
+          <div className="py-1">
             {items.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                <Package size={20} style={{ margin: '0 auto 8px', color: 'var(--ink-300)' }} />
+              <div className="px-4 py-4 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
+                <Package size={16} style={{ margin: '0 auto 6px', color: 'var(--ink-300)' }} />
                 화물 정보 없음
               </div>
             ) : (
               items.map((item, idx) => (
                 <div
                   key={item.item_no ?? idx}
-                  className="px-4 py-2 border-b"
+                  className="px-4 py-1.5 border-b"
                   style={{ borderColor: 'var(--ink-100)' }}
                 >
-                  <div className="text-[11px] font-medium" style={{ color: 'var(--ink-800)' }}>
+                  <div className="text-[10px] font-medium" style={{ color: 'var(--ink-800)' }}>
                     {item.description ?? `화물 ${idx + 1}`}
                   </div>
-                  <div className="flex gap-3 mt-0.5">
-                    {item.hs_code && (
-                      <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>HS {item.hs_code}</span>
-                    )}
-                    {item.quantity != null && (
-                      <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>{item.quantity}개</span>
-                    )}
-                    {item.weight_kg != null && (
-                      <span className="text-[10px]" style={{ color: 'var(--ink-500)' }}>{item.weight_kg} kg</span>
-                    )}
+                  <div className="flex gap-2 mt-0.5">
+                    {item.hs_code     && <span className="text-[9px]" style={{ color: 'var(--ink-500)' }}>HS {item.hs_code}</span>}
+                    {item.quantity  != null && <span className="text-[9px]" style={{ color: 'var(--ink-500)' }}>{item.quantity}개</span>}
+                    {item.weight_kg != null && <span className="text-[9px]" style={{ color: 'var(--ink-500)' }}>{item.weight_kg} kg</span>}
                   </div>
                 </div>
               ))
@@ -392,35 +369,23 @@ function DetailPanel({
         )}
 
         {tab === 'alerts' && (
-          <div className="py-2">
+          <div className="py-1">
             {alerts.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>경고 없음</div>
+              <div className="px-4 py-4 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>경고 없음</div>
             ) : (
               alerts.map((a, idx) => {
                 const color = a.severity === 'Critical' ? '#ef4444' : a.severity === 'Watch' ? '#eab308' : 'var(--ink-500)'
                 return (
                   <div
                     key={a.alert_id ?? idx}
-                    className="px-4 py-2 border-b flex items-start gap-2"
+                    className="px-4 py-1.5 border-b flex items-start gap-2"
                     style={{ borderColor: 'var(--ink-100)', opacity: a.status !== 'Open' ? 0.55 : 1 }}
                   >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 4 }} />
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 3 }} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-semibold" style={{ color }}>{a.severity}</span>
-                        {a.status !== 'Open' && (
-                          <span className="text-[9px]" style={{ color: 'var(--ink-400)' }}>종료됨</span>
-                        )}
-                      </div>
-                      {a.message && (
-                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--ink-600)' }}>{a.message}</div>
-                      )}
-                      {a.alert_type && (
-                        <div className="text-[9px] mt-0.5" style={{ color: 'var(--ink-400)' }}>{a.alert_type}</div>
-                      )}
-                      {a.created_at && (
-                        <div className="text-[9px] mt-0.5" style={{ color: 'var(--ink-300)' }}>{fmtRelTime(a.created_at)}</div>
-                      )}
+                      <div className="text-[10px] font-semibold" style={{ color }}>{a.severity}</div>
+                      {a.message    && <div className="text-[9px] mt-0.5" style={{ color: 'var(--ink-600)' }}>{a.message}</div>}
+                      {a.alert_type && <div className="text-[8px] mt-0.5" style={{ color: 'var(--ink-400)' }}>{a.alert_type}</div>}
                     </div>
                   </div>
                 )
@@ -433,7 +398,7 @@ function DetailPanel({
   )
 }
 
-/* ── Mapbox map ──────────────────────────────────────────────────────── */
+/* ── Mapbox map (colorful, flies to selected) ────────────────────────── */
 const TOKEN = (import.meta as any).env?.MAPBOX_ACCESS_TOKEN as string | undefined
 
 const MAP_SIG_COLOR: Record<TcrSignal, string> = {
@@ -455,25 +420,26 @@ function TcrMap({
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<mapboxgl.Map | null>(null)
   const markersRef   = useRef<mapboxgl.Marker[]>([])
+  const popupRef     = useRef<mapboxgl.Popup | null>(null)
 
   const points = useMemo(
     () => containers.filter(c => c.latitude != null && c.longitude != null),
     [containers],
   )
 
+  // Init map
   useEffect(() => {
     if (!containerRef.current || !TOKEN) return
     if (mapRef.current) return
 
     const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style:     'mapbox://styles/mapbox/light-v11',
-      center:    [85, 50],
-      zoom:      3,
+      container:   containerRef.current,
+      style:       'mapbox://styles/mapbox/streets-v12',
+      center:      [85, 48],
+      zoom:        3,
       accessToken: TOKEN,
     })
     mapRef.current = map
-
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
 
     return () => {
@@ -482,7 +448,22 @@ function TcrMap({
     }
   }, [])
 
-  // Update markers whenever points change
+  // Fly to selected container
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !selectedNo) return
+    const c = containers.find(ct => ct.container_no === selectedNo)
+    if (c?.latitude == null || c?.longitude == null) return
+    const fly = () => map.flyTo({
+      center:   [c.longitude!, c.latitude!],
+      zoom:     Math.max(map.getZoom(), 5),
+      duration: 700,
+    })
+    if (map.isStyleLoaded()) fly()
+    else map.once('load', fly)
+  }, [selectedNo, containers])
+
+  // Redraw markers
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -490,25 +471,53 @@ function TcrMap({
     const redraw = () => {
       markersRef.current.forEach(m => m.remove())
       markersRef.current = []
+      popupRef.current?.remove()
+
+      const popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 12,
+        className: 'tcr-map-popup',
+      })
+      popupRef.current = popup
 
       for (const c of points) {
-        const color     = MAP_SIG_COLOR[c.signal]
+        const color      = MAP_SIG_COLOR[c.signal]
         const isSelected = c.container_no === selectedNo
-        const el = document.createElement('div')
+        const el         = document.createElement('div')
+
         el.style.cssText = [
-          `width:${isSelected ? 14 : 10}px`,
-          `height:${isSelected ? 14 : 10}px`,
+          `width:${isSelected ? 15 : 10}px`,
+          `height:${isSelected ? 15 : 10}px`,
           'border-radius:50%',
           `background:${color}`,
-          `border:${isSelected ? `2.5px solid ${color}` : '2px solid white'}`,
-          `box-shadow:${isSelected ? `0 0 0 3px ${color}40` : '0 1px 3px rgba(0,0,0,0.25)'}`,
+          `border:${isSelected ? `2.5px solid white` : '2px solid white'}`,
+          `box-shadow:${isSelected ? `0 0 0 3px ${color}60, 0 2px 6px rgba(0,0,0,0.3)` : '0 1px 4px rgba(0,0,0,0.25)'}`,
           'cursor:pointer',
           'transition:transform 0.15s',
         ].join(';')
-        el.title = `${c.container_no} · ${c.current_location ?? ''}`
+
+        el.title = c.container_no
         el.addEventListener('click', () => onSelect(c.container_no))
-        el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.3)' })
-        el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)' })
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'scale(1.35)'
+          popup
+            .setLngLat([c.longitude!, c.latitude!])
+            .setHTML(
+              `<div style="font-size:11px;line-height:1.4">` +
+              `<div style="font-family:monospace;font-weight:600;color:#1e293b">${c.container_no}</div>` +
+              `<div style="color:${color};font-size:10px;font-weight:600">${SIG_LABEL[c.signal]}</div>` +
+              (c.current_location ? `<div style="color:#64748b;font-size:10px;margin-top:2px">${c.current_location}</div>` : '') +
+              (c.destination ? `<div style="color:#94a3b8;font-size:9px">→ ${c.destination}</div>` : '') +
+              `</div>`
+            )
+            .addTo(map)
+        })
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)'
+          popup.remove()
+        })
 
         const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
           .setLngLat([c.longitude!, c.latitude!])
@@ -517,26 +526,23 @@ function TcrMap({
       }
     }
 
-    if (map.isStyleLoaded()) {
-      redraw()
-    } else {
-      map.once('load', redraw)
-    }
+    if (map.isStyleLoaded()) redraw()
+    else map.once('load', redraw)
   }, [points, selectedNo, onSelect])
 
   if (!TOKEN) {
     return (
-      <div className="flex-1 flex items-center justify-center rounded-lg border" style={{ borderColor: 'var(--ink-200)', background: 'var(--card)' }}>
+      <div
+        className="flex-1 flex items-center justify-center"
+        style={{ background: 'var(--card)', borderLeft: '1px solid var(--ink-200)' }}
+      >
         <span className="text-[11px]" style={{ color: 'var(--ink-400)' }}>Mapbox 토큰 없음</span>
       </div>
     )
   }
 
   return (
-    <div
-      className="flex-1 rounded-lg border overflow-hidden"
-      style={{ borderColor: 'var(--ink-200)', minHeight: 0 }}
-    >
+    <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   )
@@ -546,24 +552,28 @@ function TcrMap({
 const ALL_SIGNALS: TcrSignal[] = ['red', 'yellow', 'blue', 'green']
 
 export function TcrTrackingPage() {
-  const [containers,   setContainers]   = useState<TcrContainer[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [error,        setError]        = useState<string | null>(null)
-  const [lastFetch,    setLastFetch]    = useState<string | null>(null)
-  const [refreshing,   setRefreshing]   = useState(false)
+  const [containers,    setContainers]    = useState<TcrContainer[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState<string | null>(null)
+  const [lastFetch,     setLastFetch]     = useState<string | null>(null)
+  const [refreshing,    setRefreshing]    = useState(false)
 
   // Filters
-  const [sigFilter,    setSigFilter]    = useState<TcrSignal | null>(null)
-  const [modeFilter,   setModeFilter]   = useState<string | null>(null)
+  const [sigFilter,     setSigFilter]     = useState<TcrSignal | null>(null)
+  const [modeFilter,    setModeFilter]    = useState<string | null>(null)
+  const [destFilter,    setDestFilter]    = useState<string | null>(null)
   const [arrivedFilter, setArrivedFilter] = useState<boolean | null>(null)
 
   // Sort
   const [sort, setSort] = useState<'risk' | 'eta'>('risk')
 
   // Selection + detail
-  const [selectedNo,   setSelectedNo]   = useState<string | null>(null)
-  const [detail,       setDetail]       = useState<DetailData | null>(null)
+  const [selectedNo,    setSelectedNo]    = useState<string | null>(null)
+  const [detail,        setDetail]        = useState<DetailData | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+
+  // Card refs for scroll-to-card on map click
+  const cardRefs = useRef(new Map<string, HTMLDivElement>())
 
   /* ── Fetch list ─────────────────────────────────────────────────────── */
   const fetchData = useCallback(async (quiet = false) => {
@@ -601,16 +611,34 @@ export function TcrTrackingPage() {
     }
   }, [])
 
+  // Select container: update state, scroll card into view, fetch detail
   const handleSelect = useCallback((no: string) => {
+    const isDeselect = no === selectedNo
+    if (isDeselect) {
+      setSelectedNo(null)
+      setDetail(null)
+      return
+    }
     setSelectedNo(no)
     setDetail(null)
     fetchDetail(no)
-  }, [fetchDetail])
+    // Scroll the card into view (triggered by map marker click or external)
+    setTimeout(() => {
+      const el = cardRefs.current.get(no)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 60)
+  }, [selectedNo, fetchDetail])
 
   /* ── Derived data ───────────────────────────────────────────────────── */
   const transportModes = useMemo(() => {
     const s = new Set<string>()
     containers.forEach(c => { if (c.transport_mode) s.add(c.transport_mode) })
+    return [...s].sort()
+  }, [containers])
+
+  const destinations = useMemo(() => {
+    const s = new Set<string>()
+    containers.forEach(c => { if (c.destination) s.add(c.destination) })
     return [...s].sort()
   }, [containers])
 
@@ -622,11 +650,12 @@ export function TcrTrackingPage() {
 
   const filtered = useMemo(() => {
     let list = containers
-    if (sigFilter !== null)    list = list.filter(c => c.signal === sigFilter)
-    if (modeFilter !== null)   list = list.filter(c => c.transport_mode === modeFilter)
+    if (sigFilter     !== null) list = list.filter(c => c.signal === sigFilter)
+    if (modeFilter    !== null) list = list.filter(c => c.transport_mode === modeFilter)
+    if (destFilter    !== null) list = list.filter(c => c.destination === destFilter)
     if (arrivedFilter !== null) list = list.filter(c => arrivedFilter ? c.ata_final != null : c.ata_final == null)
     return list
-  }, [containers, sigFilter, modeFilter, arrivedFilter])
+  }, [containers, sigFilter, modeFilter, destFilter, arrivedFilter])
 
   const SIG_RANK: Record<TcrSignal, number> = { red: 0, yellow: 1, blue: 2, green: 3 }
 
@@ -639,13 +668,13 @@ export function TcrTrackingPage() {
     })
   }, [filtered, sort])
 
+  const hasFilter = sigFilter !== null || modeFilter !== null || destFilter !== null || arrivedFilter !== null
+
   /* ── Render ─────────────────────────────────────────────────────────── */
   return (
-    <div
-      className="flex-1 flex flex-col overflow-hidden"
-      style={{ background: 'var(--chat-bg)' }}
-    >
-      {/* Header */}
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
+
+      {/* ── Header ────────────────────────────────────────────────────── */}
       <div
         className="flex-shrink-0"
         style={{ padding: '12px 28px 10px', borderBottom: '1px solid var(--line)' }}
@@ -660,6 +689,7 @@ export function TcrTrackingPage() {
               {loading ? 'Loading…' : `${containers.length}개 · ${fmtRelTime(lastFetch)}`}
             </span>
           </div>
+
           <div className="flex items-center gap-2">
             {ALL_SIGNALS.filter(s => stats[s] > 0).map(s => (
               <span
@@ -684,7 +714,7 @@ export function TcrTrackingPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Filter bar */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--ink-400)' }}>필터</span>
 
@@ -698,6 +728,20 @@ export function TcrTrackingPage() {
               onClick={() => setSigFilter(prev => prev === s ? null : s)}
             />
           ))}
+
+          {destinations.length > 1 && (
+            <>
+              <span style={{ width: 1, height: 14, background: 'var(--ink-200)' }} />
+              {destinations.map(d => (
+                <FilterChip
+                  key={d}
+                  label={d}
+                  active={destFilter === d}
+                  onClick={() => setDestFilter(prev => prev === d ? null : d)}
+                />
+              ))}
+            </>
+          )}
 
           {transportModes.length > 1 && (
             <>
@@ -725,10 +769,10 @@ export function TcrTrackingPage() {
             onClick={() => setArrivedFilter(prev => prev === true ? null : true)}
           />
 
-          {(sigFilter || modeFilter || arrivedFilter !== null) && (
+          {hasFilter && (
             <button
               type="button"
-              onClick={() => { setSigFilter(null); setModeFilter(null); setArrivedFilter(null) }}
+              onClick={() => { setSigFilter(null); setModeFilter(null); setDestFilter(null); setArrivedFilter(null) }}
               className="flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors"
               style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
             >
@@ -749,13 +793,13 @@ export function TcrTrackingPage() {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-hidden p-4 flex gap-4 min-h-0">
+      {/* ── Body: 2-column (list | map) ────────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
 
-        {/* Error */}
+        {/* Error banner */}
         {error && (
           <div
-            className="absolute left-4 right-4 rounded-lg border px-4 py-3 flex items-center gap-3 text-sm z-10"
+            className="absolute left-4 right-4 top-4 rounded-lg border px-4 py-3 flex items-center gap-3 text-sm z-10"
             style={{ background: 'var(--signal-red-bg)', borderColor: 'rgba(220,38,38,0.25)', color: '#ef4444' }}
           >
             <AlertCircle size={15} />
@@ -766,19 +810,23 @@ export function TcrTrackingPage() {
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="flex-1 flex gap-4">
-            <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 280, background: 'var(--card)', borderColor: 'var(--line)' }} />
-            <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
+          <div className="flex-1 flex gap-0">
+            <div
+              className="animate-pulse flex-shrink-0 border-r"
+              style={{ width: 380, background: 'var(--card)', borderColor: 'var(--line)' }}
+            />
+            <div className="flex-1 animate-pulse" style={{ background: 'var(--ink-100)' }} />
           </div>
         )}
 
         {!loading && (
           <>
-            {/* Left: container list */}
+            {/* ── Left: container list ─────────────────────────────────── */}
             <div
-              className="flex flex-col rounded-lg border overflow-hidden flex-shrink-0"
-              style={{ width: 280, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
+              className="flex flex-col flex-shrink-0 overflow-hidden border-r"
+              style={{ width: 380, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
             >
+              {/* List header */}
               <div
                 className="px-4 py-2 border-b flex items-center justify-between flex-shrink-0"
                 style={{ borderColor: 'var(--ink-200)' }}
@@ -786,8 +834,19 @@ export function TcrTrackingPage() {
                 <span className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--ink-500)' }}>
                   컨테이너 {sorted.length > 0 ? sorted.length : ''}
                 </span>
+                {selectedNo && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedNo(null); setDetail(null) }}
+                    className="text-[10px] flex items-center gap-1"
+                    style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  >
+                    <X size={10} /> 선택 해제
+                  </button>
+                )}
               </div>
 
+              {/* Scrollable cards + inline detail */}
               <div className="flex-1 overflow-y-auto">
                 {sorted.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
@@ -795,45 +854,34 @@ export function TcrTrackingPage() {
                   </div>
                 ) : (
                   sorted.map(c => (
-                    <ContainerCard
+                    <div
                       key={c.container_no}
-                      c={c}
-                      selected={c.container_no === selectedNo}
-                      onClick={() => handleSelect(c.container_no)}
-                    />
+                      ref={el => { if (el) cardRefs.current.set(c.container_no, el); else cardRefs.current.delete(c.container_no) }}
+                    >
+                      <ContainerCard
+                        c={c}
+                        selected={c.container_no === selectedNo}
+                        onClick={() => handleSelect(c.container_no)}
+                      />
+                      {c.container_no === selectedNo && (
+                        <InlineDetail
+                          detail={detail}
+                          detailLoading={detailLoading}
+                          onClose={() => { setSelectedNo(null); setDetail(null) }}
+                        />
+                      )}
+                    </div>
                   ))
                 )}
               </div>
             </div>
 
-            {/* Center: map */}
+            {/* ── Right: map ───────────────────────────────────────────── */}
             <TcrMap
               containers={filtered}
               selectedNo={selectedNo}
               onSelect={handleSelect}
             />
-
-            {/* Right: detail panel */}
-            {(selectedNo || detailLoading) && (
-              <div
-                className="flex flex-col rounded-lg border overflow-hidden flex-shrink-0"
-                style={{ width: 340, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
-              >
-                {detailLoading || !detail ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div
-                      className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
-                      style={{ borderColor: '#3b82f6', borderTopColor: 'transparent' }}
-                    />
-                  </div>
-                ) : (
-                  <DetailPanel
-                    detail={detail}
-                    onClose={() => { setSelectedNo(null); setDetail(null) }}
-                  />
-                )}
-              </div>
-            )}
           </>
         )}
       </div>
