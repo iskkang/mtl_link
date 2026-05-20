@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Send, Loader2, MoreHorizontal, Pencil, Trash2, BookmarkPlus, X } from 'lucide-react'
+import { Send, Loader2, MoreHorizontal, Pencil, Trash2, BookmarkPlus, X, ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
 import { aiEvents } from '../../lib/aiEvents'
 import { AiQuickActions } from './AiQuickActions'
@@ -39,6 +41,8 @@ interface Props {
 
 export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, onTitleChange }: Props) {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const { user, profile } = useAuth()
 
   const [messages,      setMessages]      = useState<AiMessage[]>([])
@@ -520,6 +524,16 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  style={{ color: 'var(--ink-3)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 4px 4px 0', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                  aria-label="뒤로"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+              )}
               <MintLogo size={24} />
               {editing ? (
                 <input

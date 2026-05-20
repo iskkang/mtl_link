@@ -16,6 +16,8 @@ import { StatusDropdown } from '../profile/StatusDropdown'
 import { LanguagePickerModal } from '../ui/LanguagePickerModal'
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal'
 import { MintIcon } from '../ui/MarvisIcon'
+import { FescoFIcon } from '../ui/FescoFIcon'
+import { TcrIcon } from '../icons/TcrIcon'
 import type { Section } from './MenuRail'
 
 interface Props {
@@ -33,6 +35,8 @@ const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] =
   { id: 'channels',      Icon: Hash,        labelKey: 'menuRailChannels'      },
   { id: 'ai',            Icon: MintIcon,    labelKey: 'menuRailBots'          },
   { id: 'ratefinder',    Icon: DollarSign,  labelKey: 'menuRailRates'         },
+  { id: 'tracking',      Icon: FescoFIcon,  labelKey: 'menuRailTracking'      },
+  { id: 'tcr-tracking',  Icon: TcrIcon,     labelKey: 'menuRailTcrTracking'   },
 ]
 
 export function MoreSheet({ open, onClose, onSectionChange, notifEnabled, onToggleNotif, onEditProfile }: Props) {
