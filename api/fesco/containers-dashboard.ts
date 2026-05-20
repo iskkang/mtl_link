@@ -97,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (ctErr) return res.status(500).json({ ok: false, error: ctErr.message })
 
-  const rows = (ctRows ?? []) as {
+  const rows = (ctRows ?? [] as unknown[]) as unknown as {
     container_number:         string
     order_id:                 number | null
     external_1c_number:       string | null
