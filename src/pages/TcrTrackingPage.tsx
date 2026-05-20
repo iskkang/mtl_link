@@ -725,10 +725,10 @@ export function TcrTrackingPage() {
     [filteredData],
   )
 
-  // ContainerMap data
+  // ContainerMap data — in-transit only (arrived_yn=true → signal='green' → excluded)
   const mapPoints = useMemo<ContainerPoint[]>(() =>
     filteredData
-      .filter(c => c.latitude != null && c.longitude != null)
+      .filter(c => c.signal !== 'green' && c.latitude != null && c.longitude != null)
       .map(c => ({
         containerNumber: c.container_no,
         latitude:        c.latitude!,
