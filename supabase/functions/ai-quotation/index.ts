@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildSystem, callAnthropicWithRetry } from '../_shared/anthropic.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -59,30 +60,12 @@ Deno.serve(async (req: Request) => {
       ? `Customer Name: ${customerName}\n\nCustomer Inquiry:\n${rawInquiry}`
       : `Customer Inquiry:\n${rawInquiry}`
 
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key':         anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'content-type':      'application/json',
-      },
-      body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
-        system:     systemPrompt,
-        messages:   [{ role: 'user', content: userContent }],
-      }),
+    const { text: result } = await callAnthropicWithRetry(anthropicKey, {
+      model:     'claude-haiku-4-5-20251001',
+      maxTokens: 1500,
+      system:    buildSystem(systemPrompt),
+      messages:  [{ role: 'user', content: userContent }],
     })
-
-    if (!claudeRes.ok) {
-      const errText = await claudeRes.text()
-      throw new Error(`Anthropic API ${claudeRes.status}: ${errText}`)
-    }
-
-    const claudeData = await claudeRes.json() as {
-      content?: { type: string; text: string }[]
-    }
-    const result = claudeData.content?.[0]?.text?.trim()
     if (!result) throw new Error('Empty response from Anthropic')
 
     if (userId) {

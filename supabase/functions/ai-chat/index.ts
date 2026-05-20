@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { MINT_SYSTEM_PROMPT } from '../_shared/mintPrompt.ts'
+import { buildSystem, callAnthropicWithRetry } from '../_shared/anthropic.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -206,34 +207,17 @@ Deno.serve(async (req: Request) => {
     const knowledgeContext = buildKnowledgeContext(knowledgeHits)
     console.info(`[ai-chat] knowledge hits=${knowledgeHits.length}`)
 
-    // 3. Anthropic call
+    // 3. Anthropic call (system: stable MINT prompt cached, volatile knowledge uncached)
     const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
-    const systemPrompt = MINT_SYSTEM_PROMPT.replace(/{languageName}/g, languageName) + knowledgeContext
+    const stablePrompt = MINT_SYSTEM_PROMPT.replace(/{languageName}/g, languageName)
+    const system = buildSystem(stablePrompt, knowledgeContext || undefined)
 
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key':         anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'content-type':      'application/json',
-      },
-      body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
-        max_tokens: 800,
-        system:     systemPrompt,
-        messages:   contextMessages,
-      }),
+    const { text: answer } = await callAnthropicWithRetry(anthropicKey, {
+      model:     'claude-haiku-4-5-20251001',
+      maxTokens: 800,
+      system,
+      messages:  contextMessages,
     })
-
-    if (!claudeRes.ok) {
-      const errText = await claudeRes.text()
-      throw new Error(`Anthropic API ${claudeRes.status}: ${errText}`)
-    }
-
-    const claudeData = await claudeRes.json() as {
-      content?: { type: string; text: string }[]
-    }
-    const answer = claudeData.content?.[0]?.text?.trim()
     if (!answer) throw new Error('Empty response from Anthropic')
 
     // 4. Check if first message (for session title)

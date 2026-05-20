@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { MINT_SYSTEM_PROMPT } from '../_shared/mintPrompt.ts'
+import { buildSystem, callAnthropicWithRetry } from '../_shared/anthropic.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -180,7 +181,7 @@ async function fetchChannelMessages(
   }))
 }
 
-// ── Claude 호출 (기존 유지) ────────────────────────────────────────────────
+// ── Claude 호출 — callAnthropicWithRetry로 위임 ────────────────────────────
 
 async function callClaude(
   anthropicKey: string,
@@ -188,29 +189,12 @@ async function callClaude(
   messages: { role: string; content: string }[],
   maxTokens = 1200,
 ): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key':         anthropicKey,
-      'anthropic-version': '2023-06-01',
-      'content-type':      'application/json',
-    },
-    body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system:     systemPrompt,
-      messages,
-    }),
+  const { text } = await callAnthropicWithRetry(anthropicKey, {
+    model:     'claude-haiku-4-5-20251001',
+    maxTokens,
+    system:    buildSystem(systemPrompt),
+    messages,
   })
-
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new Error(`Anthropic API ${res.status}: ${errText}`)
-  }
-
-  const data = await res.json() as { content?: { type: string; text: string }[] }
-  const text = data.content?.[0]?.text?.trim()
-  if (!text) throw new Error('Empty response from Anthropic')
   return text
 }
 

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildSystem, callAnthropicWithRetry } from '../_shared/anthropic.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -64,28 +65,13 @@ Current Status: ${currentStatus}
 Current Location: ${currentLocation || 'Unknown'}
 ETA: ${eta || 'TBD'}${memo ? `\nAdditional Notes: ${memo}` : ''}`
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         Deno.env.get('ANTHROPIC_API_KEY') ?? '',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system:     systemPrompt,
-        messages:   [{ role: 'user', content: userMessage }],
-      }),
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
+    const { text: result } = await callAnthropicWithRetry(anthropicKey, {
+      model:     'claude-haiku-4-5-20251001',
+      maxTokens: 1024,
+      system:    buildSystem(systemPrompt),
+      messages:  [{ role: 'user', content: userMessage }],
     })
-
-    if (!aiRes.ok) {
-      const err = await aiRes.text()
-      return Response.json({ error: `Anthropic API error: ${err}` }, { status: 500, headers: CORS })
-    }
-
-    const aiData = await aiRes.json()
-    const result = aiData.content?.[0]?.text ?? ''
 
     // Save to ai_conversations
     if (userId) {
