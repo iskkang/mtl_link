@@ -406,9 +406,25 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
     return res.status(400).json({ ok: false, error: 'Missing containers array in body' })
   }
 
-  const containers = body.containers ?? []
-  const segments   = body.segments   ?? []
+  const rawContainers = body.containers ?? []
+  const rawSegments   = body.segments   ?? []
   const errors: string[] = []
+
+  // Deduplicate by key — last value wins (matches Excel row order)
+  const containers = Object.values(
+    rawContainers.reduce<Record<string, Record<string, unknown>>>((acc, c) => {
+      const key = String(c.container_no ?? '').trim()
+      if (key) acc[key] = c
+      return acc
+    }, {}),
+  )
+  const segments = Object.values(
+    rawSegments.reduce<Record<string, Record<string, unknown>>>((acc, s) => {
+      const key = String(s.segment_id ?? '').trim()
+      if (key) acc[key] = s
+      return acc
+    }, {}),
+  )
 
   // Upsert containers
   let updatedContainers = 0
@@ -437,7 +453,7 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
       console.error('containers upsert error:', cErr)
       errors.push(`containers: ${cErr.message} | code: ${cErr.code} | details: ${cErr.details ?? ''} | hint: ${cErr.hint ?? ''}`)
     } else {
-      updatedContainers = containers.length
+      updatedContainers = containerRows.length
     }
   }
 
