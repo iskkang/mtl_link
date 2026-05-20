@@ -81,7 +81,7 @@ const DEST_COUNTRIES = [
   { code: 'UZ', label: '우즈베키스탄', kw: ['tashkent', 'andijan', 'namangan', 'samarkand', 'bukhara', 'termez', 'chukursay', 'fergana', 'urgench', 'nukus'] },
   { code: 'KZ', label: '카자흐스탄',   kw: ['almaty', 'astana', 'nur-sultan', 'shymkent', 'aktau', 'aktobe', 'taraz', 'karaganda', 'semey', 'pavlodar'] },
   { code: 'KG', label: '키르기스스탄', kw: ['bishkek', 'osh', 'jalal', 'karakol', 'tokmok'] },
-  { code: 'PL', label: '폴란드',       kw: ['warsaw', 'lodz', 'krakow', 'gdansk', 'poznan', 'wroclaw', 'katowice', 'szczecin'] },
+  { code: 'PL', label: '폴란드',       kw: ['warsaw', 'lodz', 'krakow', 'gdansk', 'poznan', 'wroclaw', 'katowice', 'szczecin', 'małaszewicze', 'malaszewicze', 'poland'] },
 ] as const
 
 type CountryCode = 'UZ' | 'KZ' | 'KG' | 'PL'
