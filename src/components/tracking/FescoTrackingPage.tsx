@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, X } from 'lucide-react'
+import { RefreshCw, X, Search, ChevronRight } from 'lucide-react'
 import {
   getFescoSignal,
   translateFescoStatusText,
@@ -215,9 +215,45 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
+/* ── FESCO signal mini donut ─────────────────────────────────────── */
+function FescoSignalDonut({ green, yellow, red }: { green: number; yellow: number; red: number }) {
+  const total = green + yellow + red
+  const CX = 37, R = 27, SW = 9
+  const C = 2 * Math.PI * R
+  if (total === 0) return (
+    <svg width={74} height={74} style={{ flexShrink: 0 }}>
+      <circle cx={CX} cy={CX} r={R} fill="none" strokeWidth={SW} stroke="var(--ink-100)" />
+      <text x={CX} y={CX + 4} textAnchor="middle" fontSize="12" fill="var(--ink-400)" fontFamily="var(--font-body)">0</text>
+    </svg>
+  )
+  const segs = [
+    { val: red,    color: '#dc2626' },
+    { val: yellow, color: '#d97706' },
+    { val: green,  color: '#0d9488' },
+  ]
+  let offset = 0
+  return (
+    <svg width={74} height={74} style={{ flexShrink: 0 }}>
+      {segs.map(({ val, color }, i) => {
+        if (val === 0) return null
+        const len = (val / total) * C
+        const el = (
+          <circle key={i} cx={CX} cy={CX} r={R} fill="none" strokeWidth={SW}
+            stroke={color} strokeDasharray={`${len} ${C - len}`}
+            strokeDashoffset={-offset} strokeLinecap="butt"
+            transform={`rotate(-90 ${CX} ${CX})`} />
+        )
+        offset += len
+        return el
+      })}
+      <text x={CX} y={CX - 2} textAnchor="middle" fontSize="14" fontWeight="700" fill="var(--ink-900)" fontFamily="var(--font-body)">{total}</text>
+      <text x={CX} y={CX + 9} textAnchor="middle" fontSize="5" fontWeight="600" fill="var(--ink-500)" letterSpacing="1" fontFamily="var(--font-mono)">TOTAL</text>
+    </svg>
+  )
+}
+
 /* ── Mobile FESCO view ───────────────────────────────────────────── */
 interface MobileFescoViewProps {
-  orders:              FescoOrder[]
   filteredOrders:      FescoOrder[]
   loading:             boolean
   error:               string | null
@@ -242,7 +278,7 @@ interface MobileFescoViewProps {
 }
 
 function MobileFescoView({
-  orders, filteredOrders, loading, error, searchInput, setSearchInput,
+  filteredOrders, loading, error, searchInput, setSearchInput,
   q, setQ, statusTab, setStatusTab, selectedId, detail, detailLoading, detailError,
   containerTracking, trackingLoading, trackingError, expandedStaleCtr, setExpandedStaleCtr,
   onCardClick, onClose, onRefresh,
@@ -256,21 +292,26 @@ function MobileFescoView({
     }),
     [filteredOrders],
   )
+
+  const fescoStats = useMemo(() => {
+    const m = { green: 0, yellow: 0, red: 0 }
+    filteredOrders.forEach(o => {
+      const { signal } = getFescoSignal(o)
+      if      (signal === 'green')  m.green++
+      else if (signal === 'yellow') m.yellow++
+      else if (signal === 'red')    m.red++
+    })
+    return m
+  }, [filteredOrders])
+
   const displayOrders = mobileTab === 'action' ? actionOrders : filteredOrders
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--chat-bg)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--chat-bg)', overflow: 'hidden', paddingBottom: 64 }}>
 
-      {/* Header */}
-      <div style={{ flexShrink: 0, padding: '12px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>FESCO Bookings</span>
-          {!loading && (
-            <span style={{ fontSize: 11, color: 'var(--ink-400)', fontFamily: 'var(--font-mono)' }}>
-              {orders.length}
-            </span>
-          )}
-        </div>
+      {/* [1] Header — title row */}
+      <div style={{ flexShrink: 0, padding: '12px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>FESCO 추적</span>
         <button
           type="button"
           onClick={onRefresh}
@@ -281,40 +322,64 @@ function MobileFescoView({
         </button>
       </div>
 
-      {/* Search bar */}
+      {/* [1b] Status badges */}
+      {!loading && (fescoStats.red > 0 || fescoStats.yellow > 0 || fescoStats.green > 0) && (
+        <div style={{ flexShrink: 0, padding: '0 14px 8px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {fescoStats.red > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', background: 'rgba(220,38,38,0.08)', borderRadius: 10, padding: '2px 8px' }}>
+              {fescoStats.red} 조치필요
+            </span>
+          )}
+          {fescoStats.yellow > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#d97706', background: 'rgba(217,119,6,0.08)', borderRadius: 10, padding: '2px 8px' }}>
+              {fescoStats.yellow} 주의
+            </span>
+          )}
+          {fescoStats.green > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#0d9488', background: 'rgba(20,184,166,0.08)', borderRadius: 10, padding: '2px 8px' }}>
+              {fescoStats.green} 정상
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* [3] Search bar */}
       <div style={{ flexShrink: 0, padding: '0 14px 6px' }}>
-        <div style={{ display: 'flex', height: 34, background: 'var(--card)', borderRadius: 8, border: `1px solid ${q ? 'var(--brand)' : 'var(--ink-300)'}`, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: 34, background: 'var(--card)', borderRadius: 8, border: `1px solid ${q ? 'var(--brand)' : 'var(--ink-200)'}`, overflow: 'hidden', alignItems: 'center' }}>
+          <span style={{ paddingLeft: 10, color: 'var(--ink-400)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <Search size={13} />
+          </span>
           <input
             type="text"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') setQ(searchInput.trim()) }}
             placeholder="부킹번호 / 컨테이너 / 고객 / 경로…"
-            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '0 10px', fontSize: 13, color: 'var(--ink-800)' }}
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '0 8px', fontSize: 13, color: 'var(--ink-800)' }}
           />
           {searchInput && (
             <button type="button" onClick={() => { setSearchInput(''); setQ('') }}
-              style={{ padding: '0 6px', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              style={{ padding: '0 6px', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <X size={12} />
             </button>
           )}
           <button type="button" onClick={() => setQ(searchInput.trim())}
-            style={{ padding: '0 14px', background: 'var(--brand)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+            style={{ padding: '0 12px', height: '100%', background: 'var(--brand)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
             검색
           </button>
         </div>
       </div>
 
-      {/* Status chips */}
+      {/* Status filter chips */}
       <div style={{ flexShrink: 0, display: 'flex', gap: 6, padding: '0 14px 8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
         {STATUS_TABS.map(tab => (
           <button
             key={tab}
             type="button"
             onClick={() => setStatusTab(tab)}
-            style={{ flexShrink: 0, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
-              background: statusTab === tab ? 'var(--brand)' : 'var(--side-row)',
-              color:      statusTab === tab ? '#fff'         : 'var(--ink-3)',
+            style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 14, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+              background: statusTab === tab ? '#E1F5EE' : 'var(--side-row)',
+              color:      statusTab === tab ? '#0F6E56'  : 'var(--ink-3)',
             }}
           >
             {tab}
@@ -322,43 +387,69 @@ function MobileFescoView({
         ))}
       </div>
 
-      {/* List with tabs */}
-      <div style={{ flex: 1, minHeight: 0, margin: '0 14px', background: 'var(--card)', borderRadius: '10px 10px 0 0', border: '1px solid var(--ink-200)', borderBottom: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ flexShrink: 0, display: 'flex', borderBottom: '1px solid var(--ink-200)' }}>
+      {/* [5] Summary card */}
+      {!loading && (
+        <div style={{ flexShrink: 0, margin: '0 14px 8px', background: 'var(--card)', borderRadius: 12, border: '0.5px solid var(--ink-200)', display: 'flex', alignItems: 'center', padding: '12px 14px', gap: 14 }}>
+          <FescoSignalDonut green={fescoStats.green} yellow={fescoStats.yellow} red={fescoStats.red} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
+            {[
+              { color: '#0d9488', label: '정상',     count: fescoStats.green },
+              { color: '#d97706', label: '주의',     count: fescoStats.yellow },
+              { color: '#dc2626', label: '조치필요', count: fescoStats.red },
+            ].map(({ color, label, count }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, flex: 1, color: 'var(--ink-700)' }}>{label}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--ink-900)' }}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* [6] List with tabs */}
+      <div style={{ flex: 1, minHeight: 0, margin: '0 14px', background: 'var(--card)', borderRadius: '12px 12px 0 0', border: '0.5px solid var(--ink-200)', borderBottom: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Tab bar */}
+        <div style={{ flexShrink: 0, display: 'flex', borderBottom: '0.5px solid var(--ink-200)' }}>
           {([
             { key: 'action' as const, label: '조치필요', badge: actionOrders.length > 0 ? actionOrders.length : null },
             { key: 'all'    as const, label: '전체',     badge: null },
-          ]).map(({ key, label, badge }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setMobileTab(key)}
-              style={{ flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 600,
-                borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                borderBottom: `2px solid ${mobileTab === key ? 'var(--brand)' : 'transparent'}`,
-                color: mobileTab === key ? 'var(--ink-900)' : 'var(--ink-400)',
-                background: 'transparent', cursor: 'pointer',
-              }}
-            >
-              {label}
-              {badge != null && (
-                <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: '#dc2626' }}>{badge}</span>
-              )}
-            </button>
-          ))}
+          ]).map(({ key, label, badge }) => {
+            const isActive = mobileTab === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMobileTab(key)}
+                style={{ flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 600,
+                  borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                  borderBottom: `2px solid ${isActive ? '#0F6E56' : 'transparent'}`,
+                  color:      isActive ? '#0F6E56'  : 'var(--ink-400)',
+                  background: isActive ? '#E1F5EE30' : 'transparent',
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+              >
+                {label}
+                {badge != null && (
+                  <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: '#dc2626' }}>{badge}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {error && (
-            <div style={{ margin: 12, padding: 12, borderRadius: 10, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.25)', color: '#dc2626', fontSize: 13 }}>
+            <div style={{ margin: '4px 0', padding: 12, borderRadius: 10, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.25)', color: '#dc2626', fontSize: 13 }}>
               {error}
             </div>
           )}
           {loading && !error && (
-            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <>
               {[1, 2, 3, 4, 5].map(i => (
                 <div key={i} className="animate-pulse" style={{ height: 56, background: 'var(--ink-100)', borderRadius: 8 }} />
               ))}
-            </div>
+            </>
           )}
           {!loading && displayOrders.length === 0 && (
             <div style={{ padding: 32, textAlign: 'center', fontSize: 12, color: 'var(--ink-400)' }}>
@@ -374,18 +465,18 @@ function MobileFescoView({
                 key={order.id}
                 type="button"
                 onClick={() => onCardClick(order.id)}
-                style={{ width: '100%', textAlign: 'left', padding: '10px 14px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid var(--ink-100)', background: order.id === selectedId ? 'var(--ink-50)' : 'transparent', display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, cursor: 'pointer' }}
+                style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: '0.5px solid var(--ink-200)', borderRadius: 8, background: order.id === selectedId ? '#E1F5EE40' : 'var(--card)', display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, cursor: 'pointer' }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: color.dotBg, boxShadow: `0 0 0 2.5px ${color.dotRing}`, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--ink-900)', marginBottom: 1 }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: 'var(--ink-900)', marginBottom: 2 }}>
                     {order.external_1c_number ?? `FESCO-${order.id}`}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 10, color: 'var(--ink-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {order.route_latin ?? (ctrs.slice(0, 2).join(' · ') || '—')}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: color.text, flexShrink: 0 }}>{color.label}</span>
+                <ChevronRight size={14} style={{ color: 'var(--ink-300)', flexShrink: 0 }} />
               </button>
             )
           })}
@@ -675,7 +766,6 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
   if (isMobile) {
     return (
       <MobileFescoView
-        orders={orders}
         filteredOrders={filteredOrders}
         loading={loading}
         error={error}

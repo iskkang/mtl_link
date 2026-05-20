@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, AlertCircle, X, Train, Package, Upload } from 'lucide-react'
+import { RefreshCw, AlertCircle, X, Train, Package, Upload, Search, ChevronRight } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
 import type { ContainerPoint, ContainerPopupData, WeatherAlert } from '../components/tracking/ContainerMap'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -626,15 +626,15 @@ function MobileTcrView({
   }, [mobileTab, searchResults, detailPanelContainers])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--chat-bg)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--chat-bg)', overflow: 'hidden', paddingBottom: 64 }}>
 
       {/* [1] Header */}
       <div style={{ flexShrink: 0, padding: '12px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Train size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>TCR 트래킹</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>중국경유 (TCR)</span>
           {alertCount > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 600, background: `${stats.red > 0 ? '#ef4444' : '#eab308'}18`, color: stats.red > 0 ? '#ef4444' : '#eab308', borderRadius: 10, padding: '1px 7px' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, background: `${stats.red > 0 ? '#ef4444' : '#eab308'}18`, color: stats.red > 0 ? '#ef4444' : '#eab308', borderRadius: 10, padding: '2px 7px' }}>
               {alertCount}
             </span>
           )}
@@ -651,19 +651,30 @@ function MobileTcrView({
 
       {/* [2] Country filter chips */}
       <div style={{ flexShrink: 0, display: 'flex', overflowX: 'auto', gap: 6, padding: '0 14px 8px', scrollbarWidth: 'none' }}>
-        {DEST_COUNTRIES.map(({ code, label }) => (
-          <CountryChip
-            key={code}
-            label={label}
-            count={countryCounts[code as CountryCode] ?? 0}
-            active={selCountries.has(code as CountryCode)}
-            onClick={() => onToggleCountry(code as CountryCode)}
-          />
-        ))}
+        {DEST_COUNTRIES.map(({ code, label }) => {
+          const active = selCountries.has(code as CountryCode)
+          const cnt    = countryCounts[code as CountryCode] ?? 0
+          return (
+            <button
+              key={code}
+              type="button"
+              onClick={() => onToggleCountry(code as CountryCode)}
+              style={{
+                flexShrink: 0, whiteSpace: 'nowrap', cursor: 'pointer',
+                padding: '4px 10px', borderRadius: 14, fontSize: 12, fontWeight: 500,
+                border: `1px solid ${active ? '#0F6E5630' : 'transparent'}`,
+                background: active ? '#E1F5EE' : 'var(--side-row)',
+                color:      active ? '#0F6E56'  : 'var(--ink-3)',
+              }}
+            >
+              {label} <span style={{ opacity: 0.65, fontSize: 11, fontFamily: 'var(--font-mono)' }}>{cnt}</span>
+            </button>
+          )
+        })}
         <button
           type="button"
           onClick={onResetCountries}
-          style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 20, border: '1px solid var(--ink-300)', color: 'var(--ink-500)', background: 'transparent', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 14, border: '1px solid transparent', color: 'var(--ink-4)', background: 'var(--side-row)', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
         >
           초기화
         </button>
@@ -671,32 +682,35 @@ function MobileTcrView({
 
       {/* [3] Search bar */}
       <div style={{ flexShrink: 0, padding: '0 14px 8px' }}>
-        <div style={{ display: 'flex', height: 34, background: 'var(--card)', borderRadius: 8, border: `1px solid ${searchQuery ? 'var(--brand)' : 'var(--ink-300)'}`, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: 34, background: 'var(--card)', borderRadius: 8, border: `1px solid ${searchQuery ? 'var(--brand)' : 'var(--ink-200)'}`, overflow: 'hidden', alignItems: 'center' }}>
+          <span style={{ paddingLeft: 10, color: 'var(--ink-400)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <Search size={13} />
+          </span>
           <input
             type="text"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') setSearchQuery(searchInput) }}
-            placeholder="컨테이너 / 고객명 검색…"
-            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '0 10px', fontSize: 13, color: 'var(--ink-800)' }}
+            placeholder="컨테이너 번호 / 고객명 검색…"
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '0 8px', fontSize: 13, color: 'var(--ink-800)' }}
           />
           {searchInput && (
             <button type="button" onClick={() => { setSearchInput(''); setSearchQuery('') }}
-              style={{ padding: '0 6px', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              style={{ padding: '0 6px', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <X size={12} />
             </button>
           )}
           <button type="button" onClick={() => setSearchQuery(searchInput)}
-            style={{ padding: '0 14px', background: 'var(--brand)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+            style={{ padding: '0 12px', height: '100%', background: 'var(--brand)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
             검색
           </button>
         </div>
       </div>
 
       {/* [4] Map */}
-      <div style={{ flexShrink: 0, height: '42vh', margin: '0 14px 8px', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--ink-200)' }}>
+      <div style={{ flexShrink: 0, height: '42vh', margin: '0 14px 8px', borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--ink-200)' }}>
         {loading ? (
-          <div style={{ width: '100%', height: '100%', background: 'var(--card)', borderRadius: 10 }} className="animate-pulse" />
+          <div style={{ width: '100%', height: '100%', background: 'var(--card)', borderRadius: 12 }} className="animate-pulse" />
         ) : (
           <ContainerMap
             containers={mapPoints}
@@ -714,9 +728,9 @@ function MobileTcrView({
       </div>
 
       {/* [5] Summary card */}
-      <div style={{ flexShrink: 0, margin: '0 14px 8px', background: 'var(--card)', borderRadius: 10, border: '1px solid var(--ink-200)', display: 'flex', alignItems: 'center', padding: '8px 14px', gap: 12 }}>
+      <div style={{ flexShrink: 0, margin: '0 14px 8px', background: 'var(--card)', borderRadius: 12, border: '0.5px solid var(--ink-200)', display: 'flex', alignItems: 'center', padding: '12px 14px', gap: 14 }}>
         <DonutChart green={stats.green} blue={stats.blue} yellow={stats.yellow} red={stats.red} size={74} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
           <LegendRow color="#22c55e" label="도착완료" count={stats.green} />
           <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
           <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
@@ -725,38 +739,44 @@ function MobileTcrView({
       </div>
 
       {/* [6] Container list with tabs */}
-      <div style={{ flex: 1, minHeight: 0, margin: '0 14px', background: 'var(--card)', borderRadius: '10px 10px 0 0', border: '1px solid var(--ink-200)', borderBottom: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ flexShrink: 0, display: 'flex', borderBottom: '1px solid var(--ink-200)' }}>
+      <div style={{ flex: 1, minHeight: 0, margin: '0 14px', background: 'var(--card)', borderRadius: '12px 12px 0 0', border: '0.5px solid var(--ink-200)', borderBottom: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Tab bar */}
+        <div style={{ flexShrink: 0, display: 'flex', borderBottom: '0.5px solid var(--ink-200)' }}>
           {([
-            { key: 'all'    as const, label: '현황',  badge: null },
-            { key: 'alerts' as const, label: '경고',  badge: alertCount > 0 ? alertCount : null },
-          ]).map(({ key, label, badge }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setMobileTab(key)}
-              style={{
-                flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 600,
-                borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                borderBottom: `2px solid ${mobileTab === key ? 'var(--brand)' : 'transparent'}`,
-                color: mobileTab === key ? 'var(--ink-900)' : 'var(--ink-400)',
-                background: 'transparent', cursor: 'pointer',
-              }}
-            >
-              {label}
-              {badge != null && (
-                <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>{badge}</span>
-              )}
-            </button>
-          ))}
+            { key: 'all'    as const, label: '현황', badge: null },
+            { key: 'alerts' as const, label: '경고', badge: alertCount > 0 ? alertCount : null },
+          ]).map(({ key, label, badge }) => {
+            const isActive = mobileTab === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMobileTab(key)}
+                style={{
+                  flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 600,
+                  borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                  borderBottom: `2px solid ${isActive ? '#0F6E56' : 'transparent'}`,
+                  color:      isActive ? '#0F6E56' : 'var(--ink-400)',
+                  background: isActive ? '#E1F5EE30' : 'transparent',
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+              >
+                {label}
+                {badge != null && (
+                  <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: isActive ? '#ef4444' : '#ef4444' }}>{badge}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {loading ? (
-            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <>
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="animate-pulse" style={{ height: 56, background: 'var(--ink-100)', borderRadius: 8 }} />
               ))}
-            </div>
+            </>
           ) : listContainers.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: 'var(--ink-400)' }}>
               {mobileTab === 'alerts' ? '경고 없음' : '컨테이너 없음'}
@@ -766,12 +786,12 @@ function MobileTcrView({
               key={c.container_no}
               type="button"
               onClick={() => onSelect(c.container_no)}
-              style={{ width: '100%', textAlign: 'left', padding: '10px 14px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid var(--ink-100)', background: 'transparent', display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, cursor: 'pointer' }}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 12px', border: '0.5px solid var(--ink-200)', borderRadius: 8, background: 'var(--card)', display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, cursor: 'pointer' }}
             >
               <SignalDot signal={c.signal} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--ink-900)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: 'var(--ink-900)' }}>
                     {c.container_no}
                   </span>
                   {c.open_alert_count > 0 && (
@@ -780,15 +800,11 @@ function MobileTcrView({
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 10, color: 'var(--ink-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {c.origin ?? '—'} → {c.destination ?? '—'}
                 </div>
               </div>
-              {c.eta_final && !c.ata_final && (
-                <span style={{ flexShrink: 0, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--ink-400)' }}>
-                  {fmtDate(c.eta_final)}
-                </span>
-              )}
+              <ChevronRight size={14} style={{ color: 'var(--ink-300)', flexShrink: 0 }} />
             </button>
           ))}
         </div>
@@ -800,17 +816,18 @@ function MobileTcrView({
           position: 'fixed', inset: 0,
           transform: showDetailOverlay ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 0.25s cubic-bezier(.4,0,.2,1)',
-          zIndex: 100, pointerEvents: showDetailOverlay ? 'auto' : 'none',
+          zIndex: 200, pointerEvents: showDetailOverlay ? 'auto' : 'none',
           background: 'var(--card)', display: 'flex', flexDirection: 'column',
         }}
       >
-        <div style={{ height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8 }}>
+        {/* Drag handle */}
+        <div style={{ flexShrink: 0, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ink-300)' }} />
         </div>
         <button
           type="button"
           onClick={onClearSelection}
-          style={{ position: 'absolute', top: 4, right: 12, color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 6 }}
+          style={{ position: 'absolute', top: 4, right: 12, color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', alignItems: 'center' }}
         >
           <X size={18} />
         </button>
