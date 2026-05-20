@@ -743,7 +743,7 @@ export function TcrUploadPage() {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => navigate('/tcr-tracking')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] transition-colors"
             style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
