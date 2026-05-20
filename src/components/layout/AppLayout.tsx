@@ -213,8 +213,8 @@ function DesktopColumns({
         />
       </div>
 
-      {/* ChatSidebar — 280px — hidden for full-width sections (e.g. tracking) */}
-      {activeSection !== 'tracking' && (
+      {/* ChatSidebar — 280px — hidden for full-width sections (e.g. tracking, tcr-tracking) */}
+      {activeSection !== 'tracking' && activeSection !== 'tcr-tracking' && (
         <div
           className="flex flex-col border-r"
           style={{ borderColor: 'var(--side-line)' }}
