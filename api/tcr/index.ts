@@ -19,12 +19,17 @@ function deriveSignal(arrivedYn: boolean, alerts: { severity: string }[]): TcrSi
 
 // ── List (was containers-list.ts) ─────────────────────────────────────────────
 async function handleList(res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 60)
+  const cutoffStr = cutoff.toISOString().split('T')[0]
+
   const { data: ctrRows, error: ctrErr } = await supabase
     .from('tcr_containers_current')
     .select(
       'container_no, customer_list, origin, destination, current_location, ' +
       'eta_final, ata_final, arrived_yn, transport_mode, load_type',
     )
+    .or(`arrived_yn.eq.false,ata_final.gte.${cutoffStr}`)
     .order('container_no')
 
   if (ctrErr) return res.status(500).json({ ok: false, error: ctrErr.message })

@@ -756,7 +756,7 @@ export function TcrTrackingPage() {
               </h1>
             </div>
             <span className="sub truncate" style={{ fontSize: 12, color: 'var(--ink-400)' }}>
-              {loading ? 'Loading…' : `활성 ${containers.length}개 · ${fmtRelTime(lastFetch)}`}
+              {loading ? 'Loading…' : `${containers.length}개 · 운송중 + 60일 이내 도착 · ${fmtRelTime(lastFetch)}`}
             </span>
           </div>
 
@@ -850,6 +850,7 @@ export function TcrTrackingPage() {
                   onSelectContainers={handleSelectContainers}
                   onClearSelection={handleClearSelection}
                   showFescoLink={false}
+                  onSearchSelect={cn => handleSelectContainers([cn])}
                 />
               </div>
               <DetailPanel

@@ -41,6 +41,7 @@ interface ContainerMapProps {
   onSelectContainers?:  (containerNumbers: string[]) => void
   onClearSelection?:    () => void
   showFescoLink?:       boolean
+  onSearchSelect?:      (containerNumber: string) => void
 }
 
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
@@ -218,12 +219,14 @@ function SearchOverlay({
   allContainerNumbers,
   onSearchHit,
   onSearchClear,
+  onSearchSelect,
   mapRef,
 }: {
   containers:          ContainerPoint[]
   allContainerNumbers: string[]
   onSearchHit:         (containerNumber: string, lng: number, lat: number) => void
   onSearchClear:       () => void
+  onSearchSelect?:     (containerNumber: string) => void
   mapRef:              { current: mapboxgl.Map | null }
 }) {
   const { t } = useTranslation()
@@ -238,12 +241,14 @@ function SearchOverlay({
     if (point) {
       mapRef.current?.flyTo({ center: [point.longitude, point.latitude], zoom: 8, duration: 1200 })
       onSearchHit(q, point.longitude, point.latitude)
+      onSearchSelect?.(q)
       setErrMsg(null)
       setFlash('ok')
       setTimeout(() => setFlash('idle'), 600)
       return
     }
     if (allContainerNumbers.includes(q)) {
+      onSearchSelect?.(q)
       setErrMsg(t('tracking.containerNoLocation'))
       setFlash('warn')
       return
@@ -324,6 +329,7 @@ export function ContainerMap({
   onSelectContainers,
   onClearSelection,
   showFescoLink = true,
+  onSearchSelect,
 }: ContainerMapProps) {
   const { t }         = useTranslation()
   const containerRef  = useRef<HTMLDivElement>(null)
@@ -505,6 +511,7 @@ export function ContainerMap({
         allContainerNumbers={allContainerNumbers}
         onSearchHit={(cn, lng, lat) => showSearchRef.current(cn, lng, lat)}
         onSearchClear={() => clearSearchRef.current()}
+        onSearchSelect={onSearchSelect}
         mapRef={mapRef}
       />
 
