@@ -247,6 +247,8 @@ function DetailPanel({
   detailLoading,
   onCloseDetail,
   onClearMapSelection,
+  searchActive,
+  onClearSearch,
 }: {
   containers:          TcrContainer[]
   mapSelectionCount:   number | null
@@ -259,12 +261,15 @@ function DetailPanel({
   detailLoading:       boolean
   onCloseDetail:       () => void
   onClearMapSelection: () => void
+  searchActive:        boolean
+  onClearSearch:       () => void
 }) {
   const [tab, setTab] = useState<'segments' | 'items' | 'alerts'>('segments')
 
+  // When search is active, show results as-is (no sig filter, no sort override needed)
   const filtered = useMemo(() =>
-    sigFilter ? containers.filter(c => c.signal === sigFilter) : containers,
-    [containers, sigFilter],
+    searchActive || !sigFilter ? containers : containers.filter(c => c.signal === sigFilter),
+    [containers, sigFilter, searchActive],
   )
   const sorted = useMemo(() =>
     [...filtered].sort((a, b) => SIG_RANK[a.signal] - SIG_RANK[b.signal]),
@@ -310,9 +315,21 @@ function DetailPanel({
         ) : (
           <div className="flex items-center justify-between mb-1.5">
             <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-              컨테이너 현황
+              {searchActive ? '검색 결과' : '컨테이너 현황'}
             </span>
-            {mapSelectionCount !== null ? (
+            {searchActive ? (
+              <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                <span className="font-mono">{containers.length}개</span>
+                <button
+                  type="button"
+                  onClick={onClearSearch}
+                  className="flex items-center gap-0.5 font-medium"
+                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                >
+                  <X size={10} /> 초기화
+                </button>
+              </div>
+            ) : mapSelectionCount !== null ? (
               <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
                 <span>{mapSelectionCount}개 선택됨</span>
                 <button
@@ -337,7 +354,7 @@ function DetailPanel({
           </div>
         )}
 
-        {!showDetail && (
+        {!showDetail && !searchActive && (
           <div className="flex gap-1.5 flex-wrap mt-1">
             {(Object.keys(SIG_RANK) as TcrSignal[]).filter(s => stats[s] > 0).map(s => (
               <SignalChip
@@ -552,8 +569,10 @@ export function TcrTrackingPage() {
   const [lastFetch,     setLastFetch]     = useState<string | null>(null)
   const [refreshing,    setRefreshing]    = useState(false)
 
-  const [selCountries, setSelCountries] = useState<Set<CountryCode>>(new Set(['UZ', 'KZ', 'KG', 'PL']))
-  const [sigFilter,    setSigFilter]    = useState<TcrSignal | null>(null)
+  const [selCountries,  setSelCountries]  = useState<Set<CountryCode>>(new Set(['UZ', 'KZ', 'KG', 'PL']))
+  const [sigFilter,     setSigFilter]     = useState<TcrSignal | null>(null)
+  const [searchInput,   setSearchInput]   = useState('')
+  const [searchQuery,   setSearchQuery]   = useState('')
 
   // Map cluster/marker selection
   const [selectedContainerNumbers, setSelectedContainerNumbers] = useState<string[] | null>(null)
@@ -620,6 +639,11 @@ export function TcrTrackingPage() {
     setDetail(null)
   }, [])
 
+  const clearSearch = useCallback(() => {
+    setSearchInput('')
+    setSearchQuery('')
+  }, [])
+
   const handleSelect = useCallback((no: string) => {
     if (no === selectedNo) { setSelectedNo(null); setDetail(null); return }
     setSelectedNo(no)
@@ -654,14 +678,25 @@ export function TcrTrackingPage() {
 
   const totalActive = stats.green + stats.blue + stats.yellow + stats.red
 
-  // Detail panel containers: cluster-filtered or full list
+  // Full-list search: covers all fetched containers (incl. arrived)
+  const searchResults = useMemo<TcrContainer[] | null>(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return null
+    return containers.filter(c =>
+      c.container_no.toLowerCase().includes(q) ||
+      (c.customer_list?.toLowerCase().includes(q) ?? false),
+    )
+  }, [containers, searchQuery])
+
+  // Detail panel containers: search > cluster > full list
   const detailPanelContainers = useMemo(() => {
+    if (searchResults !== null) return searchResults
     if (selectedContainerNumbers !== null) {
       const selSet = new Set(selectedContainerNumbers)
       return filteredData.filter(c => selSet.has(c.container_no))
     }
     return filteredData
-  }, [selectedContainerNumbers, filteredData])
+  }, [searchResults, selectedContainerNumbers, filteredData])
 
   // Stats for the detail panel signal chips
   const panelStats = useMemo(() => {
@@ -779,7 +814,7 @@ export function TcrTrackingPage() {
           </div>
         </div>
 
-        {/* Destination filter chips */}
+        {/* Destination filter chips + search */}
         <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
           <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-400)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
             목적지
@@ -803,6 +838,44 @@ export function TcrTrackingPage() {
           >
             <X size={11} /> 초기화
           </button>
+
+          {/* Search input */}
+          <div className="flex items-center gap-1 ml-auto">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') setSearchQuery(searchInput) }}
+                placeholder="컨테이너 번호 / 고객명 검색…"
+                className="pl-2.5 pr-7 py-0.5 rounded border text-[11px] outline-none"
+                style={{
+                  width: 220,
+                  borderColor: searchQuery ? 'var(--brand)' : 'var(--ink-300)',
+                  background: 'var(--card)',
+                  color: 'var(--ink-800)',
+                }}
+              />
+              {searchInput ? (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-1.5 flex items-center"
+                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                >
+                  <X size={10} />
+                </button>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchQuery(searchInput)}
+              className="px-2 py-0.5 rounded border text-[11px] font-medium transition-colors"
+              style={{ borderColor: 'var(--brand)', color: 'var(--brand)', background: 'transparent' }}
+            >
+              검색
+            </button>
+          </div>
         </div>
       </div>
 
@@ -855,7 +928,7 @@ export function TcrTrackingPage() {
               </div>
               <DetailPanel
                 containers={detailPanelContainers}
-                mapSelectionCount={selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+                mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
                 sigFilter={sigFilter}
                 onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
                 stats={panelStats}
@@ -865,6 +938,8 @@ export function TcrTrackingPage() {
                 detailLoading={detailLoading}
                 onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
                 onClearMapSelection={handleClearSelection}
+                searchActive={searchResults !== null}
+                onClearSearch={clearSearch}
               />
             </div>
 
