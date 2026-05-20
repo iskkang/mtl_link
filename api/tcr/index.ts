@@ -49,45 +49,73 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
 
   if (rows.length === 0) return res.json({ containers: [], total: 0 })
 
-  const containerNos  = rows.map(r => r.container_no)
-  const locationNames = [...new Set(rows.map(r => r.current_location).filter((v): v is string => !!v))]
+  const containerNos = rows.map(r => r.container_no)
+
+  // Fetch current-segment info (incl. to_location) and open alerts in parallel
+  const [segResult, alertResult] = await Promise.all([
+    supabase
+      .from('tcr_route_segments')
+      .select('container_no, segment_name, to_location')
+      .in('container_no', containerNos)
+      .eq('is_current_segment', true),
+    supabase
+      .from('tcr_risk_alerts')
+      .select('container_no, severity')
+      .in('container_no', containerNos)
+      .eq('status', 'Open'),
+  ])
+
+  type SegRow   = { container_no: string; segment_name: string | null; to_location: string | null }
+  type AlertRow = { container_no: string; severity: string }
+
+  const segRows   = (segResult.data   ?? [] as unknown[]) as unknown as SegRow[]
+  const alertRows = (alertResult.data ?? [] as unknown[]) as unknown as AlertRow[]
+
+  // container_no → segment_name / to_location
+  const segMap      = new Map<string, string>()
+  const segToLocMap = new Map<string, string>()
+  for (const s of segRows) {
+    if (s.segment_name) segMap.set(s.container_no, s.segment_name)
+    if (s.to_location)  segToLocMap.set(s.container_no, s.to_location)
+  }
+
+  // Alert map
+  const alertMap = new Map<string, { severity: string }[]>()
+  for (const a of alertRows) {
+    const list = alertMap.get(a.container_no) ?? []
+    list.push({ severity: a.severity })
+    alertMap.set(a.container_no, list)
+  }
+
+  // Collect ALL unique location names for one batch lookup
+  const allLocNames = new Set<string>()
+  for (const r of rows) {
+    if (r.current_location) allLocNames.add(r.current_location)
+    if (r.destination)      allLocNames.add(r.destination)
+    if (r.origin)           allLocNames.add(r.origin)
+  }
+  for (const toName of segToLocMap.values()) allLocNames.add(toName)
 
   const { data: locRows } = await supabase
     .from('tcr_locations')
     .select('location_name, latitude, longitude')
-    .in('location_name', locationNames)
+    .in('location_name', [...allLocNames])
 
   const locMap = new Map<string, { latitude: number; longitude: number }>()
   for (const l of (locRows ?? [] as unknown[]) as unknown as { location_name: string; latitude: number; longitude: number }[]) {
     locMap.set(l.location_name, { latitude: l.latitude, longitude: l.longitude })
   }
 
-  const { data: segRows } = await supabase
-    .from('tcr_route_segments')
-    .select('container_no, segment_name')
-    .in('container_no', containerNos)
-    .eq('is_current_segment', true)
-
-  const segMap = new Map<string, string>()
-  for (const s of (segRows ?? [] as unknown[]) as unknown as { container_no: string; segment_name: string }[]) {
-    segMap.set(s.container_no, s.segment_name)
-  }
-
-  const { data: alertRows } = await supabase
-    .from('tcr_risk_alerts')
-    .select('container_no, severity')
-    .in('container_no', containerNos)
-    .eq('status', 'Open')
-
-  const alertMap = new Map<string, { severity: string }[]>()
-  for (const a of (alertRows ?? [] as unknown[]) as unknown as { container_no: string; severity: string }[]) {
-    const list = alertMap.get(a.container_no) ?? []
-    list.push({ severity: a.severity })
-    alertMap.set(a.container_no, list)
-  }
-
   const containers = rows.map(r => {
-    const geo    = r.current_location ? locMap.get(r.current_location) ?? null : null
+    // Coalesce: seg_to → cur_loc → dest → orig
+    const segToName = segToLocMap.get(r.container_no) ?? null
+    const geo =
+      (segToName          ? locMap.get(segToName)          : undefined) ??
+      (r.current_location ? locMap.get(r.current_location) : undefined) ??
+      (r.destination      ? locMap.get(r.destination)      : undefined) ??
+      (r.origin           ? locMap.get(r.origin)           : undefined) ??
+      null
+
     const alerts = alertMap.get(r.container_no) ?? []
     return {
       container_no:         r.container_no,
