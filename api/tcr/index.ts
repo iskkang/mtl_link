@@ -396,10 +396,74 @@ async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: R
   })
 }
 
+// ── Upsert (Excel upload from TcrUploadPage) ──────────────────────────────────
+async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  const body = req.body as {
+    containers?: Record<string, unknown>[]
+    segments?:   Record<string, unknown>[]
+  }
+  if (!body || !Array.isArray(body.containers)) {
+    return res.status(400).json({ ok: false, error: 'Missing containers array in body' })
+  }
+
+  const containers = body.containers ?? []
+  const segments   = body.segments   ?? []
+  const errors: string[] = []
+
+  // Upsert containers
+  let updatedContainers = 0
+  if (containers.length > 0) {
+    const containerRows = containers.map(c => ({
+      container_no:         c.container_no,
+      origin:               c.origin               ?? null,
+      destination:          c.destination          ?? null,
+      transport_mode:       c.transport_mode       ?? null,
+      current_location:     c.current_location     ?? null,
+      current_location_raw: c.current_location_raw ?? null,
+      eta_final:            c.eta_final            ?? null,
+      ata_final:            c.ata_final            ?? null,
+      arrived_yn:           c.arrived_yn           ?? false,
+    }))
+
+    const { error: cErr } = await supabase
+      .from('tcr_containers_current')
+      .upsert(containerRows, { onConflict: 'container_no' })
+
+    if (cErr) errors.push(`containers: ${cErr.message}`)
+    else updatedContainers = containers.length
+  }
+
+  // Upsert segments
+  let updatedSegments = 0
+  if (segments.length > 0) {
+    const segmentRows = segments.map(s => ({
+      segment_id:         s.segment_id,
+      container_no:       s.container_no,
+      segment_no:         s.segment_no,
+      segment_name:       s.segment_name       ?? null,
+      from_location:      s.from_location      ?? null,
+      to_location:        s.to_location        ?? null,
+      transport_mode:     s.transport_mode     ?? null,
+      etd:                s.etd                ?? null,
+      atd:                s.atd                ?? null,
+      eta:                s.eta                ?? null,
+      ata:                s.ata                ?? null,
+      is_current_segment: s.is_current_segment ?? false,
+    }))
+
+    const { error: sErr } = await supabase
+      .from('tcr_route_segments')
+      .upsert(segmentRows, { onConflict: 'segment_id' })
+
+    if (sErr) errors.push(`segments: ${sErr.message}`)
+    else updatedSegments = segments.length
+  }
+
+  return res.json({ ok: true, updated_containers: updatedContainers, updated_segments: updatedSegments, errors })
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
-
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseUrl || !supabaseKey) {
@@ -408,6 +472,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
 
   const action = String(req.query.action ?? 'list')
+
+  if (req.method === 'POST' && action === 'upsert') return handleUpsert(req, res, supabase)
+  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
+
   if (action === 'detail')  return handleDetail(req, res, supabase)
   if (action === 'weather') return handleWeather(res, supabase)
   return handleList(res, supabase)

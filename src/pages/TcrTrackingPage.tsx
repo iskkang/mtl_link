@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, AlertCircle, X, Train, Package } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { RefreshCw, AlertCircle, X, Train, Package, Upload } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
 import type { ContainerPoint, ContainerPopupData, WeatherAlert } from '../components/tracking/ContainerMap'
 
@@ -559,6 +560,7 @@ function DetailPanel({
 const ALL_COUNTRIES = ['UZ', 'KZ', 'KG', 'PL'] as const
 
 export function TcrTrackingPage() {
+  const navigate = useNavigate()
   const [containers,    setContainers]    = useState<TcrContainer[]>([])
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState<string | null>(null)
@@ -805,6 +807,17 @@ export function TcrTrackingPage() {
             {stats.red    > 0 && <StatPill count={stats.red}    color="#ef4444" label="조치필요" />}
             {stats.yellow > 0 && <StatPill count={stats.yellow} color="#eab308" label="주의" />}
             {stats.green  > 0 && <StatPill count={stats.green}  color="#22c55e" label="도착완료" />}
+            <button
+              type="button"
+              onClick={() => navigate('/tcr-upload')}
+              title="파일 업로드"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] transition-colors"
+              style={{ borderColor: 'var(--ink-300)', color: 'var(--ink-500)', background: 'transparent' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-100)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              <Upload size={13} /> 파일 업로드
+            </button>
             <button
               type="button"
               onClick={() => fetchData(true)}
