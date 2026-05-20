@@ -942,6 +942,7 @@ export function TcrTrackingPage() {
                   onSelectContainers={handleSelectContainers}
                   onClearSelection={handleClearSelection}
                   showFescoLink={false}
+                  detailApiUrl={() => null}
                   onSearchSelect={cn => handleSelectContainers([cn])}
                   weatherAlerts={weatherAlerts}
                 />

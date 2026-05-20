@@ -54,6 +54,7 @@ interface ContainerMapProps {
   onSelectContainers?:  (containerNumbers: string[]) => void
   onClearSelection?:    () => void
   showFescoLink?:       boolean
+  detailApiUrl?:        (containerNo: string) => string | null
   onSearchSelect?:      (containerNumber: string) => void
   weatherAlerts?:       WeatherAlert[]
 }
@@ -343,6 +344,7 @@ export function ContainerMap({
   onSelectContainers,
   onClearSelection,
   showFescoLink = true,
+  detailApiUrl,
   onSearchSelect,
   weatherAlerts = [],
 }: ContainerMapProps) {
@@ -353,6 +355,7 @@ export function ContainerMap({
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
   const fetchAbortRef    = useRef<AbortController | null>(null)
   const showFescoLinkRef = useRef(showFescoLink)
+  const detailApiUrlRef  = useRef(detailApiUrl)
   const containersRef    = useRef(containers)
   useEffect(() => { containersRef.current = containers }, [containers])
 
@@ -366,6 +369,7 @@ export function ContainerMap({
   useEffect(() => { tRef.current           = t                     }, [t])
   useEffect(() => { detailsRef.current     = containerDetails      }, [containerDetails])
   useEffect(() => { showFescoLinkRef.current = showFescoLink       }, [showFescoLink])
+  useEffect(() => { detailApiUrlRef.current  = detailApiUrl        }, [detailApiUrl])
 
   /* show/clear search highlight — updated once, refs stable, body reads refs */
   const showSearchRef  = useRef((_cn: string, _lng: number, _lat: number) => {})
@@ -410,8 +414,14 @@ export function ContainerMap({
         remaining:   ti('tracking.remaining'),
       }
 
+      const apiUrl = detailApiUrlRef.current
+        ? detailApiUrlRef.current(cn)
+        : `/api/fesco/containers?number=${encodeURIComponent(cn)}`
+
+      if (!apiUrl) return   // caller opted out of detail fetch (e.g. TCR page)
+
       try {
-        const resp = await fetch(`/api/fesco/containers?number=${encodeURIComponent(cn)}`, { signal: ctrl.signal })
+        const resp = await fetch(apiUrl, { signal: ctrl.signal })
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const data = await resp.json() as {
           ok: boolean

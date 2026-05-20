@@ -450,7 +450,7 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
 
     containers.push({
       container_no:      cno,
-      origin:            null,
+      origin:            'Incheon',
       destination:       'Małaszewicze',
       transport_mode:    'Rail',
       current_location:  cur_loc,
