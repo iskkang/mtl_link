@@ -40,6 +40,7 @@ interface ContainerMapProps {
   containerDetails?:    Record<string, ContainerPopupData>
   onSelectContainers?:  (containerNumbers: string[]) => void
   onClearSelection?:    () => void
+  showFescoLink?:       boolean
 }
 
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
@@ -152,10 +153,10 @@ function buildPopupHtml(
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
         <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
         <span style="font-weight:600;font-size:12px;color:#1e293b;font-family:var(--font-mono,monospace)">${cn}</span>
-        <a href="https://my.fesco.com/tracking?tab=${cn}" target="_blank" rel="noopener noreferrer"
+        ${i18n.openInFesco ? `<a href="https://my.fesco.com/tracking?tab=${cn}" target="_blank" rel="noopener noreferrer"
            style="margin-left:auto;font-size:10px;color:#0d9488;text-decoration:underline;white-space:nowrap">
           ${i18n.openInFesco} ↗
-        </a>
+        </a>` : ''}
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
         <span style="font-size:10px;color:#94a3b8;flex-shrink:0;min-width:52px">${i18n.route}</span>
@@ -322,14 +323,16 @@ export function ContainerMap({
   containerDetails = {},
   onSelectContainers,
   onClearSelection,
+  showFescoLink = true,
 }: ContainerMapProps) {
   const { t }         = useTranslation()
   const containerRef  = useRef<HTMLDivElement>(null)
   const mapRef        = useRef<mapboxgl.Map | null>(null)
   const initialized   = useRef(false)
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
-  const fetchAbortRef = useRef<AbortController | null>(null)
-  const containersRef = useRef(containers)
+  const fetchAbortRef    = useRef<AbortController | null>(null)
+  const showFescoLinkRef = useRef(showFescoLink)
+  const containersRef    = useRef(containers)
   useEffect(() => { containersRef.current = containers }, [containers])
 
   /* Stable refs so event handlers never capture stale props */
@@ -337,10 +340,11 @@ export function ContainerMap({
   const clearRef   = useRef(onClearSelection)
   const tRef       = useRef(t)
   const detailsRef = useRef(containerDetails)
-  useEffect(() => { selectRef.current  = onSelectContainers }, [onSelectContainers])
-  useEffect(() => { clearRef.current   = onClearSelection  }, [onClearSelection])
-  useEffect(() => { tRef.current       = t                 }, [t])
-  useEffect(() => { detailsRef.current = containerDetails  }, [containerDetails])
+  useEffect(() => { selectRef.current      = onSelectContainers    }, [onSelectContainers])
+  useEffect(() => { clearRef.current       = onClearSelection      }, [onClearSelection])
+  useEffect(() => { tRef.current           = t                     }, [t])
+  useEffect(() => { detailsRef.current     = containerDetails      }, [containerDetails])
+  useEffect(() => { showFescoLinkRef.current = showFescoLink       }, [showFescoLink])
 
   /* show/clear search highlight — updated once, refs stable, body reads refs */
   const showSearchRef  = useRef((_cn: string, _lng: number, _lat: number) => {})
@@ -380,7 +384,7 @@ export function ContainerMap({
         route:       ti('tracking.route'),
         lastEvent:   ti('tracking.lastEvent'),
         eta:         ti('tracking.eta'),
-        openInFesco: ti('tracking.openInFesco'),
+        openInFesco: showFescoLinkRef.current ? ti('tracking.openInFesco') : '',
         progress:    ti('tracking.progress'),
         remaining:   ti('tracking.remaining'),
       }

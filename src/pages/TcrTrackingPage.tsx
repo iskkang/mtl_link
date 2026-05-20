@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import mapboxgl from 'mapbox-gl'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, AlertCircle, X, Train, Package, ChevronRight } from 'lucide-react'
+import { ContainerMap } from '../components/tracking/ContainerMap'
+import type { ContainerPoint, ContainerPopupData } from '../components/tracking/ContainerMap'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 type TcrSignal = 'green' | 'red' | 'yellow' | 'blue'
@@ -67,6 +68,14 @@ const SIG_LABEL: Record<TcrSignal, string> = {
 }
 const SIG_RANK: Record<TcrSignal, number> = { red: 0, yellow: 1, blue: 2, green: 3 }
 
+/* ── TCR signal → ContainerMap signal ──────────────────────────────── */
+function tcrToMapSignal(s: TcrSignal): ContainerPoint['signal'] {
+  if (s === 'red')    return 'red'
+  if (s === 'yellow') return 'yellow'
+  if (s === 'blue')   return 'green'
+  return 'gray'
+}
+
 /* ── Destination → country ──────────────────────────────────────────── */
 const DEST_COUNTRIES = [
   { code: 'UZ', label: '우즈베키스탄', kw: ['tashkent', 'andijan', 'namangan', 'samarkand', 'bukhara', 'termez', 'chukursay', 'fergana', 'urgench', 'nukus'] },
@@ -106,7 +115,7 @@ function daysSince(iso: string | null): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
 
-/* ── Signal dot (FESCO-style) ───────────────────────────────────────── */
+/* ── Signal dot ──────────────────────────────────────────────────────── */
 function SignalDot({ signal }: { signal: TcrSignal | string }) {
   const color = SIG_COLOR[signal as TcrSignal] ?? '#94a3b8'
   const glow  = signal !== 'blue' ? `0 0 0 2.5px ${color}30` : undefined
@@ -118,7 +127,7 @@ function SignalDot({ signal }: { signal: TcrSignal | string }) {
   )
 }
 
-/* ── Status pill (FESCO StatPill style) ─────────────────────────────── */
+/* ── Stat pill ───────────────────────────────────────────────────────── */
 function StatPill({ count, color, label }: { count: number; color: string; label: string }) {
   return (
     <span
@@ -225,9 +234,10 @@ function DonutChart({ green, blue, yellow, red }: { green: number; blue: number;
   )
 }
 
-/* ── Detail panel (right side, matches FESCO DetailCard style) ───────── */
+/* ── Detail panel ────────────────────────────────────────────────────── */
 function DetailPanel({
   containers,
+  mapSelectionCount,
   sigFilter,
   onSigFilter,
   stats,
@@ -236,16 +246,19 @@ function DetailPanel({
   detail,
   detailLoading,
   onCloseDetail,
+  onClearMapSelection,
 }: {
-  containers:     TcrContainer[]
-  sigFilter:      TcrSignal | null
-  onSigFilter:    (s: TcrSignal) => void
-  stats:          Record<TcrSignal, number>
-  onSelect:       (no: string) => void
-  selectedNo:     string | null
-  detail:         DetailData | null
-  detailLoading:  boolean
-  onCloseDetail:  () => void
+  containers:          TcrContainer[]
+  mapSelectionCount:   number | null
+  sigFilter:           TcrSignal | null
+  onSigFilter:         (s: TcrSignal) => void
+  stats:               Record<TcrSignal, number>
+  onSelect:            (no: string) => void
+  selectedNo:          string | null
+  detail:              DetailData | null
+  detailLoading:       boolean
+  onCloseDetail:       () => void
+  onClearMapSelection: () => void
 }) {
   const [tab, setTab] = useState<'segments' | 'items' | 'alerts'>('segments')
 
@@ -258,8 +271,9 @@ function DetailPanel({
     [filtered],
   )
 
-  // When detail panel opens, reset to segments tab
   useEffect(() => { if (detail) setTab('segments') }, [detail])
+
+  const showDetail = !!(selectedNo && detail)
 
   return (
     <div
@@ -271,18 +285,18 @@ function DetailPanel({
         className="px-4 pt-3 pb-2 border-b flex-shrink-0"
         style={{ borderColor: 'var(--ink-200)' }}
       >
-        {selectedNo && detail ? (
+        {showDetail ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <SignalDot signal={detail.container.signal} />
+              <SignalDot signal={detail!.container.signal} />
               <span className="font-mono text-[12px] font-bold" style={{ color: 'var(--ink-900)' }}>
-                {detail.container.container_no}
+                {detail!.container.container_no}
               </span>
               <span
                 className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                style={{ background: `${SIG_COLOR[detail.container.signal]}15`, color: SIG_COLOR[detail.container.signal] }}
+                style={{ background: `${SIG_COLOR[detail!.container.signal]}15`, color: SIG_COLOR[detail!.container.signal] }}
               >
-                {SIG_LABEL[detail.container.signal]}
+                {SIG_LABEL[detail!.container.signal]}
               </span>
             </div>
             <button
@@ -295,10 +309,22 @@ function DetailPanel({
           </div>
         ) : (
           <div className="flex items-center justify-between mb-1.5">
-            <span className="label-mono" style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
               컨테이너 현황
             </span>
-            {sigFilter && (
+            {mapSelectionCount !== null ? (
+              <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ink-500)' }}>
+                <span>{mapSelectionCount}개 선택됨</span>
+                <button
+                  type="button"
+                  onClick={onClearMapSelection}
+                  className="flex items-center gap-0.5 font-medium"
+                  style={{ color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                >
+                  <X size={10} /> 해제
+                </button>
+              </div>
+            ) : sigFilter ? (
               <button
                 type="button"
                 onClick={() => onSigFilter(sigFilter)}
@@ -307,12 +333,11 @@ function DetailPanel({
               >
                 <X size={9} /> 필터 해제
               </button>
-            )}
+            ) : null}
           </div>
         )}
 
-        {/* Signal chips (only when not showing detail) */}
-        {(!selectedNo || !detail) && (
+        {!showDetail && (
           <div className="flex gap-1.5 flex-wrap mt-1">
             {(Object.keys(SIG_RANK) as TcrSignal[]).filter(s => stats[s] > 0).map(s => (
               <SignalChip
@@ -334,8 +359,7 @@ function DetailPanel({
           <div className="w-5 h-5 rounded-full border-2 animate-spin"
             style={{ borderColor: '#3b82f6', borderTopColor: 'transparent' }} />
         </div>
-      ) : selectedNo && detail ? (
-        /* ── Detail view ── */
+      ) : showDetail ? (
         <>
           {/* Route info */}
           <div
@@ -344,24 +368,24 @@ function DetailPanel({
           >
             <div className="flex-1 min-w-0">
               <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
-                {detail.container.origin ?? '—'} → {detail.container.destination ?? '—'}
+                {detail!.container.origin ?? '—'} → {detail!.container.destination ?? '—'}
               </div>
-              {detail.container.current_segment_name && (
+              {detail!.container.current_segment_name && (
                 <div className="text-[9px] mt-0.5 truncate" style={{ color: 'var(--ink-400)' }}>
-                  구간: {detail.container.current_segment_name}
+                  구간: {detail!.container.current_segment_name}
                 </div>
               )}
             </div>
-            {detail.container.eta_final && !detail.container.ata_final && (
+            {detail!.container.eta_final && !detail!.container.ata_final && (
               <div className="flex-shrink-0">
                 <div className="text-[9px] font-mono uppercase" style={{ color: 'var(--ink-400)' }}>ETA</div>
-                <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-800)' }}>{fmtDate(detail.container.eta_final)}</div>
+                <div className="text-[10px] font-semibold" style={{ color: 'var(--ink-800)' }}>{fmtDate(detail!.container.eta_final)}</div>
               </div>
             )}
-            {detail.container.ata_final && (
+            {detail!.container.ata_final && (
               <div className="flex-shrink-0">
                 <div className="text-[9px] font-mono uppercase" style={{ color: 'var(--ink-400)' }}>ATA</div>
-                <div className="text-[10px] font-semibold" style={{ color: '#22c55e' }}>{fmtDate(detail.container.ata_final)}</div>
+                <div className="text-[10px] font-semibold" style={{ color: '#22c55e' }}>{fmtDate(detail!.container.ata_final)}</div>
               </div>
             )}
           </div>
@@ -370,9 +394,9 @@ function DetailPanel({
           <div className="flex border-b flex-shrink-0" style={{ borderColor: 'var(--ink-200)' }}>
             {(['segments', 'items', 'alerts'] as const).map(t => {
               const badge = t === 'items'
-                ? detail.items.length
+                ? detail!.items.length
                 : t === 'alerts'
-                  ? detail.alerts.filter(a => a.status === 'Open').length
+                  ? detail!.alerts.filter(a => a.status === 'Open').length
                   : 0
               return (
                 <button
@@ -395,9 +419,9 @@ function DetailPanel({
           <div className="flex-1 overflow-y-auto">
             {tab === 'segments' && (
               <div className="py-2">
-                {detail.segments.length === 0 ? (
+                {detail!.segments.length === 0 ? (
                   <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
-                ) : detail.segments.map((s, idx) => (
+                ) : detail!.segments.map((s, idx) => (
                   <div
                     key={s.segment_no ?? idx}
                     className="flex items-start gap-3 px-4 py-2"
@@ -410,7 +434,7 @@ function DetailPanel({
                         border: s.is_current_segment ? '2px solid #3b82f680' : 'none',
                         boxSizing: 'border-box',
                       }} />
-                      {idx < detail.segments.length - 1 && (
+                      {idx < detail!.segments.length - 1 && (
                         <div style={{ width: 1, flex: 1, minHeight: 16, background: 'var(--ink-200)', marginTop: 3 }} />
                       )}
                     </div>
@@ -432,12 +456,12 @@ function DetailPanel({
             )}
             {tab === 'items' && (
               <div className="py-2">
-                {detail.items.length === 0 ? (
+                {detail!.items.length === 0 ? (
                   <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
                     <Package size={20} style={{ margin: '0 auto 8px', color: 'var(--ink-300)' }} />
                     화물 정보 없음
                   </div>
-                ) : detail.items.map((item, idx) => (
+                ) : detail!.items.map((item, idx) => (
                   <div key={item.item_no ?? idx} className="px-4 py-2 border-b" style={{ borderColor: 'var(--ink-100)' }}>
                     <div className="text-[11px] font-medium" style={{ color: 'var(--ink-800)' }}>{item.description ?? `화물 ${idx + 1}`}</div>
                     <div className="flex gap-3 mt-0.5">
@@ -451,9 +475,9 @@ function DetailPanel({
             )}
             {tab === 'alerts' && (
               <div className="py-2">
-                {detail.alerts.length === 0 ? (
+                {detail!.alerts.length === 0 ? (
                   <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>경고 없음</div>
-                ) : detail.alerts.map((a, idx) => {
+                ) : detail!.alerts.map((a, idx) => {
                   const color = a.severity === 'Critical' ? '#ef4444' : a.severity === 'Watch' ? '#eab308' : 'var(--ink-500)'
                   return (
                     <div
@@ -475,7 +499,7 @@ function DetailPanel({
           </div>
         </>
       ) : (
-        /* ── Container list view ── */
+        /* Container list */
         <div className="flex-1 overflow-y-auto">
           {sorted.length === 0 ? (
             <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
@@ -518,132 +542,6 @@ function DetailPanel({
   )
 }
 
-/* ── Mapbox map ──────────────────────────────────────────────────────── */
-const TOKEN = (import.meta as any).env?.MAPBOX_ACCESS_TOKEN as string | undefined
-
-const MAP_COLOR: Record<TcrSignal, string> = {
-  green: '#22c55e', blue: '#3b82f6', yellow: '#eab308', red: '#ef4444',
-}
-
-function TcrMap({
-  containers,
-  selectedNo,
-  onSelect,
-}: {
-  containers: TcrContainer[]
-  selectedNo: string | null
-  onSelect:   (no: string) => void
-}) {
-  const divRef     = useRef<HTMLDivElement>(null)
-  const mapRef     = useRef<mapboxgl.Map | null>(null)
-  const markersRef = useRef<mapboxgl.Marker[]>([])
-  const popupRef   = useRef<mapboxgl.Popup | null>(null)
-  const inited     = useRef(false)
-
-  const points = useMemo(
-    () => containers.filter(c => c.latitude != null && c.longitude != null),
-    [containers],
-  )
-
-  useEffect(() => {
-    if (!divRef.current || !TOKEN || inited.current) return
-    inited.current = true
-
-    const map = new mapboxgl.Map({
-      container: divRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [80, 48],
-      zoom: 3,
-      accessToken: TOKEN,
-    })
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
-    mapRef.current = map
-
-    return () => {
-      popupRef.current?.remove()
-      map.remove()
-      mapRef.current = null
-      inited.current = false
-    }
-  }, [])
-
-  // Fly to selected container
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !selectedNo) return
-    const c = containers.find(ct => ct.container_no === selectedNo)
-    if (c?.latitude == null || c?.longitude == null) return
-    const fly = () => map.flyTo({ center: [c.longitude!, c.latitude!], zoom: Math.max(map.getZoom(), 5), duration: 700 })
-    if (map.isStyleLoaded()) fly(); else map.once('load', fly)
-  }, [selectedNo, containers])
-
-  // Redraw markers
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-
-    const draw = () => {
-      markersRef.current.forEach(m => m.remove())
-      markersRef.current = []
-      popupRef.current?.remove()
-
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 12 })
-      popupRef.current = popup
-
-      for (const c of points) {
-        const color = MAP_COLOR[c.signal]
-        const isSel = c.container_no === selectedNo
-        const el    = document.createElement('div')
-        el.style.cssText = [
-          `width:${isSel ? 15 : 10}px`,
-          `height:${isSel ? 15 : 10}px`,
-          'border-radius:50%',
-          `background:${color}`,
-          'border:2px solid white',
-          `box-shadow:${isSel ? `0 0 0 3px ${color}60,0 2px 6px rgba(0,0,0,.3)` : '0 1px 4px rgba(0,0,0,.25)'}`,
-          'cursor:pointer',
-          'transition:transform .15s',
-        ].join(';')
-        el.addEventListener('click', () => onSelect(c.container_no))
-        el.addEventListener('mouseenter', () => {
-          el.style.transform = 'scale(1.35)'
-          popup.setLngLat([c.longitude!, c.latitude!])
-            .setHTML(
-              `<div style="font-size:11px;line-height:1.5">` +
-              `<b style="font-family:monospace">${c.container_no}</b><br/>` +
-              `<span style="color:${color};font-size:10px;font-weight:600">${SIG_LABEL[c.signal]}</span>` +
-              (c.current_location ? `<br/><span style="color:#64748b;font-size:10px">${c.current_location}</span>` : '') +
-              (c.destination ? `<br/><span style="color:#94a3b8;font-size:9px">→ ${c.destination}</span>` : '') +
-              '</div>'
-            ).addTo(map)
-        })
-        el.addEventListener('mouseleave', () => {
-          el.style.transform = 'scale(1)'
-          popup.remove()
-        })
-        markersRef.current.push(
-          new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([c.longitude!, c.latitude!]).addTo(map)
-        )
-      }
-    }
-
-    if (map.isStyleLoaded()) draw(); else map.once('load', draw)
-  }, [points, selectedNo, onSelect])
-
-  if (!TOKEN) {
-    return (
-      <div className="flex-1 flex items-center justify-center rounded-lg border" style={{ borderColor: 'var(--ink-200)', background: 'var(--card)' }}>
-        <span className="text-[11px]" style={{ color: 'var(--ink-400)' }}>Mapbox 토큰 없음</span>
-      </div>
-    )
-  }
-  return (
-    <div className="flex-1 rounded-lg border overflow-hidden" style={{ borderColor: 'var(--ink-200)', minWidth: 0 }}>
-      <div ref={divRef} style={{ width: '100%', height: '100%' }} />
-    </div>
-  )
-}
-
 /* ── Main page ───────────────────────────────────────────────────────── */
 const ALL_COUNTRIES = ['UZ', 'KZ', 'KG', 'PL'] as const
 
@@ -654,13 +552,13 @@ export function TcrTrackingPage() {
   const [lastFetch,     setLastFetch]     = useState<string | null>(null)
   const [refreshing,    setRefreshing]    = useState(false)
 
-  // Country filter (all active by default)
   const [selCountries, setSelCountries] = useState<Set<CountryCode>>(new Set(['UZ', 'KZ', 'KG', 'PL']))
+  const [sigFilter,    setSigFilter]    = useState<TcrSignal | null>(null)
 
-  // Signal filter (for detail panel)
-  const [sigFilter, setSigFilter] = useState<TcrSignal | null>(null)
+  // Map cluster/marker selection
+  const [selectedContainerNumbers, setSelectedContainerNumbers] = useState<string[] | null>(null)
 
-  // Selected container + detail
+  // Single container detail
   const [selectedNo,    setSelectedNo]    = useState<string | null>(null)
   const [detail,        setDetail]        = useState<DetailData | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -700,6 +598,28 @@ export function TcrTrackingPage() {
     }
   }, [])
 
+  /* ── Selection handlers ─────────────────────────────────────────────── */
+  const handleSelectContainers = useCallback((nums: string[]) => {
+    setSelectedContainerNumbers(nums)
+    setSigFilter(null)
+    if (nums.length === 1) {
+      const no = nums[0]
+      setSelectedNo(no)
+      setDetail(null)
+      fetchDetail(no)
+    } else {
+      setSelectedNo(null)
+      setDetail(null)
+    }
+  }, [fetchDetail])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedContainerNumbers(null)
+    setSigFilter(null)
+    setSelectedNo(null)
+    setDetail(null)
+  }, [])
+
   const handleSelect = useCallback((no: string) => {
     if (no === selectedNo) { setSelectedNo(null); setDetail(null); return }
     setSelectedNo(no)
@@ -708,7 +628,6 @@ export function TcrTrackingPage() {
   }, [selectedNo, fetchDetail])
 
   /* ── Derived ────────────────────────────────────────────────────────── */
-  // Country counts (all data, before filter)
   const countryCounts = useMemo(() => {
     const m: Partial<Record<CountryCode, number>> = {}
     containers.forEach(c => {
@@ -718,7 +637,6 @@ export function TcrTrackingPage() {
     return m
   }, [containers])
 
-  // Filtered by selected countries (show unmatched when all selected)
   const filteredData = useMemo(() => {
     const allSel = ALL_COUNTRIES.every(cc => selCountries.has(cc))
     return containers.filter(c => {
@@ -727,7 +645,7 @@ export function TcrTrackingPage() {
     })
   }, [containers, selCountries])
 
-  // Stats
+  // Global stats (header pills)
   const stats = useMemo(() => {
     const m: Record<TcrSignal, number> = { green: 0, blue: 0, yellow: 0, red: 0 }
     filteredData.forEach(c => { m[c.signal]++ })
@@ -736,7 +654,23 @@ export function TcrTrackingPage() {
 
   const totalActive = stats.green + stats.blue + stats.yellow + stats.red
 
-  // Action needed (open alerts, sorted by severity then days)
+  // Detail panel containers: cluster-filtered or full list
+  const detailPanelContainers = useMemo(() => {
+    if (selectedContainerNumbers !== null) {
+      const selSet = new Set(selectedContainerNumbers)
+      return filteredData.filter(c => selSet.has(c.container_no))
+    }
+    return filteredData
+  }, [selectedContainerNumbers, filteredData])
+
+  // Stats for the detail panel signal chips
+  const panelStats = useMemo(() => {
+    const m: Record<TcrSignal, number> = { green: 0, blue: 0, yellow: 0, red: 0 }
+    detailPanelContainers.forEach(c => { m[c.signal]++ })
+    return m
+  }, [detailPanelContainers])
+
+  // Action needed
   const actionNeeded = useMemo(() =>
     filteredData
       .filter(c => c.open_alert_count > 0)
@@ -749,7 +683,7 @@ export function TcrTrackingPage() {
     [filteredData],
   )
 
-  // Recent containers (by ETA ascending, not yet arrived)
+  // ETA-ascending list
   const recentContainers = useMemo(() =>
     [...filteredData]
       .filter(c => !c.ata_final)
@@ -758,13 +692,41 @@ export function TcrTrackingPage() {
     [filteredData],
   )
 
-  // Map points
-  const mapPoints = useMemo(() =>
-    filteredData.filter(c => c.latitude != null && c.longitude != null),
+  // ContainerMap data
+  const mapPoints = useMemo<ContainerPoint[]>(() =>
+    filteredData
+      .filter(c => c.latitude != null && c.longitude != null)
+      .map(c => ({
+        containerNumber: c.container_no,
+        latitude:        c.latitude!,
+        longitude:       c.longitude!,
+        signal:          tcrToMapSignal(c.signal),
+      })),
     [filteredData],
   )
 
-  /* ── Helpers ────────────────────────────────────────────────────────── */
+  const containerDetails = useMemo<Record<string, ContainerPopupData>>(() => {
+    const m: Record<string, ContainerPopupData> = {}
+    for (const c of filteredData) {
+      m[c.container_no] = {
+        signal:                   tcrToMapSignal(c.signal),
+        current_from:             c.origin,
+        current_to:               c.destination,
+        last_event_location:      c.current_location,
+        last_success_at:          null,
+        planned_destination_date: c.eta_final,
+        alert_reason:             c.open_alert_count > 0 ? `${c.open_alert_count}개 경고` : null,
+      }
+    }
+    return m
+  }, [filteredData])
+
+  const allContainerNumbers = useMemo(
+    () => containers.map(c => c.container_no),
+    [containers],
+  )
+
+  /* ── Filter helpers ─────────────────────────────────────────────────── */
   const toggleCountry = (cc: CountryCode) => {
     setSelCountries(prev => {
       const next = new Set(prev)
@@ -785,7 +747,6 @@ export function TcrTrackingPage() {
         className="fesco-header flex-shrink-0"
         style={{ padding: '12px 28px 10px', marginBottom: 0 }}
       >
-        {/* Row 1: title + stats + refresh */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <div className="flex items-center gap-2.5">
@@ -802,7 +763,7 @@ export function TcrTrackingPage() {
           <div className="flex items-center gap-2 flex-shrink-0">
             {stats.red    > 0 && <StatPill count={stats.red}    color="#ef4444" label="조치필요" />}
             {stats.yellow > 0 && <StatPill count={stats.yellow} color="#eab308" label="주의" />}
-            {stats.green  > 0 && <StatPill count={stats.green}  color="#22c55e" label="정상" />}
+            {stats.green  > 0 && <StatPill count={stats.green}  color="#22c55e" label="도착완료" />}
             <button
               type="button"
               onClick={() => fetchData(true)}
@@ -818,7 +779,7 @@ export function TcrTrackingPage() {
           </div>
         </div>
 
-        {/* Row 2: destination filter chips */}
+        {/* Destination filter chips */}
         <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
           <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-400)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
             목적지
@@ -848,7 +809,6 @@ export function TcrTrackingPage() {
       {/* ── Body ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden p-4 flex flex-col gap-4 min-h-0">
 
-        {/* Error */}
         {error && (
           <div
             className="rounded-lg border px-4 py-3 flex items-center gap-3 text-sm"
@@ -860,7 +820,6 @@ export function TcrTrackingPage() {
           </div>
         )}
 
-        {/* Loading skeleton */}
         {loading && (
           <div className="flex-1 min-h-0 flex flex-col gap-4">
             <div className="flex-1 min-h-0 flex gap-4">
@@ -878,27 +837,37 @@ export function TcrTrackingPage() {
         {!loading && !error && (
           <div className="flex-1 min-h-0 flex flex-col gap-4">
 
-            {/* ── Top: map + detail panel ──────────────────────────────── */}
+            {/* ── Top: ContainerMap + DetailPanel ──────────────────────── */}
             <div className="flex-1 min-h-0 flex gap-4">
-              <TcrMap
-                containers={mapPoints}
-                selectedNo={selectedNo}
-                onSelect={handleSelect}
-              />
+              <div
+                className="flex-1 rounded-lg border overflow-hidden"
+                style={{ borderColor: 'var(--ink-200)' }}
+              >
+                <ContainerMap
+                  containers={mapPoints}
+                  allContainerNumbers={allContainerNumbers}
+                  containerDetails={containerDetails}
+                  onSelectContainers={handleSelectContainers}
+                  onClearSelection={handleClearSelection}
+                  showFescoLink={false}
+                />
+              </div>
               <DetailPanel
-                containers={filteredData}
+                containers={detailPanelContainers}
+                mapSelectionCount={selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
                 sigFilter={sigFilter}
                 onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
-                stats={stats}
+                stats={panelStats}
                 onSelect={handleSelect}
                 selectedNo={selectedNo}
                 detail={detail}
                 detailLoading={detailLoading}
                 onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
+                onClearMapSelection={handleClearSelection}
               />
             </div>
 
-            {/* ── Bottom: donut + action needed + recent ────────────────── */}
+            {/* ── Bottom: Donut + Action Needed + ETA ──────────────────── */}
             <div className="flex-shrink-0 flex gap-4" style={{ height: 260 }}>
 
               {/* Donut — 240px */}
@@ -914,9 +883,11 @@ export function TcrTrackingPage() {
                       <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
                       <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
                       <LegendRow color="#ef4444" label="경고"     count={stats.red} />
-                      <div className="mt-1 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
-                        정상 {Math.round((stats.green / totalActive) * 100)}%
-                      </div>
+                      {totalActive > 0 && (
+                        <div className="mt-1 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
+                          운송중 {Math.round((stats.blue / totalActive) * 100)}%
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -983,7 +954,7 @@ export function TcrTrackingPage() {
                 </div>
               </div>
 
-              {/* Recent containers — 320px */}
+              {/* ETA 임박 — 320px */}
               <div
                 className="rounded-lg border flex flex-col overflow-hidden flex-shrink-0"
                 style={{ width: 320, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
