@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, AlertCircle, X, Train, Package, ChevronRight } from 'lucide-react'
+import { RefreshCw, AlertCircle, X, Train, Package } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
 import type { ContainerPoint, ContainerPopupData } from '../components/tracking/ContainerMap'
 
@@ -109,10 +109,6 @@ function fmtRelTime(iso: string | null): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24)  return `${hrs}시간 전`
   return `${Math.floor(hrs / 24)}일 전`
-}
-function daysSince(iso: string | null): number {
-  if (!iso) return 0
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
 
 /* ── Signal dot ──────────────────────────────────────────────────────── */
@@ -282,8 +278,8 @@ function DetailPanel({
 
   return (
     <div
-      className="rounded-lg border flex flex-col overflow-hidden flex-shrink-0"
-      style={{ width: 320, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
+      className="rounded-lg border flex flex-col overflow-hidden"
+      style={{ width: '100%', height: '100%', borderColor: 'var(--ink-200)', background: 'var(--card)' }}
     >
       {/* Header */}
       <div
@@ -705,18 +701,20 @@ export function TcrTrackingPage() {
     return m
   }, [detailPanelContainers])
 
-  // Action needed
-  const actionNeeded = useMemo(() =>
-    filteredData
-      .filter(c => c.open_alert_count > 0)
-      .sort((a, b) => {
-        const rankDiff = SIG_RANK[a.signal] - SIG_RANK[b.signal]
-        if (rankDiff !== 0) return rankDiff
-        return daysSince(a.eta_final) - daysSince(b.eta_final)
-      })
-      .slice(0, 8),
-    [filteredData],
-  )
+  // Destination breakdown for status card
+  const destStats = useMemo(() => {
+    const init = (): { active: number; arrived: number } => ({ active: 0, arrived: 0 })
+    const m: Record<CountryCode, { active: number; arrived: number }> = {
+      UZ: init(), KZ: init(), KG: init(), PL: init(),
+    }
+    for (const c of filteredData) {
+      const cc = destToCountry(c.destination)
+      if (!cc) continue
+      if (c.signal === 'green') m[cc].arrived++
+      else m[cc].active++
+    }
+    return m
+  }, [filteredData])
 
   // ETA-ascending list
   const recentContainers = useMemo(() =>
@@ -895,26 +893,26 @@ export function TcrTrackingPage() {
 
         {loading && (
           <div className="flex-1 min-h-0 flex flex-col gap-4">
-            <div className="flex-1 min-h-0 flex gap-4">
+            <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
+            <div className="flex-shrink-0 flex gap-4" style={{ height: 180 }}>
               <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
-              <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 320, background: 'var(--card)', borderColor: 'var(--line)' }} />
-            </div>
-            <div className="flex-shrink-0 flex gap-4" style={{ height: 260 }}>
-              <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 240, background: 'var(--card)', borderColor: 'var(--line)' }} />
               <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
-              <div className="rounded-lg border animate-pulse flex-shrink-0" style={{ width: 320, background: 'var(--card)', borderColor: 'var(--line)' }} />
+              <div className="flex-1 rounded-lg border animate-pulse" style={{ background: 'var(--card)', borderColor: 'var(--line)' }} />
             </div>
           </div>
         )}
 
-        {!loading && !error && (
-          <div className="flex-1 min-h-0 flex flex-col gap-4">
+        {!loading && !error && (() => {
+          const showDetailOverlay =
+            searchResults !== null || selectedNo !== null || selectedContainerNumbers !== null
 
-            {/* ── Top: ContainerMap + DetailPanel ──────────────────────── */}
-            <div className="flex-1 min-h-0 flex gap-4">
+          return (
+            <div className="flex-1 min-h-0 flex flex-col gap-4">
+
+              {/* ── Top: full-width map + slide-in overlay detail ── */}
               <div
-                className="flex-1 rounded-lg border overflow-hidden"
-                style={{ borderColor: 'var(--ink-200)' }}
+                className="flex-1 min-h-0 rounded-lg border overflow-hidden"
+                style={{ position: 'relative', borderColor: 'var(--ink-200)' }}
               >
                 <ContainerMap
                   containers={mapPoints}
@@ -925,76 +923,129 @@ export function TcrTrackingPage() {
                   showFescoLink={false}
                   onSearchSelect={cn => handleSelectContainers([cn])}
                 />
+
+                {/* Slide-in detail overlay */}
+                <div
+                  style={{
+                    position:       'absolute',
+                    top:            0,
+                    right:          0,
+                    width:          320,
+                    height:         '100%',
+                    transform:      showDetailOverlay ? 'translateX(0)' : 'translateX(100%)',
+                    transition:     'transform 0.22s cubic-bezier(.4,0,.2,1)',
+                    zIndex:         10,
+                    pointerEvents:  showDetailOverlay ? 'auto' : 'none',
+                    boxShadow:      showDetailOverlay ? '-4px 0 16px rgba(0,0,0,0.12)' : 'none',
+                  }}
+                >
+                  <DetailPanel
+                    containers={detailPanelContainers}
+                    mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+                    sigFilter={sigFilter}
+                    onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
+                    stats={panelStats}
+                    onSelect={handleSelect}
+                    selectedNo={selectedNo}
+                    detail={detail}
+                    detailLoading={detailLoading}
+                    onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
+                    onClearMapSelection={handleClearSelection}
+                    searchActive={searchResults !== null}
+                    onClearSearch={clearSearch}
+                  />
+                </div>
               </div>
-              <DetailPanel
-                containers={detailPanelContainers}
-                mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
-                sigFilter={sigFilter}
-                onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
-                stats={panelStats}
-                onSelect={handleSelect}
-                selectedNo={selectedNo}
-                detail={detail}
-                detailLoading={detailLoading}
-                onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
-                onClearMapSelection={handleClearSelection}
-                searchActive={searchResults !== null}
-                onClearSearch={clearSearch}
-              />
-            </div>
 
-            {/* ── Bottom: Donut + Action Needed + ETA ──────────────────── */}
-            <div className="flex-shrink-0 flex gap-4" style={{ height: 260 }}>
+              {/* ── Bottom: Donut | 현황 | ETA ─────────────────────────── */}
+              <div className="flex-shrink-0 flex gap-4" style={{ height: 180 }}>
 
-              {/* Donut — 240px */}
-              <div
-                className="rounded-lg border flex items-center px-4 gap-3 flex-shrink-0"
-                style={{ width: 240, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
-              >
-                {totalActive > 0 ? (
-                  <>
-                    <DonutChart green={stats.green} blue={stats.blue} yellow={stats.yellow} red={stats.red} />
-                    <div className="flex flex-col gap-2 min-w-0">
-                      <LegendRow color="#22c55e" label="도착완료" count={stats.green} />
-                      <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
-                      <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
-                      <LegendRow color="#ef4444" label="경고"     count={stats.red} />
-                      {totalActive > 0 && (
-                        <div className="mt-1 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
+                {/* Card 1 — Donut */}
+                <div
+                  className="flex-1 rounded-lg border flex items-center px-4 gap-3"
+                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+                >
+                  {totalActive > 0 ? (
+                    <>
+                      <DonutChart green={stats.green} blue={stats.blue} yellow={stats.yellow} red={stats.red} />
+                      <div className="flex flex-col gap-1.5 min-w-0">
+                        <LegendRow color="#22c55e" label="도착완료" count={stats.green} />
+                        <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
+                        <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
+                        <LegendRow color="#ef4444" label="경고"     count={stats.red} />
+                        <div className="mt-0.5 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
                           운송중 {Math.round((stats.blue / totalActive) * 100)}%
                         </div>
-                      )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
+                      활성 컨테이너 없음
                     </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                    활성 컨테이너 없음
-                  </div>
-                )}
-              </div>
-
-              {/* Action needed — flex-2 */}
-              <div
-                className="rounded-lg border flex flex-col overflow-hidden"
-                style={{ flex: '2 1 0', minWidth: 0, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
-              >
-                <div
-                  className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
-                  style={{ borderColor: 'var(--ink-200)' }}
-                >
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                    조치 필요
-                  </span>
-                  <span className="text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>{actionNeeded.length}개</span>
+                  )}
                 </div>
-                <div className="flex-1 overflow-y-auto">
-                  {actionNeeded.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                      조치 필요 없음
-                    </div>
-                  ) : actionNeeded.map(c => {
-                    const color = SIG_COLOR[c.signal]
-                    return (
+
+                {/* Card 2 — 컨테이너 현황 (목적지별) */}
+                <div
+                  className="flex-1 rounded-lg border flex flex-col overflow-hidden"
+                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+                >
+                  <div
+                    className="px-4 pt-3 pb-2 border-b flex-shrink-0"
+                    style={{ borderColor: 'var(--ink-200)' }}
+                  >
+                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                      컨테이너 현황
+                    </span>
+                  </div>
+                  <div className="flex-1 overflow-auto px-4 py-1.5">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-400)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>목적지</th>
+                          <th className="text-right pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#3b82f6' }}>운송중</th>
+                          <th className="text-right pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#22c55e' }}>도착완료</th>
+                          <th className="text-right pb-1.5 font-semibold" style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--ink-500)' }}>합계</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {DEST_COUNTRIES.map(({ code, label }) => {
+                          const s = destStats[code as CountryCode]
+                          const total = s.active + s.arrived
+                          return (
+                            <tr key={code} className="border-t" style={{ borderColor: 'var(--ink-100)' }}>
+                              <td className="py-1.5 text-[11px]" style={{ color: 'var(--ink-700)' }}>{label}</td>
+                              <td className="py-1.5 text-right font-mono text-[11px]" style={{ color: s.active > 0 ? '#3b82f6' : 'var(--ink-300)' }}>{s.active > 0 ? s.active : '—'}</td>
+                              <td className="py-1.5 text-right font-mono text-[11px]" style={{ color: s.arrived > 0 ? '#22c55e' : 'var(--ink-300)' }}>{s.arrived > 0 ? s.arrived : '—'}</td>
+                              <td className="py-1.5 text-right font-mono font-semibold text-[11px]" style={{ color: total > 0 ? 'var(--ink-900)' : 'var(--ink-300)' }}>{total > 0 ? total : '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Card 3 — ETA 임박 */}
+                <div
+                  className="flex-1 rounded-lg border flex flex-col overflow-hidden"
+                  style={{ borderColor: 'var(--ink-200)', background: 'var(--card)', minWidth: 0 }}
+                >
+                  <div
+                    className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
+                    style={{ borderColor: 'var(--ink-200)' }}
+                  >
+                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                      ETA 임박
+                    </span>
+                    <span className="text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>{recentContainers.length}개</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    {recentContainers.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
+                        운송중 컨테이너 없음
+                      </div>
+                    ) : recentContainers.map(c => (
                       <button
                         key={c.container_no}
                         type="button"
@@ -1004,85 +1055,29 @@ export function TcrTrackingPage() {
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <SignalDot signal={c.signal} />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-[11px] font-semibold" style={{ color: 'var(--ink-900)' }}>{c.container_no}</span>
-                            {c.open_alert_count > 0 && (
-                              <span className="text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: `${color}15`, color }}>{c.open_alert_count}개 경고</span>
-                            )}
+                          <div className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>
+                            {c.container_no}
                           </div>
                           <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
                             {c.origin ?? '—'} → {c.destination ?? '—'}
                           </div>
                         </div>
-                        {c.eta_final && !c.ata_final && (
-                          <span
-                            className="flex-shrink-0 text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded"
-                            style={{ background: `${color}15`, color }}
-                          >
-                            +{daysSince(c.eta_final)}일
+                        {c.eta_final && (
+                          <span className="flex-shrink-0 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
+                            {fmtDate(c.eta_final)}
                           </span>
                         )}
                       </button>
-                    )
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* ETA 임박 — 320px */}
-              <div
-                className="rounded-lg border flex flex-col overflow-hidden flex-shrink-0"
-                style={{ width: 320, borderColor: 'var(--ink-200)', background: 'var(--card)' }}
-              >
-                <div
-                  className="px-4 pt-3 pb-2 border-b flex items-center justify-between flex-shrink-0"
-                  style={{ borderColor: 'var(--ink-200)' }}
-                >
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-500)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                    ETA 임박
-                  </span>
-                  <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: 'var(--mint-deep)' }}>
-                    <ChevronRight size={10} />
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {recentContainers.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-[11px]" style={{ color: 'var(--ink-400)' }}>
-                      운송중 컨테이너 없음
-                    </div>
-                  ) : recentContainers.map(c => (
-                    <button
-                      key={c.container_no}
-                      type="button"
-                      onClick={() => handleSelect(c.container_no)}
-                      className="w-full text-left px-4 py-1.5 border-b flex items-center gap-2 transition-colors"
-                      style={{ borderColor: 'var(--ink-100)', background: 'transparent' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink-50)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                    >
-                      <SignalDot signal={c.signal} />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-[11px] font-medium truncate" style={{ color: 'var(--ink-900)' }}>
-                          {c.container_no}
-                        </div>
-                        <div className="text-[10px] truncate" style={{ color: 'var(--ink-500)' }}>
-                          {c.origin ?? '—'} → {c.destination ?? '—'}
-                        </div>
-                      </div>
-                      {c.eta_final && (
-                        <span className="flex-shrink-0 text-[10px] font-mono" style={{ color: 'var(--ink-400)' }}>
-                          {fmtDate(c.eta_final)}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
               </div>
-
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
