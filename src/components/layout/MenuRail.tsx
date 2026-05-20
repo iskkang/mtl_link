@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import {
   MessageSquare, Users, CheckSquare, Inbox,
-  Bell, Calendar, FolderOpen, Hash, DollarSign, Train,
+  Bell, Calendar, FolderOpen, Hash, DollarSign,
 } from 'lucide-react'
+import { TcrIcon } from '../icons/TcrIcon'
 import { FescoFIcon } from '../ui/FescoFIcon'
 import { MintIcon } from '../ui/MarvisIcon'
 import { useTranslation } from 'react-i18next'
@@ -102,7 +103,7 @@ export function MenuRail({
             onClick={() => onSectionChange('tracking')}
           />
           <RailBtn
-            Icon={Train}
+            Icon={TcrIcon}
             label="중국경유 컨테이너"
             active={activeSection === 'tcr-tracking'}
             activeColor="#3b82f6"
