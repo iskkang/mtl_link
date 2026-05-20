@@ -29,7 +29,10 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
       'container_no, customer_list, origin, destination, current_location, ' +
       'eta_final, ata_final, arrived_yn, transport_mode, load_type',
     )
-    .or(`arrived_yn.eq.false,ata_final.gte.${cutoffStr}`)
+    .or(
+      `and(arrived_yn.eq.false,or(eta_final.is.null,eta_final.gte.${cutoffStr})),` +
+      `and(arrived_yn.eq.true,ata_final.gte.${cutoffStr})`,
+    )
     .order('container_no')
 
   if (ctrErr) return res.status(500).json({ ok: false, error: ctrErr.message })
