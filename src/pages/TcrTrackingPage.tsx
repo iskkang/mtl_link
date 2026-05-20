@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, AlertCircle, X, Train, Package, Upload } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
@@ -187,14 +187,18 @@ function LegendRow({ color, label, count }: { color: string; label: string; coun
 }
 
 /* ── Donut chart ─────────────────────────────────────────────────────── */
-function DonutChart({ green, blue, yellow, red }: { green: number; blue: number; yellow: number; red: number }) {
+function DonutChart({ green, blue, yellow, red, size = 104 }: { green: number; blue: number; yellow: number; red: number; size?: number }) {
   const total = green + blue + yellow + red
-  const CX = 52, R = 38, SW = 13
+  const CX = size / 2
+  const R  = Math.round(size * 0.365)
+  const SW = Math.round(size * 0.125)
   const C  = 2 * Math.PI * R
+  const fs1 = Math.round(size * 0.173)
+  const fs2 = Math.round(size * 0.067)
   if (total === 0) return (
     <svg width={CX * 2} height={CX * 2}>
       <circle cx={CX} cy={CX} r={R} fill="none" strokeWidth={SW} stroke="var(--ink-100)" />
-      <text x={CX} y={CX + 5} textAnchor="middle" fontSize="11" fill="var(--ink-400)" fontFamily="var(--font-body)">0</text>
+      <text x={CX} y={CX + 5} textAnchor="middle" fontSize={Math.round(size * 0.105)} fill="var(--ink-400)" fontFamily="var(--font-body)">0</text>
     </svg>
   )
   const segs = [
@@ -224,9 +228,9 @@ function DonutChart({ green, blue, yellow, red }: { green: number; blue: number;
         offset += len
         return el
       })}
-      <text x={CX} y={CX - 3} textAnchor="middle" fontSize="18" fontWeight="700"
+      <text x={CX} y={CX - 3} textAnchor="middle" fontSize={fs1} fontWeight="700"
         fill="var(--ink-900)" fontFamily="var(--font-body)">{total}</text>
-      <text x={CX} y={CX + 10} textAnchor="middle" fontSize="7" fontWeight="600"
+      <text x={CX} y={CX + fs2 + 3} textAnchor="middle" fontSize={fs2} fontWeight="600"
         fill="var(--ink-500)" letterSpacing="1.5" fontFamily="var(--font-mono)">ACTIVE</text>
     </svg>
   )
@@ -557,6 +561,281 @@ function DetailPanel({
   )
 }
 
+/* ── Mobile icon button style ────────────────────────────────────────── */
+const mobileIconBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  width: 30, height: 30, borderRadius: 8,
+  border: '1px solid var(--ink-300)',
+  color: 'var(--ink-500)', background: 'transparent', cursor: 'pointer',
+}
+
+/* ── Mobile TCR view ─────────────────────────────────────────────────── */
+interface MobileTcrViewProps {
+  mapPoints:                ContainerPoint[]
+  allContainerNumbers:      string[]
+  containerDetails:         Record<string, ContainerPopupData>
+  weatherAlerts:            WeatherAlert[]
+  stats:                    Record<TcrSignal, number>
+  panelStats:               Record<TcrSignal, number>
+  detailPanelContainers:    TcrContainer[]
+  sigFilter:                TcrSignal | null
+  searchResults:            TcrContainer[] | null
+  selCountries:             Set<CountryCode>
+  countryCounts:            Partial<Record<CountryCode, number>>
+  selectedContainerNumbers: string[] | null
+  selectedNo:               string | null
+  detail:                   DetailData | null
+  detailLoading:            boolean
+  searchInput:              string
+  setSearchInput:           (v: string) => void
+  searchQuery:              string
+  setSearchQuery:           (v: string) => void
+  loading:                  boolean
+  refreshing:               boolean
+  showDetailOverlay:        boolean
+  onRefresh:                () => void
+  onUpload:                 () => void
+  onToggleCountry:          (cc: CountryCode) => void
+  onResetCountries:         () => void
+  onSigFilter:              (s: TcrSignal) => void
+  onSelectContainers:       (nums: string[]) => void
+  onClearSelection:         () => void
+  onSelect:                 (no: string) => void
+  onCloseDetail:            () => void
+  onClearSearch:            () => void
+}
+
+function MobileTcrView({
+  mapPoints, allContainerNumbers, containerDetails, weatherAlerts,
+  stats, panelStats, detailPanelContainers, sigFilter, searchResults,
+  selCountries, countryCounts, selectedContainerNumbers, selectedNo,
+  detail, detailLoading, searchInput, setSearchInput, searchQuery, setSearchQuery,
+  loading, refreshing, showDetailOverlay, onRefresh, onUpload,
+  onToggleCountry, onResetCountries, onSigFilter, onSelectContainers, onClearSelection,
+  onSelect, onCloseDetail, onClearSearch,
+}: MobileTcrViewProps) {
+  const [mobileTab, setMobileTab] = useState<'all' | 'alerts'>('all')
+  const alertCount  = stats.red + stats.yellow
+
+  const listContainers = useMemo(() => {
+    const base = searchResults ?? detailPanelContainers
+    const src  = mobileTab === 'alerts'
+      ? base.filter(c => c.signal === 'red' || c.signal === 'yellow')
+      : base
+    return [...src].sort((a, b) => SIG_RANK[a.signal] - SIG_RANK[b.signal])
+  }, [mobileTab, searchResults, detailPanelContainers])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--chat-bg)', overflow: 'hidden' }}>
+
+      {/* [1] Header */}
+      <div style={{ flexShrink: 0, padding: '12px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Train size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>TCR 트래킹</span>
+          {alertCount > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 600, background: `${stats.red > 0 ? '#ef4444' : '#eab308'}18`, color: stats.red > 0 ? '#ef4444' : '#eab308', borderRadius: 10, padding: '1px 7px' }}>
+              {alertCount}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" onClick={onUpload} style={mobileIconBtn} title="파일 업로드">
+            <Upload size={14} />
+          </button>
+          <button type="button" onClick={onRefresh} disabled={loading || refreshing} style={{ ...mobileIconBtn, opacity: loading || refreshing ? 0.4 : 1 }} title="새로고침">
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* [2] Country filter chips */}
+      <div style={{ flexShrink: 0, display: 'flex', overflowX: 'auto', gap: 6, padding: '0 14px 8px', scrollbarWidth: 'none' }}>
+        {DEST_COUNTRIES.map(({ code, label }) => (
+          <CountryChip
+            key={code}
+            label={label}
+            count={countryCounts[code as CountryCode] ?? 0}
+            active={selCountries.has(code as CountryCode)}
+            onClick={() => onToggleCountry(code as CountryCode)}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={onResetCountries}
+          style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 20, border: '1px solid var(--ink-300)', color: 'var(--ink-500)', background: 'transparent', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >
+          초기화
+        </button>
+      </div>
+
+      {/* [3] Search bar */}
+      <div style={{ flexShrink: 0, padding: '0 14px 8px' }}>
+        <div style={{ display: 'flex', height: 34, background: 'var(--card)', borderRadius: 8, border: `1px solid ${searchQuery ? 'var(--brand)' : 'var(--ink-300)'}`, overflow: 'hidden' }}>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') setSearchQuery(searchInput) }}
+            placeholder="컨테이너 / 고객명 검색…"
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '0 10px', fontSize: 13, color: 'var(--ink-800)' }}
+          />
+          {searchInput && (
+            <button type="button" onClick={() => { setSearchInput(''); setSearchQuery('') }}
+              style={{ padding: '0 6px', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <X size={12} />
+            </button>
+          )}
+          <button type="button" onClick={() => setSearchQuery(searchInput)}
+            style={{ padding: '0 14px', background: 'var(--brand)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+            검색
+          </button>
+        </div>
+      </div>
+
+      {/* [4] Map */}
+      <div style={{ flexShrink: 0, height: '42vh', margin: '0 14px 8px', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--ink-200)' }}>
+        {loading ? (
+          <div style={{ width: '100%', height: '100%', background: 'var(--card)', borderRadius: 10 }} className="animate-pulse" />
+        ) : (
+          <ContainerMap
+            containers={mapPoints}
+            allContainerNumbers={allContainerNumbers}
+            containerDetails={containerDetails}
+            onSelectContainers={onSelectContainers}
+            onClearSelection={onClearSelection}
+            showFescoLink={false}
+            detailApiUrl={() => null}
+            onSearchSelect={cn => onSelectContainers([cn])}
+            weatherAlerts={weatherAlerts}
+            hideSearch
+          />
+        )}
+      </div>
+
+      {/* [5] Summary card */}
+      <div style={{ flexShrink: 0, margin: '0 14px 8px', background: 'var(--card)', borderRadius: 10, border: '1px solid var(--ink-200)', display: 'flex', alignItems: 'center', padding: '8px 14px', gap: 12 }}>
+        <DonutChart green={stats.green} blue={stats.blue} yellow={stats.yellow} red={stats.red} size={74} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+          <LegendRow color="#22c55e" label="도착완료" count={stats.green} />
+          <LegendRow color="#3b82f6" label="운송중"   count={stats.blue} />
+          <LegendRow color="#eab308" label="주의"     count={stats.yellow} />
+          <LegendRow color="#ef4444" label="경고"     count={stats.red} />
+        </div>
+      </div>
+
+      {/* [6] Container list with tabs */}
+      <div style={{ flex: 1, minHeight: 0, margin: '0 14px', background: 'var(--card)', borderRadius: '10px 10px 0 0', border: '1px solid var(--ink-200)', borderBottom: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flexShrink: 0, display: 'flex', borderBottom: '1px solid var(--ink-200)' }}>
+          {([
+            { key: 'all'    as const, label: '현황',  badge: null },
+            { key: 'alerts' as const, label: '경고',  badge: alertCount > 0 ? alertCount : null },
+          ]).map(({ key, label, badge }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMobileTab(key)}
+              style={{
+                flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 600,
+                borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                borderBottom: `2px solid ${mobileTab === key ? 'var(--brand)' : 'transparent'}`,
+                color: mobileTab === key ? 'var(--ink-900)' : 'var(--ink-400)',
+                background: 'transparent', cursor: 'pointer',
+              }}
+            >
+              {label}
+              {badge != null && (
+                <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>{badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {loading ? (
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="animate-pulse" style={{ height: 56, background: 'var(--ink-100)', borderRadius: 8 }} />
+              ))}
+            </div>
+          ) : listContainers.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: 'var(--ink-400)' }}>
+              {mobileTab === 'alerts' ? '경고 없음' : '컨테이너 없음'}
+            </div>
+          ) : listContainers.map(c => (
+            <button
+              key={c.container_no}
+              type="button"
+              onClick={() => onSelect(c.container_no)}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 14px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid var(--ink-100)', background: 'transparent', display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, cursor: 'pointer' }}
+            >
+              <SignalDot signal={c.signal} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--ink-900)' }}>
+                    {c.container_no}
+                  </span>
+                  {c.open_alert_count > 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: '#ef444415', color: '#ef4444', borderRadius: 4, padding: '1px 4px' }}>
+                      !{c.open_alert_count}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ink-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.origin ?? '—'} → {c.destination ?? '—'}
+                </div>
+              </div>
+              {c.eta_final && !c.ata_final && (
+                <span style={{ flexShrink: 0, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--ink-400)' }}>
+                  {fmtDate(c.eta_final)}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* [7] Detail fullscreen overlay */}
+      <div
+        style={{
+          position: 'fixed', inset: 0,
+          transform: showDetailOverlay ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.25s cubic-bezier(.4,0,.2,1)',
+          zIndex: 100, pointerEvents: showDetailOverlay ? 'auto' : 'none',
+          background: 'var(--card)', display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <div style={{ height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--ink-300)' }} />
+        </div>
+        <button
+          type="button"
+          onClick={onClearSelection}
+          style={{ position: 'absolute', top: 4, right: 12, color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 6 }}
+        >
+          <X size={18} />
+        </button>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <DetailPanel
+            containers={detailPanelContainers}
+            mapSelectionCount={searchResults !== null ? null : selectedContainerNumbers !== null ? selectedContainerNumbers.length : null}
+            sigFilter={sigFilter}
+            onSigFilter={onSigFilter}
+            stats={panelStats}
+            onSelect={onSelect}
+            selectedNo={selectedNo}
+            detail={detail}
+            detailLoading={detailLoading}
+            onCloseDetail={onCloseDetail}
+            onClearMapSelection={onClearSelection}
+            searchActive={searchResults !== null}
+            onClearSearch={onClearSearch}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main page ───────────────────────────────────────────────────────── */
 const ALL_COUNTRIES = ['UZ', 'KZ', 'KG', 'PL'] as const
 
@@ -784,7 +1063,47 @@ export function TcrTrackingPage() {
   }
   const resetCountries = () => setSelCountries(new Set(['UZ', 'KZ', 'KG', 'PL']))
 
-  /* ── Render ─────────────────────────────────────────────────────────── */
+  /* ── Mobile branch ─────────────────────────────────────────────────── */
+  if (isMobile) {
+    return (
+      <MobileTcrView
+        mapPoints={mapPoints}
+        allContainerNumbers={allContainerNumbers}
+        containerDetails={containerDetails}
+        weatherAlerts={weatherAlerts}
+        stats={stats}
+        panelStats={panelStats}
+        detailPanelContainers={detailPanelContainers}
+        sigFilter={sigFilter}
+        searchResults={searchResults}
+        selCountries={selCountries}
+        countryCounts={countryCounts}
+        selectedContainerNumbers={selectedContainerNumbers}
+        selectedNo={selectedNo}
+        detail={detail}
+        detailLoading={detailLoading}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        loading={loading}
+        refreshing={refreshing}
+        showDetailOverlay={showDetailOverlay}
+        onRefresh={() => fetchData(true)}
+        onUpload={() => navigate('/tcr-upload')}
+        onToggleCountry={toggleCountry}
+        onResetCountries={resetCountries}
+        onSigFilter={s => setSigFilter(prev => prev === s ? null : s)}
+        onSelectContainers={handleSelectContainers}
+        onClearSelection={handleClearSelection}
+        onSelect={handleSelect}
+        onCloseDetail={() => { setSelectedNo(null); setDetail(null) }}
+        onClearSearch={clearSearch}
+      />
+    )
+  }
+
+  /* ── Desktop render ─────────────────────────────────────────────────── */
   return (
     <div
       className="fesco-bookings-shell flex-1 flex flex-col overflow-hidden"

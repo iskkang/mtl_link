@@ -57,6 +57,7 @@ interface ContainerMapProps {
   detailApiUrl?:        (containerNo: string) => string | null
   onSearchSelect?:      (containerNumber: string) => void
   weatherAlerts?:       WeatherAlert[]
+  hideSearch?:          boolean
 }
 
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
@@ -347,6 +348,7 @@ export function ContainerMap({
   detailApiUrl,
   onSearchSelect,
   weatherAlerts = [],
+  hideSearch = false,
 }: ContainerMapProps) {
   const { t }         = useTranslation()
   const containerRef  = useRef<HTMLDivElement>(null)
@@ -589,14 +591,16 @@ export function ContainerMap({
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      <SearchOverlay
-        containers={containers}
-        allContainerNumbers={allContainerNumbers}
-        onSearchHit={(cn, lng, lat) => showSearchRef.current(cn, lng, lat)}
-        onSearchClear={() => clearSearchRef.current()}
-        onSearchSelect={onSearchSelect}
-        mapRef={mapRef}
-      />
+      {!hideSearch && (
+        <SearchOverlay
+          containers={containers}
+          allContainerNumbers={allContainerNumbers}
+          onSearchHit={(cn, lng, lat) => showSearchRef.current(cn, lng, lat)}
+          onSearchClear={() => clearSearchRef.current()}
+          onSearchSelect={onSearchSelect}
+          mapRef={mapRef}
+        />
+      )}
 
       {containers.length === 0 && (
         <div

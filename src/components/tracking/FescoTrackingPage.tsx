@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { RefreshCw, X } from 'lucide-react'
 import {
   getFescoSignal,
   translateFescoStatusText,
   SIGNAL_COLOR,
 } from '../../lib/fescoSignal'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 /* ── List-view order (subset of columns) ─────────────────────────── */
 interface FescoOrder {
@@ -213,6 +215,335 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
+/* ── Mobile FESCO view ───────────────────────────────────────────── */
+interface MobileFescoViewProps {
+  orders:              FescoOrder[]
+  filteredOrders:      FescoOrder[]
+  loading:             boolean
+  error:               string | null
+  searchInput:         string
+  setSearchInput:      (v: string) => void
+  q:                   string
+  setQ:                (v: string) => void
+  statusTab:           StatusTab
+  setStatusTab:        (t: StatusTab) => void
+  selectedId:          number | null
+  detail:              FescoOrderDetail | null
+  detailLoading:       boolean
+  detailError:         string | null
+  containerTracking:   ContainerTrackingRow[]
+  trackingLoading:     boolean
+  trackingError:       string | null
+  expandedStaleCtr:    string | null
+  setExpandedStaleCtr: (v: string | null) => void
+  onCardClick:         (id: number) => void
+  onClose:             () => void
+  onRefresh:           () => void
+}
+
+function MobileFescoView({
+  orders, filteredOrders, loading, error, searchInput, setSearchInput,
+  q, setQ, statusTab, setStatusTab, selectedId, detail, detailLoading, detailError,
+  containerTracking, trackingLoading, trackingError, expandedStaleCtr, setExpandedStaleCtr,
+  onCardClick, onClose, onRefresh,
+}: MobileFescoViewProps) {
+  const [mobileTab, setMobileTab] = useState<'action' | 'all'>('all')
+
+  const actionOrders = useMemo(() =>
+    filteredOrders.filter(o => {
+      const { signal } = getFescoSignal(o)
+      return signal === 'red' || signal === 'yellow'
+    }),
+    [filteredOrders],
+  )
+  const displayOrders = mobileTab === 'action' ? actionOrders : filteredOrders
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--chat-bg)', overflow: 'hidden' }}>
+
+      {/* Header */}
+      <div style={{ flexShrink: 0, padding: '12px 14px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>FESCO Bookings</span>
+          {!loading && (
+            <span style={{ fontSize: 11, color: 'var(--ink-400)', fontFamily: 'var(--font-mono)' }}>
+              {orders.length}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, border: '1px solid var(--ink-300)', color: 'var(--ink-500)', background: 'transparent', cursor: 'pointer', opacity: loading ? 0.4 : 1 }}
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* Search bar */}
+      <div style={{ flexShrink: 0, padding: '0 14px 6px' }}>
+        <div style={{ display: 'flex', height: 34, background: 'var(--card)', borderRadius: 8, border: `1px solid ${q ? 'var(--brand)' : 'var(--ink-300)'}`, overflow: 'hidden' }}>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') setQ(searchInput.trim()) }}
+            placeholder="부킹번호 / 컨테이너 / 고객 / 경로…"
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '0 10px', fontSize: 13, color: 'var(--ink-800)' }}
+          />
+          {searchInput && (
+            <button type="button" onClick={() => { setSearchInput(''); setQ('') }}
+              style={{ padding: '0 6px', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <X size={12} />
+            </button>
+          )}
+          <button type="button" onClick={() => setQ(searchInput.trim())}
+            style={{ padding: '0 14px', background: 'var(--brand)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+            검색
+          </button>
+        </div>
+      </div>
+
+      {/* Status chips */}
+      <div style={{ flexShrink: 0, display: 'flex', gap: 6, padding: '0 14px 8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {STATUS_TABS.map(tab => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setStatusTab(tab)}
+            style={{ flexShrink: 0, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: statusTab === tab ? 'var(--brand)' : 'var(--side-row)',
+              color:      statusTab === tab ? '#fff'         : 'var(--ink-3)',
+            }}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* List with tabs */}
+      <div style={{ flex: 1, minHeight: 0, margin: '0 14px', background: 'var(--card)', borderRadius: '10px 10px 0 0', border: '1px solid var(--ink-200)', borderBottom: 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flexShrink: 0, display: 'flex', borderBottom: '1px solid var(--ink-200)' }}>
+          {([
+            { key: 'action' as const, label: '조치필요', badge: actionOrders.length > 0 ? actionOrders.length : null },
+            { key: 'all'    as const, label: '전체',     badge: null },
+          ]).map(({ key, label, badge }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMobileTab(key)}
+              style={{ flex: 1, padding: '10px 0', fontSize: 12, fontWeight: 600,
+                borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                borderBottom: `2px solid ${mobileTab === key ? 'var(--brand)' : 'transparent'}`,
+                color: mobileTab === key ? 'var(--ink-900)' : 'var(--ink-400)',
+                background: 'transparent', cursor: 'pointer',
+              }}
+            >
+              {label}
+              {badge != null && (
+                <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: '#dc2626' }}>{badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {error && (
+            <div style={{ margin: 12, padding: 12, borderRadius: 10, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.25)', color: '#dc2626', fontSize: 13 }}>
+              {error}
+            </div>
+          )}
+          {loading && !error && (
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="animate-pulse" style={{ height: 56, background: 'var(--ink-100)', borderRadius: 8 }} />
+              ))}
+            </div>
+          )}
+          {!loading && displayOrders.length === 0 && (
+            <div style={{ padding: 32, textAlign: 'center', fontSize: 12, color: 'var(--ink-400)' }}>
+              {mobileTab === 'action' ? '조치 필요 항목 없음' : '부킹 없음'}
+            </div>
+          )}
+          {!loading && displayOrders.map(order => {
+            const { signal } = getFescoSignal(order)
+            const color      = SIGNAL_COLOR[signal]
+            const ctrs       = order.containers ?? []
+            return (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => onCardClick(order.id)}
+                style={{ width: '100%', textAlign: 'left', padding: '10px 14px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid var(--ink-100)', background: order.id === selectedId ? 'var(--ink-50)' : 'transparent', display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, cursor: 'pointer' }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: color.dotBg, boxShadow: `0 0 0 2.5px ${color.dotRing}`, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--ink-900)', marginBottom: 1 }}>
+                    {order.external_1c_number ?? `FESCO-${order.id}`}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {order.route_latin ?? (ctrs.slice(0, 2).join(' · ') || '—')}
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: color.text, flexShrink: 0 }}>{color.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Detail fullscreen overlay */}
+      <div
+        style={{
+          position: 'fixed', inset: 0,
+          transform: selectedId != null ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.25s cubic-bezier(.4,0,.2,1)',
+          zIndex: 100, pointerEvents: selectedId != null ? 'auto' : 'none',
+          background: 'var(--chat-bg)', display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* Overlay header */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid var(--line)', background: 'var(--chat-bg)' }}>
+          <button type="button" onClick={onClose} style={{ padding: '4px 8px 4px 0', color: 'var(--ink-400)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <X size={20} />
+          </button>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {detail ? (detail.external_1c_number ?? `FESCO-${detail.id}`) : 'Loading…'}
+          </span>
+        </div>
+        {/* Overlay body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+          {detailLoading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[1,2,3,4,5].map(i => <div key={i} className="animate-pulse" style={{ height: 40, borderRadius: 8, background: 'var(--side-row)' }} />)}
+            </div>
+          )}
+          {detailError && !detailLoading && (
+            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.25)', color: '#dc2626', fontSize: 13 }}>
+              {detailError}
+            </div>
+          )}
+          {detail && !detailLoading && (() => {
+            const { signal } = getFescoSignal(detail)
+            const color = SIGNAL_COLOR[signal]
+            const containers: string[] = Array.isArray(detail.containers) ? detail.containers : []
+            const trackingMap = new Map(containerTracking.map(t => [t.container_number, t]))
+            return (
+              <>
+                {/* Signal banner */}
+                {detail.signal && (
+                  <div style={{ marginBottom: 12, borderRadius: 10, padding: 10, fontSize: 13,
+                    background: detail.signal === 'green' ? 'rgba(20,184,166,0.08)' : detail.signal === 'red' ? 'rgba(220,38,38,0.06)' : 'rgba(217,119,6,0.08)',
+                    border: `1px solid ${detail.signal === 'green' ? 'rgba(20,184,166,0.3)' : detail.signal === 'red' ? 'rgba(220,38,38,0.25)' : 'rgba(217,119,6,0.3)'}`,
+                  }}>
+                    <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{detail.signal_message ?? detail.signal}</span>
+                  </div>
+                )}
+
+                {/* Info */}
+                <div style={{ borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', padding: '12px 14px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>부킹 정보</div>
+                  {[
+                    { label: 'Status',  value: detail.status ?? '—' },
+                    { label: 'Route',   value: detail.route_latin ?? '—' },
+                    { label: 'Client',  value: detail.client_name ?? '—' },
+                    { label: 'Manager', value: detail.manager ?? '—' },
+                    { label: 'Signal',  value: <span style={{ color: color.text, fontWeight: 600 }}>{color.label}</span> },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
+                      <span style={{ fontSize: 11, color: 'var(--ink-4)', minWidth: 72 }}>{label}</span>
+                      <span style={{ fontSize: 13, color: 'var(--ink)', textAlign: 'right', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Containers */}
+                {containers.length > 0 && (
+                  <div style={{ borderRadius: 12, border: '1px solid var(--line)', background: 'var(--card)', padding: '12px 14px', marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                      Containers ({containers.length})
+                    </div>
+                    {containers.map(cn => {
+                      const tr = trackingMap.get(cn)
+                      const alertInfo = tr ? (ALERT_DISPLAY[tr.alert_level ?? 'gray'] ?? ALERT_DISPLAY.gray) : null
+                      return (
+                        <div key={cn} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--ink-100)' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink)' }}>{cn}</span>
+                          {alertInfo && (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: alertInfo.color, background: alertInfo.bg, border: `1px solid ${alertInfo.border}`, borderRadius: 4, padding: '1px 6px' }}>
+                              {alertInfo.label}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {trackingLoading && <div style={{ fontSize: 11, color: 'var(--ink-4)', paddingTop: 6 }}>Loading tracking…</div>}
+                  </div>
+                )}
+
+                {/* Container tracking */}
+                {!trackingLoading && containerTracking.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                      Container Tracking ({containerTracking.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {[...containerTracking]
+                        .sort((a, b) => (ALERT_SORT[a.alert_level ?? 'gray'] ?? 3) - (ALERT_SORT[b.alert_level ?? 'gray'] ?? 3) || a.container_number.localeCompare(b.container_number))
+                        .map(tr => {
+                          const ai = ALERT_DISPLAY[tr.alert_level ?? 'gray'] ?? ALERT_DISPLAY.gray
+                          const staleState = getStaleState(tr)
+                          const staleInfo  = staleState !== 'fresh' ? STALE_DISPLAY[staleState] : null
+                          const isExpanded = expandedStaleCtr === tr.container_number
+                          const route = [tr.current_from, tr.current_to].filter(Boolean).join(' → ')
+                          return (
+                            <div key={tr.container_number} style={{ borderRadius: 10, padding: 12, background: ai.bg, border: `1px solid ${ai.border}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{tr.container_number}</span>
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                  {staleInfo && (
+                                    <button onClick={() => setExpandedStaleCtr(isExpanded ? null : tr.container_number)}
+                                      style={{ fontSize: 10, fontWeight: 600, color: staleInfo.color, background: staleInfo.bg, border: `1px solid ${staleInfo.border}`, borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>
+                                      {staleInfo.label}
+                                    </button>
+                                  )}
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: ai.color }}>{ai.label}</span>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>
+                                {STATUS_LABELS[tr.status ?? ''] ?? (tr.status ?? '—')}
+                                {route ? ` · ${route}` : ''}
+                              </div>
+                              {tr.alert_reason && (
+                                <div style={{ fontSize: 11, color: ai.color, marginTop: 2 }}>{tr.alert_reason}</div>
+                              )}
+                              {staleInfo && isExpanded && (
+                                <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--side-row)', border: `1px solid ${staleInfo.border}`, fontSize: 11, color: 'var(--ink-2)', lineHeight: 1.6 }}>
+                                  <div style={{ fontWeight: 600, color: staleInfo.color, marginBottom: 2 }}>Tracking data is stale</div>
+                                  <div>Last refreshed: <span style={{ color: 'var(--ink)' }}>{tr.last_success_at ? relativeTime(tr.last_success_at) : 'Never'}</span></div>
+                                  {tr.last_error_message && (
+                                    <div>Last error: <span style={{ color: '#dc2626' }}>{tr.last_error_message}</span></div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+                {trackingError && !trackingLoading && (
+                  <div style={{ fontSize: 11, color: '#dc2626', padding: '4px 0' }}>Unable to load container tracking.</div>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main component ──────────────────────────────────────────────── */
 export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
   /* list state */
@@ -338,7 +669,39 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
   /* client-side filter — includes container numbers */
   const filteredOrders = q ? orders.filter(o => matchesSearch(o, q)) : orders
 
-  /* ── Render ──────────────────────────────────────────────────── */
+  const isMobile = useIsMobile()
+
+  /* ── Mobile branch ───────────────────────────────────────────── */
+  if (isMobile) {
+    return (
+      <MobileFescoView
+        orders={orders}
+        filteredOrders={filteredOrders}
+        loading={loading}
+        error={error}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        q={q}
+        setQ={setQ}
+        statusTab={statusTab}
+        setStatusTab={setStatusTab}
+        selectedId={selectedId}
+        detail={detail}
+        detailLoading={detailLoading}
+        detailError={detailError}
+        containerTracking={containerTracking}
+        trackingLoading={trackingLoading}
+        trackingError={trackingError}
+        expandedStaleCtr={expandedStaleCtr}
+        setExpandedStaleCtr={setExpandedStaleCtr}
+        onCardClick={handleCardClick}
+        onClose={handleClose}
+        onRefresh={handleRefresh}
+      />
+    )
+  }
+
+  /* ── Desktop render ──────────────────────────────────────────── */
   return (
     <div className="fesco-bookings-shell flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--chat-bg)' }}>
 
