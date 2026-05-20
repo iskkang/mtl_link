@@ -386,7 +386,7 @@ export function ContainerMap({
       }
 
       try {
-        const resp = await fetch(`/api/fesco/container-detail?number=${encodeURIComponent(cn)}`, { signal: ctrl.signal })
+        const resp = await fetch(`/api/fesco/containers?number=${encodeURIComponent(cn)}`, { signal: ctrl.signal })
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const data = await resp.json() as {
           ok: boolean

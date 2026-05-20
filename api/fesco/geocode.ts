@@ -7,8 +7,8 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { geocodeLocation } from '../utils/mapbox.js'
-import { parseRoute } from '../utils/route.js'
+import { geocodeLocation } from '../_lib/mapbox.js'
+import { parseRoute } from '../_lib/route.js'
 
 const BACKOFF_HOURS = 24
 const DEFAULT_LIMIT = 100

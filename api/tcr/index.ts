@@ -17,17 +17,8 @@ function deriveSignal(arrivedYn: boolean, alerts: { severity: string }[]): TcrSi
   return 'blue'
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
-
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !supabaseKey) {
-    return res.status(500).json({ ok: false, error: 'Supabase env not set' })
-  }
-  const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
-
-  // ── 1. All containers ─────────────────────────────────────────────────
+// ── List (was containers-list.ts) ─────────────────────────────────────────────
+async function handleList(res: VercelResponse, supabase: ReturnType<typeof createClient>) {
   const { data: ctrRows, error: ctrErr } = await supabase
     .from('tcr_containers_current')
     .select(
@@ -53,9 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (rows.length === 0) return res.json({ containers: [], total: 0 })
 
-  const containerNos = rows.map(r => r.container_no)
-
-  // ── 2. Location coordinates ───────────────────────────────────────────
+  const containerNos  = rows.map(r => r.container_no)
   const locationNames = [...new Set(rows.map(r => r.current_location).filter((v): v is string => !!v))]
 
   const { data: locRows } = await supabase
@@ -68,7 +57,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     locMap.set(l.location_name, { latitude: l.latitude, longitude: l.longitude })
   }
 
-  // ── 3. Current segment ────────────────────────────────────────────────
   const { data: segRows } = await supabase
     .from('tcr_route_segments')
     .select('container_no, segment_name')
@@ -80,7 +68,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     segMap.set(s.container_no, s.segment_name)
   }
 
-  // ── 4. Open alerts ────────────────────────────────────────────────────
   const { data: alertRows } = await supabase
     .from('tcr_risk_alerts')
     .select('container_no, severity')
@@ -94,7 +81,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     alertMap.set(a.container_no, list)
   }
 
-  // ── 5. Assemble ───────────────────────────────────────────────────────
   const containers = rows.map(r => {
     const geo    = r.current_location ? locMap.get(r.current_location) ?? null : null
     const alerts = alertMap.get(r.container_no) ?? []
@@ -117,4 +103,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   })
 
   return res.json({ containers, total: containers.length })
+}
+
+// ── Detail (was container-detail.ts) ──────────────────────────────────────────
+async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  const containerNo = String(req.query.container_no ?? '').trim().toUpperCase()
+  if (!containerNo) return res.status(400).json({ ok: false, error: 'Missing ?container_no=' })
+
+  const [ctrRes, segRes, itemRes, alertRes] = await Promise.all([
+    supabase.from('tcr_containers_current').select('*').eq('container_no', containerNo).single(),
+    supabase.from('tcr_route_segments').select('*').eq('container_no', containerNo).order('segment_no'),
+    supabase.from('tcr_shipment_items').select('*').eq('container_no', containerNo),
+    supabase.from('tcr_risk_alerts').select('*').eq('container_no', containerNo),
+  ])
+
+  if (ctrRes.error || !ctrRes.data) {
+    return res.status(404).json({ ok: false, error: 'Container not found' })
+  }
+
+  return res.json({
+    ok:        true,
+    container: ctrRes.data,
+    segments:  segRes.data  ?? [],
+    items:     itemRes.data ?? [],
+    alerts:    alertRes.data ?? [],
+  })
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
+
+  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ ok: false, error: 'Supabase env not set' })
+  }
+  const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+
+  const action = String(req.query.action ?? 'list')
+  if (action === 'detail') return handleDetail(req, res, supabase)
+  return handleList(res, supabase)
 }

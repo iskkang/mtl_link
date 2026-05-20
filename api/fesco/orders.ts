@@ -19,6 +19,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     auth: { persistSession: false },
   })
 
+  // Single order: ?id=<number>
+  const rawId = req.query.id
+  if (rawId !== undefined && rawId !== '') {
+    const id = parseInt(String(rawId), 10)
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ ok: false, error: 'Invalid id: must be a positive integer' })
+    }
+    const { data, error } = await supabase.from('fesco_orders').select('*').eq('id', id).single()
+    if (error) {
+      if (error.code === 'PGRST116') return res.status(404).json({ ok: false, error: 'Order not found' })
+      console.error('[fesco/orders] Supabase error:', error.message)
+      return res.status(500).json({ ok: false, error: error.message })
+    }
+    return res.status(200).json({ ok: true, data })
+  }
+
   const limit  = Math.min(Math.max(parseInt(String(req.query.limit  ?? '50'), 10) || 50, 1), 100)
   const offset = Math.max(parseInt(String(req.query.offset ?? '0'),  10) || 0, 0)
   const q      = req.query.q      ? String(req.query.q).trim()      : null

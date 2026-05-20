@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { sendContainerAlertEmail } from '../utils/resend.js'
+import { sendContainerAlertEmail } from '../_lib/resend.js'
 // Safety policy: same conservative constraints as order sync.
 // Sequential fetching only. No parallelism. No mass container sweep by default.
 

@@ -538,7 +538,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     else       setLoading(true)
     setError(null)
     try {
-      const res  = await fetch('/api/fesco/containers-dashboard?limit=500')
+      const res  = await fetch('/api/fesco/containers?limit=500')
       const json = await res.json() as DashboardResponse
       if (!json.ok) throw new Error(json.error ?? 'Failed to load dashboard')
       setData(json.data)

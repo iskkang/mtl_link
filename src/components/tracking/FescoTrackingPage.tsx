@@ -285,7 +285,7 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
     setDetailError(null)
     setDetail(null)
     try {
-      const res  = await fetch(`/api/fesco/order?id=${id}`)
+      const res  = await fetch(`/api/fesco/orders?id=${id}`)
       const json = await res.json() as DetailResponse
       if (!json.ok) throw new Error(json.error ?? 'Failed to load order detail')
       setDetail(json.data ?? null)

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { sendWeeklyReport } from '../utils/resend.js'
+import { sendWeeklyReport } from '../_lib/resend.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const auth = req.headers.authorization ?? ''

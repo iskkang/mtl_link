@@ -571,7 +571,7 @@ export function TcrTrackingPage() {
     else       setLoading(true)
     setError(null)
     try {
-      const res  = await fetch('/api/tcr/containers-list')
+      const res  = await fetch('/api/tcr?action=list')
       const json = await res.json()
       if (!json.containers) throw new Error(json.error ?? 'Failed to load')
       setContainers(json.containers)
@@ -590,7 +590,7 @@ export function TcrTrackingPage() {
   const fetchDetail = useCallback(async (containerNo: string) => {
     setDetailLoading(true)
     try {
-      const res  = await fetch(`/api/tcr/container-detail?container_no=${encodeURIComponent(containerNo)}`)
+      const res  = await fetch(`/api/tcr?action=detail&container_no=${encodeURIComponent(containerNo)}`)
       const json = await res.json()
       if (!json.ok) throw new Error(json.error ?? 'Failed to load detail')
       setDetail(json as DetailData)
