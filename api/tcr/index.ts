@@ -10,11 +10,81 @@ import { createClient } from '@supabase/supabase-js'
 
 type TcrSignal = 'green' | 'red' | 'yellow' | 'blue'
 
-function deriveSignal(arrivedYn: boolean, alerts: { severity: string }[]): TcrSignal {
+function daysDiff(d1: string | null, d2: string | null): number | null {
+  if (!d1 || !d2) return null
+  return (new Date(d2).getTime() - new Date(d1).getTime()) / (1000 * 60 * 60 * 24)
+}
+
+function calcSignal(
+  arrivedYn: boolean,
+  seg: { etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
+  currentLocationSince: string | null,
+): TcrSignal {
   if (arrivedYn) return 'green'
-  if (alerts.some(a => a.severity === 'Critical')) return 'red'
-  if (alerts.some(a => a.severity === 'Watch'))    return 'yellow'
+
+  const today = new Date().toISOString().split('T')[0]
+  let maxDelay = 0
+
+  if (seg) {
+    // A: departure delay (atd vs etd; proxy today if atd not yet recorded)
+    const depDelay = daysDiff(seg.etd, seg.atd ?? today)
+    if (depDelay !== null && depDelay > maxDelay) maxDelay = depDelay
+
+    // B: arrival delay (ata vs eta; proxy today if ata not yet recorded)
+    const arrDelay = daysDiff(seg.eta, seg.ata ?? today)
+    if (arrDelay !== null && arrDelay > maxDelay) maxDelay = arrDelay
+  }
+
+  // C: dwell time at current location
+  const dwell = daysDiff(currentLocationSince, today)
+  if (dwell !== null && dwell > maxDelay) maxDelay = dwell
+
+  if (maxDelay >= 5) return 'red'
+  if (maxDelay >= 3) return 'yellow'
   return 'blue'
+}
+
+async function syncAutoAlerts(
+  containers: { container_no: string; signal: TcrSignal }[],
+  supabase: ReturnType<typeof createClient>,
+): Promise<void> {
+  const containerNos = containers.map(c => c.container_no)
+
+  const { data: existing } = await supabase
+    .from('tcr_risk_alerts')
+    .select('id, container_no, severity, status')
+    .in('container_no', containerNos)
+    .eq('alert_type', 'DELAY_AUTO')
+
+  type ExRow = { id: string; container_no: string; severity: string; status: string }
+  const existingMap = new Map<string, ExRow>()
+  for (const a of (existing ?? [] as unknown[]) as unknown as ExRow[]) {
+    existingMap.set(a.container_no, a)
+  }
+
+  const toInsert: object[] = []
+  const toUpdate: { id: string; severity: string }[] = []
+  const toResolve: string[] = []
+
+  for (const c of containers) {
+    const ex = existingMap.get(c.container_no)
+    if (c.signal === 'red' || c.signal === 'yellow') {
+      const severity = c.signal === 'red' ? 'Critical' : 'Watch'
+      if (!ex) {
+        toInsert.push({ container_no: c.container_no, alert_type: 'DELAY_AUTO', severity, status: 'Open' })
+      } else if (ex.status !== 'Open' || ex.severity !== severity) {
+        toUpdate.push({ id: ex.id, severity })
+      }
+    } else if (ex && ex.status === 'Open') {
+      toResolve.push(ex.id)
+    }
+  }
+
+  await Promise.all([
+    toInsert.length  ? supabase.from('tcr_risk_alerts').insert(toInsert) : null,
+    toResolve.length ? supabase.from('tcr_risk_alerts').update({ status: 'Resolved' }).in('id', toResolve) : null,
+    ...toUpdate.map(u => supabase.from('tcr_risk_alerts').update({ severity: u.severity, status: 'Open' }).eq('id', u.id)),
+  ].filter(Boolean))
 }
 
 // ── List (was containers-list.ts) ─────────────────────────────────────────────
@@ -27,7 +97,7 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
     .from('tcr_containers_current')
     .select(
       'container_no, customer_list, origin, destination, current_location, ' +
-      'eta_final, ata_final, arrived_yn, transport_mode, load_type',
+      'current_location_since, eta_final, ata_final, arrived_yn, transport_mode, load_type',
     )
     .or(
       `and(arrived_yn.eq.false,or(eta_final.is.null,eta_final.gte.${cutoffStr})),` +
@@ -38,27 +108,28 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
   if (ctrErr) return res.status(500).json({ ok: false, error: ctrErr.message })
 
   const rows = (ctrRows ?? [] as unknown[]) as unknown as {
-    container_no:     string
-    customer_list:    string | null
-    origin:           string | null
-    destination:      string | null
-    current_location: string | null
-    eta_final:        string | null
-    ata_final:        string | null
-    arrived_yn:       boolean
-    transport_mode:   string | null
-    load_type:        string | null
+    container_no:            string
+    customer_list:           string | null
+    origin:                  string | null
+    destination:             string | null
+    current_location:        string | null
+    current_location_since:  string | null
+    eta_final:               string | null
+    ata_final:               string | null
+    arrived_yn:              boolean
+    transport_mode:          string | null
+    load_type:               string | null
   }[]
 
   if (rows.length === 0) return res.json({ containers: [], total: 0 })
 
   const containerNos = rows.map(r => r.container_no)
 
-  // Fetch current-segment info (incl. to_location) and open alerts in parallel
+  // Fetch current-segment info and open alerts in parallel
   const [segResult, alertResult] = await Promise.all([
     supabase
       .from('tcr_route_segments')
-      .select('container_no, segment_name, to_location')
+      .select('container_no, segment_name, to_location, etd, atd, eta, ata')
       .in('container_no', containerNos)
       .eq('is_current_segment', true),
     supabase
@@ -68,21 +139,31 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
       .eq('status', 'Open'),
   ])
 
-  type SegRow   = { container_no: string; segment_name: string | null; to_location: string | null }
+  type SegRow   = {
+    container_no:  string
+    segment_name:  string | null
+    to_location:   string | null
+    etd:           string | null
+    atd:           string | null
+    eta:           string | null
+    ata:           string | null
+  }
   type AlertRow = { container_no: string; severity: string }
 
   const segRows   = (segResult.data   ?? [] as unknown[]) as unknown as SegRow[]
   const alertRows = (alertResult.data ?? [] as unknown[]) as unknown as AlertRow[]
 
-  // container_no → segment_name / to_location
+  // container_no → segment display name / to_location / delay data
   const segMap      = new Map<string, string>()
   const segToLocMap = new Map<string, string>()
+  const segDataMap  = new Map<string, { etd: string | null; atd: string | null; eta: string | null; ata: string | null }>()
   for (const s of segRows) {
     if (s.segment_name) segMap.set(s.container_no, s.segment_name)
     if (s.to_location)  segToLocMap.set(s.container_no, s.to_location)
+    segDataMap.set(s.container_no, { etd: s.etd, atd: s.atd, eta: s.eta, ata: s.ata })
   }
 
-  // Alert map
+  // Alert map (for open_alert_count, not signal derivation)
   const alertMap = new Map<string, { severity: string }[]>()
   for (const a of alertRows) {
     const list = alertMap.get(a.container_no) ?? []
@@ -122,6 +203,11 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
         null
 
     const alerts = alertMap.get(r.container_no) ?? []
+    const signal = calcSignal(
+      !!r.arrived_yn,
+      segDataMap.get(r.container_no) ?? null,
+      r.current_location_since,
+    )
     return {
       container_no:         r.container_no,
       customer_list:        r.customer_list ?? null,
@@ -130,7 +216,7 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
       current_location:     r.current_location ?? null,
       latitude:             geo?.latitude  ?? null,
       longitude:            geo?.longitude ?? null,
-      signal:               deriveSignal(!!r.arrived_yn, alerts),
+      signal,
       eta_final:            r.eta_final ?? null,
       ata_final:            r.ata_final ?? null,
       current_segment_name: segMap.get(r.container_no) ?? null,
@@ -139,6 +225,10 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
       load_type:            r.load_type ?? null,
     }
   })
+
+  // Fire-and-forget: upsert DELAY_AUTO alerts without blocking response
+  syncAutoAlerts(containers.map(c => ({ container_no: c.container_no, signal: c.signal })), supabase)
+    .catch(() => { /* non-blocking — ignore errors */ })
 
   return res.json({ containers, total: containers.length })
 }
