@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (ctrErr) return res.status(500).json({ ok: false, error: ctrErr.message })
 
-  const rows = (ctrRows ?? []) as {
+  const rows = (ctrRows ?? [] as unknown[]) as unknown as {
     container_no:     string
     customer_list:    string | null
     origin:           string | null
@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .in('location_name', locationNames)
 
   const locMap = new Map<string, { latitude: number; longitude: number }>()
-  for (const l of (locRows ?? []) as { location_name: string; latitude: number; longitude: number }[]) {
+  for (const l of (locRows ?? [] as unknown[]) as unknown as { location_name: string; latitude: number; longitude: number }[]) {
     locMap.set(l.location_name, { latitude: l.latitude, longitude: l.longitude })
   }
 
@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('is_current_segment', true)
 
   const segMap = new Map<string, string>()
-  for (const s of (segRows ?? []) as { container_no: string; segment_name: string }[]) {
+  for (const s of (segRows ?? [] as unknown[]) as unknown as { container_no: string; segment_name: string }[]) {
     segMap.set(s.container_no, s.segment_name)
   }
 
@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('status', 'Open')
 
   const alertMap = new Map<string, { severity: string }[]>()
-  for (const a of (alertRows ?? []) as { container_no: string; severity: string }[]) {
+  for (const a of (alertRows ?? [] as unknown[]) as unknown as { container_no: string; severity: string }[]) {
     const list = alertMap.get(a.container_no) ?? []
     list.push({ severity: a.severity })
     alertMap.set(a.container_no, list)
