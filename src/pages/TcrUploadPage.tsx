@@ -213,10 +213,15 @@ function parseCnUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
   const containers: ContainerRow[] = []
   const segments: SegmentRow[] = []
 
+  console.log('[parseCnUz] total raw rows:', rows.length, '| data rows (ri>=3):', Math.max(0, rows.length - 3))
+
   for (let ri = 3; ri < rows.length; ri++) {
     const r = rows[ri] as unknown[]
     const cno = str(r[14]).toUpperCase()
-    if (!cno) continue
+    if (!cno) {
+      console.log(`[parseCnUz] row ${ri} skipped — empty container_no (col[14]=${JSON.stringify(r[14])})`)
+      continue
+    }
 
     const ata_final = xlDate(r[21])
     const cur_raw   = str(r[24])

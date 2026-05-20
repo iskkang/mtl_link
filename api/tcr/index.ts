@@ -413,50 +413,91 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
   // Upsert containers
   let updatedContainers = 0
   if (containers.length > 0) {
-    const containerRows = containers.map(c => ({
-      container_no:         c.container_no,
-      origin:               c.origin               ?? null,
-      destination:          c.destination          ?? null,
-      transport_mode:       c.transport_mode       ?? null,
-      current_location:     c.current_location     ?? null,
-      current_location_raw: c.current_location_raw ?? null,
-      eta_final:            c.eta_final            ?? null,
-      ata_final:            c.ata_final            ?? null,
-      arrived_yn:           c.arrived_yn           ?? false,
-    }))
+    const containerRows = containers.map(c => {
+      const row: Record<string, unknown> = {
+        container_no:     c.container_no,
+        origin:           c.origin           ?? null,
+        destination:      c.destination      ?? null,
+        transport_mode:   c.transport_mode   ?? null,
+        current_location: c.current_location ?? null,
+        eta_final:        c.eta_final        ?? null,
+        ata_final:        c.ata_final        ?? null,
+        arrived_yn:       Boolean(c.arrived_yn),
+      }
+      // Include current_location_raw only if the value is non-null (column may not exist in all schemas)
+      if (c.current_location_raw) row.current_location_raw = c.current_location_raw
+      return row
+    })
 
     const { error: cErr } = await supabase
       .from('tcr_containers_current')
       .upsert(containerRows, { onConflict: 'container_no' })
 
-    if (cErr) errors.push(`containers: ${cErr.message}`)
-    else updatedContainers = containers.length
+    if (cErr) {
+      console.error('containers upsert error:', cErr)
+      errors.push(`containers: ${cErr.message} | code: ${cErr.code} | details: ${cErr.details ?? ''} | hint: ${cErr.hint ?? ''}`)
+    } else {
+      updatedContainers = containers.length
+    }
   }
 
   // Upsert segments
   let updatedSegments = 0
   if (segments.length > 0) {
-    const segmentRows = segments.map(s => ({
-      segment_id:         s.segment_id,
-      container_no:       s.container_no,
-      segment_no:         s.segment_no,
-      segment_name:       s.segment_name       ?? null,
-      from_location:      s.from_location      ?? null,
-      to_location:        s.to_location        ?? null,
-      transport_mode:     s.transport_mode     ?? null,
-      etd:                s.etd                ?? null,
-      atd:                s.atd                ?? null,
-      eta:                s.eta                ?? null,
-      ata:                s.ata                ?? null,
-      is_current_segment: s.is_current_segment ?? false,
-    }))
+    // Filter out rows missing required PK fields
+    const validSegments = (segments as Record<string, unknown>[]).filter(s =>
+      s.segment_id && String(s.segment_id).trim() &&
+      s.container_no && String(s.container_no).trim() &&
+      s.segment_no !== null && s.segment_no !== undefined
+    )
 
-    const { error: sErr } = await supabase
-      .from('tcr_route_segments')
-      .upsert(segmentRows, { onConflict: 'segment_id' })
+    if (validSegments.length < segments.length) {
+      errors.push(`segments: ${segments.length - validSegments.length} rows skipped (missing segment_id / container_no / segment_no)`)
+    }
 
-    if (sErr) errors.push(`segments: ${sErr.message}`)
-    else updatedSegments = segments.length
+    if (validSegments.length > 0) {
+      const segmentRows = validSegments.map(s => ({
+        segment_id:         String(s.segment_id).trim(),
+        container_no:       String(s.container_no).trim(),
+        segment_no:         Number(s.segment_no),
+        segment_name:       s.segment_name   ? String(s.segment_name)   : null,
+        from_location:      s.from_location  ? String(s.from_location)  : null,
+        to_location:        s.to_location    ? String(s.to_location)    : null,
+        transport_mode:     s.transport_mode ? String(s.transport_mode) : null,
+        etd:                s.etd && String(s.etd).trim()  ? String(s.etd).trim()  : null,
+        atd:                s.atd && String(s.atd).trim()  ? String(s.atd).trim()  : null,
+        eta:                s.eta && String(s.eta).trim()  ? String(s.eta).trim()  : null,
+        ata:                s.ata && String(s.ata).trim()  ? String(s.ata).trim()  : null,
+        is_current_segment: Boolean(s.is_current_segment),
+      }))
+
+      // Try upsert with segment_id first; if that constraint doesn't exist, fall back to composite key
+      const { error: sErr1 } = await supabase
+        .from('tcr_route_segments')
+        .upsert(segmentRows, { onConflict: 'segment_id' })
+
+      if (sErr1) {
+        const isConstraintErr = sErr1.code === '42P10' || (sErr1.message ?? '').toLowerCase().includes('constraint')
+        if (isConstraintErr) {
+          // segment_id unique constraint not found — retry with composite key
+          const { error: sErr2 } = await supabase
+            .from('tcr_route_segments')
+            .upsert(segmentRows, { onConflict: 'container_no,segment_no' })
+
+          if (sErr2) {
+            console.error('segments upsert error (composite fallback):', sErr2)
+            errors.push(`segments: ${sErr2.message} | code: ${sErr2.code} | details: ${sErr2.details ?? ''} | hint: ${sErr2.hint ?? ''}`)
+          } else {
+            updatedSegments = validSegments.length
+          }
+        } else {
+          console.error('segments upsert error:', sErr1)
+          errors.push(`segments: ${sErr1.message} | code: ${sErr1.code} | details: ${sErr1.details ?? ''} | hint: ${sErr1.hint ?? ''}`)
+        }
+      } else {
+        updatedSegments = validSegments.length
+      }
+    }
   }
 
   return res.json({ ok: true, updated_containers: updatedContainers, updated_segments: updatedSegments, errors })
