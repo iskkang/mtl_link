@@ -29,6 +29,7 @@ const TrackingPage      = lazy(() => import('../components/ai/TrackingPage').the
 const RateFinderPage      = lazy(() => import('../components/ai/RateFinderPage').then(m => ({ default: m.RateFinderPage })))
 const AiChatWindow        = lazy(() => import('../components/ai/AiChatWindow').then(m => ({ default: m.AiChatWindow })))
 const FescoTrackingShell  = lazy(() => import('../components/tracking/FescoTrackingShell').then(m => ({ default: m.FescoTrackingShell })))
+const TcrTrackingPage     = lazy(() => import('./TcrTrackingPage').then(m => ({ default: m.TcrTrackingPage })))
 
 type AiView = 'chat' | 'quotation' | 'message' | 'transport' | 'customs' | 'hscode' | 'knowledge' | 'approval' | 'tracking'
 
@@ -232,7 +233,7 @@ export default function ChatPage() {
   return (
     <>
       <AppLayout
-        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai' || activeSection === 'ratefinder' || activeSection === 'all-unread' || activeSection === 'threads' || activeSection === 'tracking'}
+        showChat={showChat || activeSection === 'calendar' || activeSection === 'ai' || activeSection === 'ratefinder' || activeSection === 'all-unread' || activeSection === 'threads' || activeSection === 'tracking' || activeSection === 'tcr-tracking'}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         selectedRoomId={selectedRoomId}
@@ -294,6 +295,8 @@ export default function ChatPage() {
             />
           ) : activeSection === 'threads' ? (
             <ThreadsPage onBack={() => setActiveSection('chat')} />
+          ) : activeSection === 'tcr-tracking' ? (
+            <TcrTrackingPage />
           ) : activeSection === 'tracking' ? (
             <FescoTrackingShell />
           ) : activeSection === 'ai' ? (

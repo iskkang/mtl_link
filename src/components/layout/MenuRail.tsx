@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   MessageSquare, Users, CheckSquare, Inbox,
-  Bell, Calendar, FolderOpen, Hash, DollarSign,
+  Bell, Calendar, FolderOpen, Hash, DollarSign, Train,
 } from 'lucide-react'
 import { FescoFIcon } from '../ui/FescoFIcon'
 import { MintIcon } from '../ui/MarvisIcon'
@@ -15,7 +15,7 @@ export type Section =
   | 'chat' | 'members' | 'tasks' | 'requests'
   | 'announcements' | 'calendar' | 'files' | 'channels' | 'bots' | 'ai'
   | 'ratefinder' | 'all-unread' | 'threads' | 'mentions'
-  | 'profile' | 'tracking'
+  | 'profile' | 'tracking' | 'tcr-tracking'
 
 export const MOBILE_SECTIONS = new Set<Section>(['chat', 'members', 'tasks', 'requests'])
 
@@ -100,6 +100,13 @@ export function MenuRail({
             active={activeSection === 'tracking'}
             activeColor="#0d9488"
             onClick={() => onSectionChange('tracking')}
+          />
+          <RailBtn
+            Icon={Train}
+            label="중국경유 컨테이너"
+            active={activeSection === 'tcr-tracking'}
+            activeColor="#3b82f6"
+            onClick={() => onSectionChange('tcr-tracking')}
           />
         </div>
 
