@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, AlertCircle, X, Train, Package } from 'lucide-react'
+import { RefreshCw, AlertCircle, X, Train, Package, CheckCircle, Clock } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
 import type { ContainerPoint, ContainerPopupData, WeatherAlert } from '../components/tracking/ContainerMap'
 
@@ -26,7 +26,12 @@ interface TcrContainer {
 interface TcrSegment {
   segment_no:         number
   segment_name:       string | null
+  from_location:      string | null
+  to_location:        string | null
+  transport_mode:     string | null
+  etd:                string | null
   atd:                string | null
+  eta:                string | null
   ata:                string | null
   is_current_segment: boolean
 }
@@ -109,6 +114,29 @@ function fmtRelTime(iso: string | null): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24)  return `${hrs}시간 전`
   return `${Math.floor(hrs / 24)}일 전`
+}
+
+function fmtMD(d: string | null): string {
+  if (!d) return '—'
+  const dt = new Date(d)
+  return `${String(dt.getMonth() + 1).padStart(2, '0')}.${String(dt.getDate()).padStart(2, '0')}`
+}
+
+type DelayBadge = { label: string; bg: string; text: string }
+
+function calcDelay(seg: TcrSegment, today: string): DelayBadge | null {
+  if (seg.ata && seg.eta) {
+    const d = Math.round((new Date(seg.ata).getTime() - new Date(seg.eta).getTime()) / (24 * 60 * 60 * 1000))
+    if (d <= 0) return { label: '정시',            bg: '#E1F5EE', text: '#0F6E56' }
+    if (d < 3)  return { label: `+${d}일`,        bg: '#fef9c3', text: '#854d0e' }
+    return           { label: `+${d}일`,          bg: '#fee2e2', text: '#991b1b' }
+  }
+  if (!seg.ata && seg.eta) {
+    const r = Math.round((new Date(seg.eta).getTime() - new Date(today).getTime()) / (24 * 60 * 60 * 1000))
+    if (r >= 0) return { label: `D-${r}`,         bg: '#E1F5EE', text: '#0F6E56' }
+    return           { label: `+${Math.abs(r)}일`, bg: '#fee2e2', text: '#991b1b' }
+  }
+  return null
 }
 
 /* ── Signal dot ──────────────────────────────────────────────────────── */
@@ -430,43 +458,128 @@ function DetailPanel({
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {tab === 'segments' && (
-              <div className="py-2">
-                {detail!.segments.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
-                ) : detail!.segments.map((s, idx) => (
-                  <div
-                    key={s.segment_no ?? idx}
-                    className="flex items-start gap-3 px-4 py-2"
-                    style={{ opacity: s.is_current_segment || !s.atd ? 1 : 0.55 }}
-                  >
-                    <div className="flex flex-col items-center flex-shrink-0 pt-1" style={{ width: 16 }}>
-                      <span style={{
-                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                        background: s.ata ? '#22c55e' : s.is_current_segment ? '#3b82f6' : 'var(--ink-300)',
-                        border: s.is_current_segment ? '2px solid #3b82f680' : 'none',
-                        boxSizing: 'border-box',
-                      }} />
-                      {idx < detail!.segments.length - 1 && (
-                        <div style={{ width: 1, flex: 1, minHeight: 16, background: 'var(--ink-200)', marginTop: 3 }} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 pb-2">
-                      <div className="text-[11px] font-semibold" style={{ color: s.is_current_segment ? '#3b82f6' : 'var(--ink-800)' }}>
-                        {s.segment_name ?? `구간 ${s.segment_no}`}
-                        {s.is_current_segment && (
-                          <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background: '#3b82f615', color: '#3b82f6' }}>현재</span>
-                        )}
-                      </div>
-                      <div className="flex gap-3 mt-0.5">
-                        {s.atd && <span className="text-[10px]" style={{ color: 'var(--ink-400)' }}>출발 {fmtDate(s.atd)}</span>}
-                        {s.ata && <span className="text-[10px]" style={{ color: '#22c55e' }}>도착 {fmtDate(s.ata)}</span>}
-                      </div>
+            {tab === 'segments' && (() => {
+              const segs = detail!.segments
+              if (segs.length === 0) return (
+                <div className="px-4 py-6 text-center text-[11px]" style={{ color: 'var(--ink-400)' }}>구간 정보 없음</div>
+              )
+              const today    = new Date().toISOString().split('T')[0]
+              const firstATD = segs.find(s => s.atd)?.atd ?? null
+              const lastETA  = [...segs].reverse().find(s => s.eta)?.eta ?? null
+              const lastATA  = [...segs].reverse().find(s => s.ata)?.ata ?? null
+              const totalDays = (() => {
+                const end   = lastATA ?? lastETA
+                if (!end || !firstATD) return null
+                return Math.round((new Date(end).getTime() - new Date(firstATD).getTime()) / (24 * 60 * 60 * 1000))
+              })()
+              return (
+                <div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, minWidth: 480 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--ink-50)' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 500, color: 'var(--ink-400)', whiteSpace: 'nowrap' }}>구간</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 500, color: 'var(--ink-400)' }}>ETD</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 500, color: 'var(--ink-400)' }}>ATD</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 500, color: 'var(--ink-400)' }}>ETA</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 500, color: 'var(--ink-400)' }}>ATA</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 500, color: 'var(--ink-400)' }}>지연</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 500, color: 'var(--ink-400)' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {segs.map((s, idx) => {
+                          const delay = calcDelay(s, today)
+                          const isCurrent = s.is_current_segment
+                          const isDone    = !!s.ata
+                          const isDelayed = !!(delay && delay.label !== '정시')
+                          const from = s.from_location ?? (s.segment_name?.split('→')[0]?.trim() ?? '—')
+                          const to   = s.to_location   ?? (s.segment_name?.split('→')[1]?.trim() ?? '—')
+                          const mode = s.transport_mode ?? ''
+                          return (
+                            <tr
+                              key={s.segment_no ?? idx}
+                              style={{
+                                borderTop: '0.5px solid var(--ink-100)',
+                                background: isCurrent ? 'rgba(20,184,166,0.06)' : 'transparent',
+                              }}
+                            >
+                              <td style={{ padding: '10px 10px', whiteSpace: 'nowrap' }}>
+                                <div>
+                                  <span style={{ color: isCurrent ? 'var(--ink-900)' : 'var(--ink-600)', fontWeight: isCurrent ? 500 : 400 }}>{from}</span>
+                                  <span style={{ color: 'var(--ink-300)', margin: '0 3px' }}>→</span>
+                                  <span style={{ color: isCurrent ? 'var(--ink-900)' : 'var(--ink-600)', fontWeight: isCurrent ? 500 : 400 }}>{to}</span>
+                                </div>
+                                <div style={{ fontSize: 10, color: isCurrent ? '#14b8a6' : 'var(--ink-400)', marginTop: 1 }}>
+                                  {mode || 'SEA'}{isCurrent ? ' · 현재' : ''}
+                                </div>
+                              </td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--ink-500)' }}>{fmtMD(s.etd)}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center', color: s.atd ? 'var(--ink-800)' : 'var(--ink-300)' }}>{fmtMD(s.atd)}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--ink-500)' }}>{fmtMD(s.eta)}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center', color: s.ata ? 'var(--ink-800)' : 'var(--ink-300)' }}>{fmtMD(s.ata)}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center' }}>
+                                {delay && (
+                                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: delay.bg, color: delay.text, whiteSpace: 'nowrap' }}>
+                                    {delay.label}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center' }}>
+                                <span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                  {isDone ? (
+                                    <CheckCircle size={15} style={{ color: isDelayed ? '#f97316' : '#14b8a6' }} />
+                                  ) : isCurrent ? (
+                                    <Clock size={15} style={{ color: '#3b82f6' }} />
+                                  ) : (
+                                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--ink-200)' }} />
+                                  )}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+
+                        {/* Total T/T */}
+                        <tr style={{ borderTop: '1.5px solid var(--ink-200)', background: 'var(--ink-50)' }}>
+                          <td style={{ padding: '10px 10px', fontWeight: 500, color: 'var(--ink-800)' }}>Total T/T</td>
+                          <td style={{ padding: '10px 6px', textAlign: 'center', fontSize: 10, color: 'var(--ink-400)' }}>출발</td>
+                          <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--ink-600)' }}>{fmtMD(firstATD)}</td>
+                          <td style={{ padding: '10px 6px', textAlign: 'center', fontSize: 10, color: 'var(--ink-400)' }}>{lastATA ? '도착' : '도착예정'}</td>
+                          <td style={{ padding: '10px 6px', textAlign: 'center', color: 'var(--ink-600)' }}>{fmtMD(lastATA ?? lastETA)}</td>
+                          <td colSpan={2} style={{ padding: '10px 10px', textAlign: 'center' }}>
+                            {totalDays != null ? (
+                              <>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: '#14b8a6' }}>{totalDays}일</span>
+                                {!lastATA && <span style={{ fontSize: 10, color: 'var(--ink-400)', marginLeft: 4 }}>(진행중)</span>}
+                              </>
+                            ) : <span style={{ color: 'var(--ink-300)' }}>—</span>}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Legend */}
+                  <div style={{ padding: '8px 14px', borderTop: '0.5px solid var(--ink-100)', background: 'var(--ink-50)' }}>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--ink-400)', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <CheckCircle size={11} style={{ color: '#14b8a6' }} /> 완료·정시
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#eab308' }} /> +N일 지연
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <Clock size={11} style={{ color: '#3b82f6' }} /> 진행중
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--ink-200)' }} /> 대기
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              )
+            })()}
             {tab === 'items' && (
               <div className="py-2">
                 {detail!.items.length === 0 ? (
