@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, AlertCircle, X, Train, Package } from 'lucide-react'
 import { ContainerMap } from '../components/tracking/ContainerMap'
-import type { ContainerPoint, ContainerPopupData } from '../components/tracking/ContainerMap'
+import type { ContainerPoint, ContainerPopupData, WeatherAlert } from '../components/tracking/ContainerMap'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 type TcrSignal = 'green' | 'red' | 'yellow' | 'blue'
@@ -564,6 +564,7 @@ export function TcrTrackingPage() {
   const [error,         setError]         = useState<string | null>(null)
   const [lastFetch,     setLastFetch]     = useState<string | null>(null)
   const [refreshing,    setRefreshing]    = useState(false)
+  const [weatherAlerts, setWeatherAlerts] = useState<WeatherAlert[]>([])
 
   const [selCountries,  setSelCountries]  = useState<Set<CountryCode>>(new Set(['UZ', 'KZ', 'KG', 'PL']))
   const [sigFilter,     setSigFilter]     = useState<TcrSignal | null>(null)
@@ -598,6 +599,13 @@ export function TcrTrackingPage() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    fetch('/api/tcr?action=weather')
+      .then(r => r.json())
+      .then(j => { if (Array.isArray(j.alerts)) setWeatherAlerts(j.alerts) })
+      .catch(() => {})
+  }, [])
 
   const fetchDetail = useCallback(async (no: string) => {
     setDetailLoading(true)
@@ -922,6 +930,7 @@ export function TcrTrackingPage() {
                   onClearSelection={handleClearSelection}
                   showFescoLink={false}
                   onSearchSelect={cn => handleSelectContainers([cn])}
+                  weatherAlerts={weatherAlerts}
                 />
 
                 {/* Slide-in detail overlay */}

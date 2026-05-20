@@ -19,6 +19,19 @@ export interface ContainerPopupData {
   alert_reason:             string | null
 }
 
+export interface WeatherAlert {
+  location:            string
+  latitude:            number
+  longitude:           number
+  forecast_date:       string
+  weather_code:        number
+  severity:            'severe' | 'warning' | 'caution'
+  label:               string
+  wind_speed:          number
+  temp_min:            number
+  containers_affected: string[]
+}
+
 interface TrailEvent {
   date:              string
   locationLabel:     string
@@ -42,6 +55,7 @@ interface ContainerMapProps {
   onClearSelection?:    () => void
   showFescoLink?:       boolean
   onSearchSelect?:      (containerNumber: string) => void
+  weatherAlerts?:       WeatherAlert[]
 }
 
 const TOKEN = import.meta.env.MAPBOX_ACCESS_TOKEN as string | undefined
@@ -330,6 +344,7 @@ export function ContainerMap({
   onClearSelection,
   showFescoLink = true,
   onSearchSelect,
+  weatherAlerts = [],
 }: ContainerMapProps) {
   const { t }         = useTranslation()
   const containerRef  = useRef<HTMLDivElement>(null)
@@ -501,6 +516,64 @@ export function ContainerMap({
     src.setData(toGeoJSON(containers))
     fitToContainers(map, containers)
   }, [containers])
+
+  /* ── Weather alert markers ──────────────────────────────────────── */
+  const weatherMarkersRef = useRef<mapboxgl.Marker[]>([])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const renderMarkers = () => {
+      weatherMarkersRef.current.forEach(m => m.remove())
+      weatherMarkersRef.current = []
+
+      for (const alert of weatherAlerts) {
+        const size  = alert.severity === 'severe' ? 32 : alert.severity === 'warning' ? 28 : 24
+        const color = alert.severity === 'severe' ? '#dc2626' : alert.severity === 'warning' ? '#ea580c' : '#ca8a04'
+
+        const el = document.createElement('div')
+        el.style.cursor = 'pointer'
+        el.style.filter = 'drop-shadow(0 1px 3px rgba(0,0,0,0.35))'
+        el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="${color}" stroke="white" stroke-width="1.2"/>
+          <line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="17" r="0.8" fill="white"/>
+        </svg>`
+
+        const popup = new mapboxgl.Popup({
+          offset: 18, closeButton: true, maxWidth: '210px', className: 'container-popup',
+        }).setHTML(`
+          <div style="font-family:var(--font-body,system-ui,sans-serif)">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;background:${color}18;color:${color}">${alert.severity.toUpperCase()}</span>
+              <span style="font-weight:600;font-size:12px;color:#1e293b">${alert.label} 예보</span>
+            </div>
+            <div style="font-size:11px;color:#475569;margin-bottom:2px">${alert.location}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">ETA ${alert.forecast_date}</div>
+            <div style="display:flex;gap:12px;font-size:11px;color:#64748b;margin-bottom:6px">
+              <span>💨 ${alert.wind_speed} km/h</span>
+              <span>🌡 ${alert.temp_min}°C</span>
+            </div>
+            <div style="font-size:10px;color:#94a3b8">영향 컨테이너 ${alert.containers_affected.length}개</div>
+          </div>
+        `)
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([alert.longitude, alert.latitude])
+          .setPopup(popup)
+          .addTo(map)
+
+        weatherMarkersRef.current.push(marker)
+      }
+    }
+
+    if (map.isStyleLoaded()) {
+      renderMarkers()
+    } else {
+      map.once('load', renderMarkers)
+    }
+  }, [weatherAlerts])
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

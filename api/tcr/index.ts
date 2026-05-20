@@ -87,6 +87,144 @@ async function syncAutoAlerts(
   ].filter(Boolean))
 }
 
+// ── Weather forecast cache (module-level, 1-hour TTL) ─────────────────────────
+let weatherCache: { data: object; ts: number } | null = null
+const WEATHER_CACHE_TTL = 60 * 60 * 1000
+
+// ── Weather (Open-Meteo batch forecast, no API key) ───────────────────────────
+async function handleWeather(res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  if (weatherCache && Date.now() - weatherCache.ts < WEATHER_CACHE_TTL) {
+    return res.json(weatherCache.data)
+  }
+
+  // Active containers only
+  const { data: ctrRows } = await supabase
+    .from('tcr_containers_current')
+    .select('container_no')
+    .eq('arrived_yn', false)
+
+  const containerNos = ((ctrRows ?? []) as { container_no: string }[]).map(r => r.container_no)
+  if (containerNos.length === 0) return res.json({ alerts: [] })
+
+  // Current segments with ETA but not yet arrived at segment
+  const { data: segRows } = await supabase
+    .from('tcr_route_segments')
+    .select('container_no, to_location, eta')
+    .in('container_no', containerNos)
+    .eq('is_current_segment', true)
+    .not('eta', 'is', null)
+    .is('ata', null)
+
+  type SRow = { container_no: string; to_location: string | null; eta: string | null }
+
+  // Group by to_location → min ETA + affected container list
+  const locGroups = new Map<string, { containers: string[]; minEta: string }>()
+  for (const s of (segRows ?? [] as unknown[]) as unknown as SRow[]) {
+    if (!s.to_location || !s.eta) continue
+    const g = locGroups.get(s.to_location) ?? { containers: [], minEta: s.eta }
+    g.containers.push(s.container_no)
+    if (s.eta < g.minEta) g.minEta = s.eta
+    locGroups.set(s.to_location, g)
+  }
+  if (locGroups.size === 0) return res.json({ alerts: [] })
+
+  // Coordinates for each distinct next-stop location
+  const { data: locRows } = await supabase
+    .from('tcr_locations')
+    .select('location_name, latitude, longitude')
+    .in('location_name', [...locGroups.keys()])
+
+  const locMap = new Map<string, { latitude: number; longitude: number }>()
+  for (const l of (locRows ?? [] as unknown[]) as unknown as { location_name: string; latitude: number; longitude: number }[]) {
+    locMap.set(l.location_name, { latitude: l.latitude, longitude: l.longitude })
+  }
+
+  // Only include locations with coords whose ETA falls within the 16-day forecast window
+  const cutoff16 = new Date()
+  cutoff16.setDate(cutoff16.getDate() + 16)
+  const cutoff16Str = cutoff16.toISOString().split('T')[0]
+
+  type ForecastTarget = {
+    location:      string
+    latitude:      number
+    longitude:     number
+    forecast_date: string
+    containers:    string[]
+  }
+  const targets: ForecastTarget[] = []
+  for (const [loc, g] of locGroups) {
+    const geo = locMap.get(loc)
+    if (!geo || g.minEta > cutoff16Str) continue
+    targets.push({ location: loc, latitude: geo.latitude, longitude: geo.longitude, forecast_date: g.minEta, containers: g.containers })
+  }
+  if (targets.length === 0) return res.json({ alerts: [] })
+
+  // Open-Meteo batch forecast (comma-separated lat/lon, free, no key needed)
+  const params = new URLSearchParams({
+    latitude:      targets.map(t => t.latitude.toFixed(4)).join(','),
+    longitude:     targets.map(t => t.longitude.toFixed(4)).join(','),
+    daily:         'weather_code,wind_speed_10m_max,temperature_2m_min,precipitation_sum',
+    timezone:      'auto',
+    forecast_days: '16',
+  })
+  let forecasts: object[]
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
+    if (!r.ok) throw new Error(`Open-Meteo ${r.status}`)
+    const json = await r.json() as object
+    // Single location → object, multiple → array
+    forecasts = Array.isArray(json) ? json : [json]
+  } catch {
+    return res.json({ alerts: [] })
+  }
+
+  function getSeverity(code: number, wind: number, tempMin: number): { level: 'severe' | 'warning' | 'caution'; label: string } | null {
+    if (code >= 95)                   return { level: 'severe',  label: '폭풍'   }
+    if (code >= 71 && code <= 77)     return { level: 'warning', label: '대설'   }
+    if (code >= 85 && code <= 86)     return { level: 'warning', label: '눈소나기' }
+    if (wind > 60)                    return { level: 'warning', label: '강풍'   }
+    if (tempMin < -25)                return { level: 'warning', label: '혹한'   }
+    if (code >= 80)                   return { level: 'caution', label: '강수'   }
+    if (wind > 40)                    return { level: 'caution', label: '바람'   }
+    return null
+  }
+
+  const alerts: object[] = []
+  for (let i = 0; i < targets.length; i++) {
+    const target   = targets[i]
+    const forecast = forecasts[i] as Record<string, Record<string, number[]>> | undefined
+    if (!forecast?.daily?.time) continue
+
+    const times = forecast.daily.time as unknown as string[]
+    const idx   = times.indexOf(target.forecast_date)
+    if (idx === -1) continue
+
+    const code    = (forecast.daily.weather_code as number[])[idx] ?? 0
+    const wind    = (forecast.daily.wind_speed_10m_max as number[])[idx] ?? 0
+    const tempMin = (forecast.daily.temperature_2m_min as number[])[idx] ?? 0
+
+    const sev = getSeverity(code, wind, tempMin)
+    if (!sev) continue
+
+    alerts.push({
+      location:            target.location,
+      latitude:            target.latitude,
+      longitude:           target.longitude,
+      forecast_date:       target.forecast_date,
+      weather_code:        code,
+      severity:            sev.level,
+      label:               sev.label,
+      wind_speed:          Math.round(wind),
+      temp_min:            Math.round(tempMin),
+      containers_affected: target.containers,
+    })
+  }
+
+  const result = { alerts }
+  weatherCache = { data: result, ts: Date.now() }
+  return res.json(result)
+}
+
 // ── List (was containers-list.ts) ─────────────────────────────────────────────
 async function handleList(res: VercelResponse, supabase: ReturnType<typeof createClient>) {
   const cutoff = new Date()
@@ -270,6 +408,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
 
   const action = String(req.query.action ?? 'list')
-  if (action === 'detail') return handleDetail(req, res, supabase)
+  if (action === 'detail')  return handleDetail(req, res, supabase)
+  if (action === 'weather') return handleWeather(res, supabase)
   return handleList(res, supabase)
 }
