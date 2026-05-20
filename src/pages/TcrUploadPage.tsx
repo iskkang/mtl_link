@@ -25,7 +25,6 @@ interface SegmentRow {
   segment_name: string | null
   from_location: string | null
   to_location: string | null
-  transport_mode: string | null
   etd: string | null
   atd: string | null
   eta: string | null
@@ -190,15 +189,15 @@ function parseKrUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
     segments.push(
       { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
         segment_name: `${origin ?? '?'} → Qingdao`, from_location: origin, to_location: 'Qingdao',
-        transport_mode: 'Sea', etd: null, atd: s1atd, eta: null, ata: s1ata,
+        etd: null, atd: s1atd, eta: null, ata: s1ata,
         is_current_segment: !!s1atd && !s1ata },
       { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
         segment_name: 'Qingdao → Kashgar', from_location: 'Qingdao', to_location: 'Kashgar',
-        transport_mode: 'Rail', etd: null, atd: s2atd, eta: null, ata: s2ata,
+        etd: null, atd: s2atd, eta: null, ata: s2ata,
         is_current_segment: !!s2atd && !s2ata },
       { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
         segment_name: `Kashgar → ${destination ?? '?'}`, from_location: 'Kashgar', to_location: destination,
-        transport_mode: 'Rail', etd: s3etd, atd: null, eta: null, ata: s3ata,
+        etd: s3etd, atd: null, eta: null, ata: s3ata,
         is_current_segment: !!s3etd && !s3ata },
     )
   }
@@ -245,11 +244,11 @@ function parseCnUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
     segments.push(
       { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
         segment_name: 'Origin → Transit', from_location: null, to_location: null,
-        transport_mode: 'Rail', etd: null, atd: s1atd, eta: null, ata: s1ata,
+        etd: null, atd: s1atd, eta: null, ata: s1ata,
         is_current_segment: !!s1atd && !s1ata },
       { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
         segment_name: 'Transit → Destination', from_location: null, to_location: null,
-        transport_mode: 'Rail', etd: null, atd: s2atd, eta: null, ata: ata_final,
+        etd: null, atd: s2atd, eta: null, ata: ata_final,
         is_current_segment: !!s2atd && !ata_final },
     )
   }
@@ -293,15 +292,15 @@ function parseKrKzTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; segmen
     segments.push(
       { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
         segment_name: 'Korea → Qingdao', from_location: null, to_location: 'Qingdao',
-        transport_mode: 'Sea', etd: s1etd, atd: s1atd, eta: s1eta, ata: s1ata,
+        etd: s1etd, atd: s1atd, eta: s1eta, ata: s1ata,
         is_current_segment: !!s1atd && !s1ata },
       { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
         segment_name: 'Qingdao → Khorgos', from_location: 'Qingdao', to_location: 'Khorgos',
-        transport_mode: 'Rail', etd: null, atd: null, eta: null, ata: s2ata,
+        etd: null, atd: null, eta: null, ata: s2ata,
         is_current_segment: !!s1ata && !s2ata },
       { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
         segment_name: 'Noorul → Almaty', from_location: 'Noorul', to_location: 'Almaty',
-        transport_mode: 'Truck', etd: null, atd: s3atd, eta: null, ata: ata_almaty,
+        etd: null, atd: s3atd, eta: null, ata: ata_almaty,
         is_current_segment: !!s3atd && !ata_almaty },
     )
   }
@@ -374,15 +373,15 @@ function parseKrKg(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
       segments.push(
         { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
           segment_name: 'Korea → Border', from_location: null, to_location: 'Border',
-          transport_mode: 'Sea', etd: null, atd: s1atd, eta: null, ata: s1ata,
+          etd: null, atd: s1atd, eta: null, ata: s1ata,
           is_current_segment: !!s1atd && !s1ata },
         { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
           segment_name: 'Border → KZ Border', from_location: 'Border', to_location: 'KZ Border',
-          transport_mode: 'Rail', etd: null, atd: null, eta: s2eta, ata: s2ata,
+          etd: null, atd: null, eta: s2eta, ata: s2ata,
           is_current_segment: !!s1ata && !s2ata },
         { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
           segment_name: `KZ Border → ${sheetName}`, from_location: 'KZ Border', to_location: sheetName,
-          transport_mode: 'Rail', etd: s3etd, atd: s3atd, eta: null, ata: ata_dest,
+          etd: s3etd, atd: s3atd, eta: null, ata: ata_dest,
           is_current_segment: !!s3atd && !ata_dest },
       )
     }
@@ -448,15 +447,15 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
     segments.push(
       { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
         segment_name: 'Korea → Qingdao', from_location: null, to_location: 'Qingdao',
-        transport_mode: 'Sea', etd: null, atd: s1atd, eta: null, ata: s1ata,
+        etd: null, atd: s1atd, eta: null, ata: s1ata,
         is_current_segment: !!s1atd && !s1ata },
       { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
         segment_name: "Qingdao → Xi'an", from_location: 'Qingdao', to_location: "Xi'an",
-        transport_mode: 'Rail', etd: null, atd: s2atd, eta: null, ata: s2ata,
+        etd: null, atd: s2atd, eta: null, ata: s2ata,
         is_current_segment: !!s2atd && !s2ata },
       { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
         segment_name: "Xi'an → Małaszewicze", from_location: "Xi'an", to_location: 'Małaszewicze',
-        transport_mode: 'Rail', etd: s3etd, atd: s3atd, eta: null, ata: ata_final,
+        etd: s3etd, atd: s3atd, eta: null, ata: ata_final,
         is_current_segment: !!s3atd && !ata_final },
     )
   }

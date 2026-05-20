@@ -463,7 +463,6 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
         segment_name:       s.segment_name   ? String(s.segment_name)   : null,
         from_location:      s.from_location  ? String(s.from_location)  : null,
         to_location:        s.to_location    ? String(s.to_location)    : null,
-        transport_mode:     s.transport_mode ? String(s.transport_mode) : null,
         etd:                s.etd && String(s.etd).trim()  ? String(s.etd).trim()  : null,
         atd:                s.atd && String(s.atd).trim()  ? String(s.atd).trim()  : null,
         eta:                s.eta && String(s.eta).trim()  ? String(s.eta).trim()  : null,
