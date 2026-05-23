@@ -157,6 +157,42 @@ async function findRelevantKnowledgeByVector(question: string): Promise<Knowledg
   return filtered.map(item => ({ filename: item.filename, doc_type: item.doc_type, issue_type: item.issue_type, content: item.content }))
 }
 
+// ── Voyage 임베딩 + 이메일 검색 (두 번째 RAG 소스) ────────────────────────
+
+async function embedQueryVoyage(text: string): Promise<number[] | null> {
+  const key = Deno.env.get('VOYAGE_API_KEY')
+  if (!key) return null
+  try {
+    const r = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: [text], model: 'voyage-3', input_type: 'query' }),
+    })
+    // deno-lint-ignore no-explicit-any
+    const data = await r.json() as any
+    return data?.data?.[0]?.embedding ?? null
+  } catch { return null }
+}
+
+// deno-lint-ignore no-explicit-any
+async function searchEmails(supabase: any, query: string): Promise<string> {
+  const qVec = await embedQueryVoyage(query)
+  if (!qVec) return ''
+  const { data, error } = await supabase.rpc('match_mint_emails', {
+    query_embedding: qVec, match_count: 5,
+  })
+  if (error || !data) return ''
+  // deno-lint-ignore no-explicit-any
+  const relevant = (data as any[]).filter((m: any) => m.similarity >= 0.40)
+  if (relevant.length === 0) return ''
+  // deno-lint-ignore no-explicit-any
+  return relevant.map((m: any, i: number) => {
+    const date = m.sent_date ? new Date(m.sent_date).toISOString().slice(0, 10) : '날짜미상'
+    const body = (m.body || '').replace(/\s+/g, ' ').slice(0, 1200)
+    return `[이메일 ${i + 1}] (${date}, ${m.from_name}) ${m.subject}\n${body}`
+  }).join('\n\n')
+}
+
 // ── 시스템 프롬프트 주입 ───────────────────────────────────────────────────
 
 function buildKnowledgeContext(hits: KnowledgeHit[]): string {
@@ -202,15 +238,21 @@ Deno.serve(async (req: Request) => {
     }
     contextMessages.push({ role: 'user', content: message })
 
-    // 2. Vector search → keyword fallback
-    const knowledgeHits    = await findRelevantKnowledgeByVector(message)
+    // 2. Parallel retrieval: knowledge_base (OpenAI) + email RAG (Voyage)
+    const [knowledgeHits, emailContext] = await Promise.all([
+      findRelevantKnowledgeByVector(message),
+      searchEmails(supabaseAdmin, message),
+    ])
     const knowledgeContext = buildKnowledgeContext(knowledgeHits)
-    console.info(`[ai-chat] knowledge hits=${knowledgeHits.length}`)
+    console.info(`[ai-chat] knowledge hits=${knowledgeHits.length}, email ctx=${emailContext ? 'yes' : 'no'}`)
 
     // 3. Anthropic call (system: stable MINT prompt cached, volatile knowledge uncached)
     const languageName = LANGUAGE_NAMES[userLanguage] ?? 'English'
     const stablePrompt = MINT_SYSTEM_PROMPT.replace(/{languageName}/g, languageName)
-    const system = buildSystem(stablePrompt, knowledgeContext || undefined)
+    // volatile: KB context (existing) + email context (new, appended with label)
+    const volatileContext = (knowledgeContext || '') +
+      (emailContext ? `\n\n[과거 이메일 기록 검색 결과]\n${emailContext}` : '')
+    const system = buildSystem(stablePrompt, volatileContext || undefined)
 
     const { text: answer } = await callAnthropicWithRetry(anthropicKey, {
       model:     'claude-haiku-4-5-20251001',
