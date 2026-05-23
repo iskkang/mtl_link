@@ -25,10 +25,19 @@ const MintLogo = ({ size = 32 }: { size?: number }) => (
   </svg>
 )
 
+interface MintEmailSource {
+  index:      number
+  date:       string | null
+  from:       string
+  subject:    string
+  similarity: number
+}
+
 interface AiMessage {
   id:      string
   role:    'user' | 'assistant'
   content: string
+  sources?: MintEmailSource[]
 }
 
 interface Props {
@@ -40,10 +49,10 @@ interface Props {
 }
 
 export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, onTitleChange }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const isMobile = useIsMobile()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
 
   const [messages,      setMessages]      = useState<AiMessage[]>([])
   const [sessionTitle,  setSessionTitle]  = useState('')
@@ -150,17 +159,40 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
     setLoading(true)
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          sessionId:    sid,
-          message:      content,
-          userLanguage: profile?.preferred_language ?? i18n.language ?? 'ko',
-          userId:       user.id,
+      // Supabase access token for /api/mint/ask auth
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token ?? ''
+
+      const resp = await fetch('/api/mint/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({ question: content }),
       })
-      if (fnError) throw fnError
-      if (data?.error) throw new Error(data.error)
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: data.answer }])
+      const data = await resp.json() as { answer?: string; sources?: MintEmailSource[]; error?: string }
+      if (!resp.ok || data.error) throw new Error(data.error ?? '일시적 오류가 발생했습니다. 다시 시도해주세요.')
+
+      const answer  = data.answer  ?? ''
+      const sources = data.sources ?? []
+
+      setMessages(prev => [...prev, {
+        id:      crypto.randomUUID(),
+        role:    'assistant',
+        content: answer,
+        sources,
+      }])
+
+      // 세션 대화 기록 저장 (기존 ai_conversations 호환)
+      void supabase.from('ai_conversations').insert({
+        session_id:    sid,
+        user_id:       user.id,
+        question:      content,
+        answer,
+        session_title: !sessionTitle ? content.slice(0, 30) : sessionTitle,
+      })
+
       if (!sessionTitle) {
         setSessionTitle(content.slice(0, 30))
         onTitleChange?.()
@@ -169,7 +201,7 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
       setMessages(prev => [...prev, {
         id:      crypto.randomUUID(),
         role:    'assistant',
-        content: err instanceof Error ? err.message : 'Error',
+        content: err instanceof Error ? err.message : '일시적 오류가 발생했습니다. 다시 시도해주세요.',
       }])
     } finally {
       setLoading(false)
@@ -356,6 +388,35 @@ export function AiChatWindow({ sessionId, onNewSession, onNavigate, onDelete, on
                 >
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
+
+                {/* 참고한 메일 (email RAG sources) */}
+                {msg.sources && msg.sources.length > 0 && (
+                  <div
+                    className="mt-3 pl-1 pt-2.5 border-t"
+                    style={{ borderColor: 'var(--line)' }}
+                  >
+                    <p
+                      className="text-[11px] font-semibold mb-1.5"
+                      style={{ color: 'var(--ink-4)' }}
+                    >
+                      참고한 메일
+                    </p>
+                    <div className="flex flex-col gap-1">
+                      {msg.sources.map(s => (
+                        <div
+                          key={s.index}
+                          className="text-[11px] leading-relaxed"
+                          style={{ color: 'var(--ink-4)' }}
+                        >
+                          <span className="font-semibold" style={{ color: '#14b8a6' }}>
+                            [메일 {s.index}]
+                          </span>
+                          {' '}{s.date ?? '날짜미상'} · {s.from} · {s.subject}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           )}
