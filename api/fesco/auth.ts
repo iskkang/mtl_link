@@ -3,6 +3,8 @@ import dotenv from 'dotenv'
 import path from 'path'
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true })
 
+const FESCO_LOGIN_URL = 'https://my.fesco.com/api/v2/lk/user/login'
+
 // FESCO API can be slow to establish TLS connections from Node 20 on Windows/Vercel dev.
 // Use explicit undici Agent timeouts instead of native fetch defaults.
 const fescoHttpAgent = new Agent({
@@ -30,7 +32,7 @@ export async function loginFesco(): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let res: any
   try {
-    res = await undiciFetch('https://my.fesco.com/api/v2/lk/user/login', {
+    res = await undiciFetch(FESCO_LOGIN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,15 +41,20 @@ export async function loginFesco(): Promise<string> {
       },
       body: JSON.stringify(body),
       dispatcher: fescoHttpAgent,
+      // AbortSignal guards against infinite hang if undici Agent timeouts don't fire.
+      // Note: connectTimeout (45 s) on the Agent may fire first on slow TLS.
+      signal: AbortSignal.timeout(30000),
     })
   } catch (err: any) {
-    console.error('[fesco-auth] login failed:', {
+    console.error('[fesco-auth] login fetch failed:', {
       message:      err?.message,
-      causeName:    err?.cause?.name,
+      cause:        err?.cause,
       causeCode:    err?.cause?.code,
+      causeName:    err?.cause?.name,
       causeMessage: err?.cause?.message,
+      url:          FESCO_LOGIN_URL,
     })
-    throw new Error(`login: ${err?.message || 'unknown error'}`)
+    throw new Error(`FESCO login failed: ${err?.cause?.code || err?.message || 'unknown error'}`)
   }
 
   const responseText = await res.text()
