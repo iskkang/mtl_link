@@ -43,7 +43,7 @@ export async function loginFesco(): Promise<string> {
       dispatcher: fescoHttpAgent,
       // AbortSignal guards against infinite hang if undici Agent timeouts don't fire.
       // Note: connectTimeout (45 s) on the Agent may fire first on slow TLS.
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(60000),
     })
   } catch (err: any) {
     console.error('[fesco-auth] login fetch failed:', {
