@@ -1141,7 +1141,7 @@ export function TcrTrackingPage() {
             </div>
             {!isMobile && (
               <span className="sub truncate" style={{ fontSize: 12, color: 'var(--ink-400)' }}>
-                {loading ? 'Loading…' : `${containers.length}개 · 운송중 + 60일 이내 도착 · ${fmtRelTime(lastFetch)}`}
+                {loading ? 'Loading…' : `${containers.length}개 · 운송중 + 7일 이내 도착 · ${fmtRelTime(lastFetch)}`}
               </span>
             )}
           </div>

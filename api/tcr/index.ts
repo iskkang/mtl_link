@@ -226,22 +226,36 @@ async function handleWeather(res: VercelResponse, supabase: ReturnType<typeof cr
 }
 
 // ── List (was containers-list.ts) ─────────────────────────────────────────────
-async function handleList(res: VercelResponse, supabase: ReturnType<typeof createClient>) {
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 60)
-  const cutoffStr = cutoff.toISOString().split('T')[0]
+async function handleList(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  // Search query bypasses the active filter so historical containers remain searchable
+  const searchQuery = String(req.query.q ?? '').trim().toUpperCase()
 
-  const { data: ctrRows, error: ctrErr } = await supabase
+  // Active view window: in-transit OR arrived ≤7 days ago OR arrived with no ata_final (edge case)
+  const cutoff7 = new Date()
+  cutoff7.setDate(cutoff7.getDate() - 7)
+  const cutoff7Str = cutoff7.toISOString().split('T')[0]
+
+  let listQuery = supabase
     .from('tcr_containers_current')
     .select(
       'container_no, customer_list, origin, destination, current_location, ' +
       'current_location_since, eta_final, ata_final, arrived_yn, transport_mode, load_type',
     )
-    .or(
-      `and(arrived_yn.eq.false,or(eta_final.is.null,eta_final.gte.${cutoffStr})),` +
-      `and(arrived_yn.eq.true,ata_final.gte.${cutoffStr})`,
+
+  if (searchQuery) {
+    // Search mode: no active filter — return all matching containers (historical included)
+    listQuery = listQuery.ilike('container_no', `%${searchQuery}%`)
+  } else {
+    // Default active filter:
+    //   arrived_yn = false          → in-transit, always show
+    //   ata_final IS NULL           → edge case: arrived_yn=true but no ata_final recorded
+    //   ata_final >= today-7d       → recently arrived, show for 7 days then drop from view
+    listQuery = listQuery.or(
+      `arrived_yn.eq.false,ata_final.is.null,ata_final.gte.${cutoff7Str}`,
     )
-    .order('container_no')
+  }
+
+  const { data: ctrRows, error: ctrErr } = await listQuery.order('container_no')
 
   if (ctrErr) return res.status(500).json({ ok: false, error: ctrErr.message })
 
@@ -333,9 +347,11 @@ async function handleList(res: VercelResponse, supabase: ReturnType<typeof creat
     // In-transit: seg_to → cur_loc (no dest fallback — hasn't arrived yet)
     // Arrived:    cur_loc → dest   (destination fallback for arrived containers)
     const geo = r.arrived_yn
-      ? (r.current_location ? locMap.get(r.current_location) : undefined) ??
-        (r.destination      ? locMap.get(r.destination)      : undefined) ??
+      // Arrived (≤7d): place marker at destination — container has reached its end-point
+      ? (r.destination      ? locMap.get(r.destination)      : undefined) ??
+        (r.current_location ? locMap.get(r.current_location) : undefined) ??
         null
+      // In-transit: current location → segment next-stop fallback
       : (r.current_location ? locMap.get(r.current_location) : undefined) ??
         (segToName          ? locMap.get(segToName)          : undefined) ??
         null
@@ -561,5 +577,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (action === 'detail')  return handleDetail(req, res, supabase)
   if (action === 'weather') return handleWeather(res, supabase)
-  return handleList(res, supabase)
+  return handleList(req, res, supabase)
 }
