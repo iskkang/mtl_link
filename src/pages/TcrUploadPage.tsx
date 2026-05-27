@@ -540,7 +540,7 @@ function parseKrKgBishkekSheet(
 
     containers.push({
       container_no:         cno,
-      origin:               null,
+      origin:               'Incheon',
       destination:          sheetName,
       transport_mode:       'Rail',
       current_location:     cur_loc,
@@ -625,7 +625,7 @@ function parseKrKgAlmatySheet(
 
     containers.push({
       container_no:         cno,
-      origin:               null,
+      origin:               'Incheon',
       destination:          dest,
       transport_mode:       'Rail',
       current_location:     cur_loc,

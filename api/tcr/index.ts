@@ -44,6 +44,93 @@ function calcSignal(
   return 'blue'
 }
 
+// ── Location / routing helpers ────────────────────────────────────────────────
+function normLoc(s: unknown): string {
+  return String(s ?? '').trim().toLowerCase()
+    .replace(/andijon/g, 'andijan')
+    .replace(/dostuk/g, 'dostyk')
+    .replace(/kashi/g, 'kashgar')
+    .replace(/\bmala\b/g, 'małaszewicze')
+}
+
+function sameLoc(a: unknown, b: unknown): boolean {
+  if (!a || !b) return false
+  return normLoc(a) === normLoc(b)
+}
+
+// Relative waypoint order along common Silk Road routes
+const ROUTE_ORDER: Record<string, number> = {
+  'incheon':       0,  'busan':         0,  'korea':         0,
+  'qingdao':       10, 'lianyungang':   10,
+  "xi'an":         20, 'xian':          20,
+  'jiayuguan':     25,
+  'hami':          30,
+  'kashgar':       35,
+  'dostyk':        40, 'altynkol':      40, 'khorgos':       40,
+  'alashankou':    40, 'border':        40, 'kz border':     40,
+  'almaty':        45,
+  'osh':           48,
+  'andijan':       50, 'bishkek':       50, 'chukursay':     50,
+  'kartaly':       52,
+  'nildy':         55,
+  'brest':         60,
+  'małaszewicze':  65,
+  'duisburg':      70,
+}
+
+interface ContainerLike { ata_final: string | null; current_location: string | null; destination: string | null }
+interface SegmentLike   { segment_id: string; segment_no: number; to_location: string | null; atd: string | null; ata: string | null }
+
+/** Re-derive arrived status from 3 independent signals — DB arrived_yn is NOT trusted. */
+function isArrived(container: ContainerLike, segments: SegmentLike[]): boolean {
+  if (container.ata_final) return true
+  if (sameLoc(container.current_location, container.destination)) return true
+  const sorted = [...segments].sort((a, b) => a.segment_no - b.segment_no)
+  if (sorted.at(-1)?.ata) return true
+  return false
+}
+
+/** Determine which segment is currently active, based on location order or date fallback. */
+function computeCurrentSeg(
+  segments:        SegmentLike[],
+  currentLocation: string | null,
+  _destination:    string | null,
+): string | null {
+  const segs = [...segments].sort((a, b) => a.segment_no - b.segment_no)
+  if (segs.length === 0) return null
+
+  const orderOf = (loc: unknown): number => {
+    const n = normLoc(loc)
+    if (!n) return -1
+    if (ROUTE_ORDER[n] !== undefined) return ROUTE_ORDER[n]
+    // Partial match: "T/S Border" contains "border" → 40
+    for (const k of Object.keys(ROUTE_ORDER)) {
+      if (n.includes(k) || k.includes(n)) return ROUTE_ORDER[k]
+    }
+    return -1
+  }
+
+  const curOrder = orderOf(currentLocation)
+
+  if (curOrder >= 0) {
+    // Location-based: first segment whose to_location is strictly ahead of current position
+    for (const s of segs) {
+      if (orderOf(s.to_location) > curOrder) return s.segment_id
+    }
+    return segs.at(-1)?.segment_id ?? null   // at or past final stop → last segment
+  }
+
+  // Location unknown → date fallback
+  const inProgress = segs.find(s => s.atd && !s.ata)
+  if (inProgress) return inProgress.segment_id
+
+  let lastDoneIdx = -1
+  segs.forEach((s, i) => { if (s.ata) lastDoneIdx = i })
+  if (lastDoneIdx >= 0) return segs[Math.min(lastDoneIdx + 1, segs.length - 1)]?.segment_id ?? null
+
+  return segs[0]?.segment_id ?? null
+}
+
 async function syncAutoAlerts(
   containers: { container_no: string; signal: TcrSignal }[],
   supabase: ReturnType<typeof createClient>,
@@ -277,13 +364,13 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
 
   const containerNos = rows.map(r => r.container_no)
 
-  // Fetch current-segment info and open alerts in parallel
+  // Fetch ALL segments (needed for isArrived + computeCurrentSeg) and open alerts in parallel
   const [segResult, alertResult] = await Promise.all([
     supabase
       .from('tcr_route_segments')
-      .select('container_no, segment_name, to_location, etd, atd, eta, ata')
+      .select('container_no, segment_id, segment_no, segment_name, to_location, etd, atd, eta, ata')
       .in('container_no', containerNos)
-      .eq('is_current_segment', true),
+      .order('segment_no'),
     supabase
       .from('tcr_risk_alerts')
       .select('container_no, severity')
@@ -293,6 +380,8 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
 
   type SegRow   = {
     container_no:  string
+    segment_id:    string
+    segment_no:    number
     segment_name:  string | null
     to_location:   string | null
     etd:           string | null
@@ -305,14 +394,37 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
   const segRows   = (segResult.data   ?? [] as unknown[]) as unknown as SegRow[]
   const alertRows = (alertResult.data ?? [] as unknown[]) as unknown as AlertRow[]
 
-  // container_no → segment display name / to_location / delay data
+  // Group all segments by container_no; compute arrived status + current segment per container
+  const allSegsByContainer = new Map<string, SegRow[]>()
+  for (const s of segRows) {
+    const arr = allSegsByContainer.get(s.container_no) ?? []
+    arr.push(s)
+    allSegsByContainer.set(s.container_no, arr)
+  }
+
+  const arrivedMap      = new Map<string, boolean>()
+  const currentSegIdMap = new Map<string, string | null>()
+  for (const r of rows) {
+    const segs    = (allSegsByContainer.get(r.container_no) ?? []).sort((a, b) => a.segment_no - b.segment_no)
+    const arrived = isArrived(r, segs)
+    arrivedMap.set(r.container_no, arrived)
+    currentSegIdMap.set(r.container_no, arrived ? null : computeCurrentSeg(segs, r.current_location, r.destination))
+  }
+
+  // container_no → current-segment name / to_location / delay data (for signal + geo fallback)
   const segMap      = new Map<string, string>()
   const segToLocMap = new Map<string, string>()
   const segDataMap  = new Map<string, { etd: string | null; atd: string | null; eta: string | null; ata: string | null }>()
-  for (const s of segRows) {
-    if (s.segment_name) segMap.set(s.container_no, s.segment_name)
-    if (s.to_location)  segToLocMap.set(s.container_no, s.to_location)
-    segDataMap.set(s.container_no, { etd: s.etd, atd: s.atd, eta: s.eta, ata: s.ata })
+  for (const r of rows) {
+    const currentSegId = currentSegIdMap.get(r.container_no)
+    const currentSeg   = currentSegId
+      ? (allSegsByContainer.get(r.container_no) ?? []).find(s => s.segment_id === currentSegId)
+      : undefined
+    if (currentSeg) {
+      if (currentSeg.segment_name) segMap.set(r.container_no, currentSeg.segment_name)
+      if (currentSeg.to_location)  segToLocMap.set(r.container_no, currentSeg.to_location)
+      segDataMap.set(r.container_no, { etd: currentSeg.etd, atd: currentSeg.atd, eta: currentSeg.eta, ata: currentSeg.ata })
+    }
   }
 
   // Alert map (for open_alert_count, not signal derivation)
@@ -343,10 +455,9 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
   }
 
   const containers = rows.map(r => {
+    const arrived   = arrivedMap.get(r.container_no) ?? !!r.arrived_yn
     const segToName = segToLocMap.get(r.container_no) ?? null
-    // In-transit: seg_to → cur_loc (no dest fallback — hasn't arrived yet)
-    // Arrived:    cur_loc → dest   (destination fallback for arrived containers)
-    const geo = r.arrived_yn
+    const geo = arrived
       // Arrived (≤7d): place marker at destination — container has reached its end-point
       ? (r.destination      ? locMap.get(r.destination)      : undefined) ??
         (r.current_location ? locMap.get(r.current_location) : undefined) ??
@@ -357,8 +468,8 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
         null
 
     const alerts = alertMap.get(r.container_no) ?? []
-    const signal = calcSignal(
-      !!r.arrived_yn,
+    const signal  = calcSignal(
+      arrived,
       segDataMap.get(r.container_no) ?? null,
       r.current_location_since,
     )
@@ -370,6 +481,7 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
       current_location:     r.current_location ?? null,
       latitude:             geo?.latitude  ?? null,
       longitude:            geo?.longitude ?? null,
+      arrived_yn:           arrived,
       signal,
       eta_final:            r.eta_final ?? null,
       ata_final:            r.ata_final ?? null,
@@ -403,10 +515,37 @@ async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: R
     return res.status(404).json({ ok: false, error: 'Container not found' })
   }
 
+  // Re-derive arrived status and current segment using live location signals
+  type DetailSeg = SegmentLike & { is_current_segment: boolean; [key: string]: unknown }
+  const container  = { ...ctrRes.data } as Record<string, unknown>
+  const detailSegs = ([...(segRes.data ?? [])] as DetailSeg[])
+    .sort((a, b) => (a.segment_no as number) - (b.segment_no as number))
+
+  const arrived = isArrived(
+    { ata_final:        container.ata_final        as string | null,
+      current_location: container.current_location as string | null,
+      destination:      container.destination      as string | null },
+    detailSegs,
+  )
+  container.arrived_yn = arrived
+
+  const currentSegId = arrived
+    ? null
+    : computeCurrentSeg(
+        detailSegs,
+        container.current_location as string | null,
+        container.destination      as string | null,
+      )
+
+  const updatedSegments = detailSegs.map(s => ({
+    ...s,
+    is_current_segment: !arrived && s.segment_id === currentSegId,
+  }))
+
   return res.json({
     ok:        true,
-    container: ctrRes.data,
-    segments:  segRes.data  ?? [],
+    container,
+    segments:  updatedSegments,
     items:     itemRes.data ?? [],
     alerts:    alertRes.data ?? [],
   })
