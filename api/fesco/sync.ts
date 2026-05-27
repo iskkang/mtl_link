@@ -114,6 +114,21 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
     bodyTimeout:    120000,
   })
 
+  // Retry helper: wraps undiciFetch with exponential backoff on network errors.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function fetchWithRetry(url: string, opts: any, label: string, attempts = 3): Promise<any> {
+    let lastErr: any
+    for (let i = 1; i <= attempts; i++) {
+      try { return await undiciFetch(url, opts) }
+      catch (e: any) {
+        lastErr = e
+        console.error(`[${label}] attempt ${i}/${attempts} failed:`, { causeCode: e?.cause?.code, message: e?.message })
+        if (i < attempts) await new Promise(r => setTimeout(r, i * 3000))
+      }
+    }
+    throw new Error(`${label}: ${lastErr?.cause?.code || lastErr?.message || 'unknown'}`)
+  }
+
   // loginFesco is inlined here because @vercel/node only compiles route files
   // (files with a default export). auth.ts has no default export so it is never
   // compiled and auth.js is absent from the Lambda bundle at runtime.
@@ -130,9 +145,9 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
       sessionId:    null,
       browser: '{"name":"chrome","version":"131.0.0","os":"Windows 10","type":"browser"}',
     }
-    let loginRes: any
-    try {
-      loginRes = await undiciFetch('https://my.fesco.com/api/v2/lk/user/login', {
+    const loginRes: any = await fetchWithRetry(
+      'https://my.fesco.com/api/v2/lk/user/login',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,11 +156,9 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
         },
         body: JSON.stringify(loginBody),
         dispatcher: fescoHttpAgent,
-      })
-    } catch (err: any) {
-      console.error('[fesco-auth] login failed:', { message: err?.message, causeName: err?.cause?.name, causeCode: err?.cause?.code })
-      throw new Error(`login: ${err?.message || 'unknown error'}`)
-    }
+      },
+      'login',
+    )
     const responseText = await loginRes.text()
     if (!loginRes.ok) throw new Error(`FESCO login failed: ${loginRes.status}: ${responseText.substring(0, 200)}`)
     let parsed: any
@@ -165,7 +178,7 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
       console.log('[sync] step 1 OK: token received, length=', token.length)
     } catch (e) {
       console.error('[sync] step 1 FAILED (login):', e instanceof Error ? e.message : e)
-      throw new Error('login: ' + (e instanceof Error ? e.message : String(e)))
+      throw e
     }
 
     // 2. Paginate all orders — sequential, no parallelism, 1 s delay between pages
@@ -176,9 +189,9 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
 
     while (true) {
       const url = `https://my.fesco.com/api/v1/orders?offset=${offset}&rows=${pageSize}`
-      let r: any
-      try {
-        r = await undiciFetch(url, {
+      const r: any = await fetchWithRetry(
+        url,
+        {
           method:  'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -186,21 +199,9 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
             'User-Agent':   'MTL-Link-FESCO-Sync/1.0 (+internal operations dashboard)',
           },
           dispatcher: fescoHttpAgent,
-        })
-      } catch (e: any) {
-        // Temporary diagnostic — logs error type and cause only, no token or secrets.
-        const urlObj = new URL(url)
-        console.error('[sync] step 2 network error:', {
-          page:         offset / 10,
-          urlPath:      urlObj.pathname + urlObj.search,
-          errorName:    e?.name,
-          message:      e?.message,
-          causeName:    e?.cause?.name,
-          causeCode:    e?.cause?.code,
-          causeMessage: e?.cause?.message,
-        })
-        throw new Error('orders fetch: ' + (e?.message || 'unknown error'))
-      }
+        },
+        'orders fetch',
+      )
       try {
         if (!r.ok) {
           throw new Error(`FESCO orders fetch failed at offset=${offset}: ${r.status}`)
