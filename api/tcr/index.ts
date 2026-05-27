@@ -426,19 +426,46 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
     }, {}),
   )
 
+  // Auto-compute current_location_since:
+  // Fetch existing location data so we can preserve the since-date when location is unchanged,
+  // and reset it to today when the location changes (or the container is new).
+  const today = new Date().toISOString().split('T')[0]
+  type ExLocRow = { container_no: string; current_location: string | null; current_location_since: string | null }
+  const existingLocMap = new Map<string, ExLocRow>()
+  {
+    const keys = containers.map(c => String(c.container_no ?? '').trim()).filter(Boolean)
+    if (keys.length > 0) {
+      const { data: existingLocs } = await supabase
+        .from('tcr_containers_current')
+        .select('container_no, current_location, current_location_since')
+        .in('container_no', keys)
+      for (const row of (existingLocs ?? []) as ExLocRow[]) {
+        existingLocMap.set(row.container_no, row)
+      }
+    }
+  }
+
   // Upsert containers
   let updatedContainers = 0
   if (containers.length > 0) {
     const containerRows = containers.map(c => {
+      const key     = String(c.container_no ?? '').trim()
+      const newLoc  = c.current_location ? String(c.current_location) : null
+      const existing = existingLocMap.get(key)
+      // Reset since-date to today when location changes; preserve it when location is the same.
+      const locSince = (!existing || existing.current_location !== newLoc)
+        ? today
+        : (existing.current_location_since ?? today)
       const row: Record<string, unknown> = {
-        container_no:     c.container_no,
-        origin:           c.origin           ?? null,
-        destination:      c.destination      ?? null,
-        transport_mode:   c.transport_mode   ?? null,
-        current_location: c.current_location ?? null,
-        eta_final:        c.eta_final        ?? null,
-        ata_final:        c.ata_final        ?? null,
-        arrived_yn:       Boolean(c.arrived_yn),
+        container_no:           key,
+        origin:                 c.origin           ?? null,
+        destination:            c.destination      ?? null,
+        transport_mode:         c.transport_mode   ?? null,
+        current_location:       newLoc,
+        current_location_since: locSince,
+        eta_final:              c.eta_final        ?? null,
+        ata_final:              c.ata_final        ?? null,
+        arrived_yn:             Boolean(c.arrived_yn),
       }
       // Include current_location_raw only if the value is non-null (column may not exist in all schemas)
       if (c.current_location_raw) row.current_location_raw = c.current_location_raw

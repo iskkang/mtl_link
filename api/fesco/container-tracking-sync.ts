@@ -225,6 +225,39 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
     }
   }
 
+  // Location stagnant: container has not moved from the same location for 3+ days.
+  // Checked last — only fires when no higher-priority alert matched above.
+  // Skip when the current segment is SEA (container is on a vessel; events may not update mid-voyage).
+  {
+    const isSeaCurrent = (item.segments ?? []).some(
+      s => s.currentSegment === true && s.segmentType === 'SEA',
+    )
+    if (!isSeaCurrent) {
+      const evts = (item.events?.data ?? []).filter(
+        (ev): ev is FescoTrackingEvent & { date: string; locationLatin: string } =>
+          typeof ev.date === 'string' && typeof ev.locationLatin === 'string',
+      )
+      if (evts.length > 0) {
+        // Sort newest-first to find the current location and when the streak started
+        evts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        const curLoc = evts[0].locationLatin
+        let stagnantSince = evts[0].date
+        for (const ev of evts) {
+          if (ev.locationLatin !== curLoc) break
+          stagnantSince = ev.date // walk back to the earliest event at this location
+        }
+        const stagnantDays = (now - new Date(stagnantSince).getTime()) / 86_400_000
+        if (stagnantDays >= 3) {
+          return {
+            alert_level: 'yellow',
+            alert_type:  'location_stagnant',
+            message:     `No movement from ${curLoc} for ${Math.floor(stagnantDays)} days.`,
+          }
+        }
+      }
+    }
+  }
+
   return { alert_level: 'green', alert_type: null, message: null }
 }
 
