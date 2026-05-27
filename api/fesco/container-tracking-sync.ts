@@ -167,7 +167,9 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
     const waitDays = Math.floor((Date.now() - new Date(waitingStartDate).getTime()) / 86_400_000)
     if (waitDays >= 11) return { alert_level: 'red',    alert_type: 'awaiting_next_leg_overdue', message: 'Awaiting next leg departure for more than 10 days.' }
     if (waitDays >= 6)  return { alert_level: 'yellow', alert_type: 'awaiting_next_leg_watch',   message: 'Awaiting next leg departure for more than 5 days.'  }
-    return { alert_level: 'green', alert_type: null, message: null }
+    // waitDays < 6: do NOT return early — fall through to the location_stagnant check below.
+    // A container waiting at a rail terminal for 3+ days should still be flagged yellow
+    // via the event-based stagnant check, even though the segment-level wait is < 6 days.
   }
 
   const now = Date.now()
