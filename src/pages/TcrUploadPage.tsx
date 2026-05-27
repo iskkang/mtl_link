@@ -162,16 +162,30 @@ function fixCurrentSegments(segments: SegmentRow[]) {
 
 /* ── File type detection ────────────────────────────────────────────── */
 function detectFileType(wb: XLSX.WorkBook): FileType {
-  for (const sheetName of wb.SheetNames) {
-    const ws = wb.Sheets[sheetName]
-    const rows = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, raw: false, defval: '' }) as string[][]
-    const text = rows.slice(0, 10).flat().join(' ')
-    if (text.includes('ATA Kashgar'))                            return 'KR_UZ'
-    if (text.includes('Dispatching st'))                         return 'CN_UZ'
-    if (text.includes('ATA KHORGOS'))                           return 'KR_KZ_TRUCK'
-    if (text.includes('ETA BORDER') || text.includes('ATD KZ BORDER')) return 'KR_KG'
-    if (text.includes('STOP BY') && text.includes('ETA F.DEST')) return 'KR_EU'
+  const sheetNames = wb.SheetNames
+  const sheetStr   = sheetNames.join(' ')
+
+  // 1. Sheet structure (most reliable — determined by sheet names)
+  if (sheetNames.length === 1 && sheetNames[0] === 'Лист1') return 'KR_UZ'
+  if (sheetNames.includes('TCR') && sheetNames.includes('LCL')) return 'CN_UZ'
+  if (sheetNames.some(n => n === 'Bishkek' || n === 'ALMATY')) return 'KR_KG'
+  if (sheetStr.includes('Bishkek') || sheetStr.includes('ALMATY')) return 'KR_KG'
+
+  // 2. Scan all sheets' header rows as fallback (avoids per-sheet false positives)
+  const allText: string[] = []
+  for (const sn of sheetNames) {
+    const rows = XLSX.utils.sheet_to_json<string[]>(wb.Sheets[sn], { header: 1, raw: false, defval: '' }) as string[][]
+    allText.push(...rows.slice(0, 5).flat())
   }
+  const h = allText.join(' ')
+
+  if (h.includes('ATA Kashgar'))                               return 'KR_UZ'
+  if (h.includes('Dispatching st') || h.includes('ATA kashi')) return 'CN_UZ'
+  if (h.includes('STOP BY') && h.includes('ETA F.DEST'))       return 'KR_EU'
+  if (h.includes('ATA KHORGOS') && sheetStr.includes('List 1')) return 'KR_KZ_TRUCK'
+  if (h.includes('ATA KHORGOS'))                               return 'KR_KZ_TRUCK'
+  if (h.includes('ETA BORDER') || h.includes('ATD KZ BORDER')) return 'KR_KG'
+
   return 'UNKNOWN'
 }
 
@@ -230,52 +244,211 @@ function parseKrUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
   return { containers, segments }
 }
 
-// CN→UZ: TCR sheet, headerRow=2, data from row 3
-function parseCnUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: SegmentRow[] } {
-  const rows = readSheetRows(wb, 'TCR')
+// CN→UZ sub-parser: TCR sheet (header auto-detected around row 2)
+function parseCnUzTcr(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: SegmentRow[] } {
+  const sheetName = wb.SheetNames.find(n => n.toUpperCase() === 'TCR')
+  if (!sheetName || !wb.Sheets[sheetName]) return { containers: [], segments: [] }
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: true, defval: '' }) as unknown[][]
   const containers: ContainerRow[] = []
-  const segments: SegmentRow[] = []
+  const segments:   SegmentRow[]   = []
 
-  console.log('[parseCnUz] total raw rows:', rows.length, '| data rows (ri>=3):', Math.max(0, rows.length - 3))
+  let headerIdx = 2
+  for (let i = 0; i < Math.min(6, rows.length); i++) {
+    if ((rows[i] as unknown[]).map(str).join(' ').toUpperCase().includes('CNTR')) { headerIdx = i; break }
+  }
+  const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
+  const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
+  // Collect all ATD / ATA indices in order to distinguish 1st vs 2nd occurrence
+  const atdIs = headers.reduce<number[]>((a, h, i) => { if (h.toLowerCase().includes('atd')) a.push(i); return a }, [])
+  const ataIs = headers.reduce<number[]>((a, h, i) => { if (h.toLowerCase().includes('ata')) a.push(i); return a }, [])
 
-  for (let ri = 3; ri < rows.length; ri++) {
-    const r = rows[ri] as unknown[]
-    const cno = str(r[14]).toUpperCase()
-    if (!cno) {
-      console.log(`[parseCnUz] row ${ri} skipped — empty container_no (col[14]=${JSON.stringify(r[14])})`)
-      continue
-    }
+  const iCno    = col('cntr')
+  const iAtdPol = col('atd pol') !== -1 ? col('atd pol') : (atdIs[0] ?? -1)
+  const iAtaTs  = col('ata t/s') !== -1 ? col('ata t/s') : (ataIs[0] ?? -1)
+  const iAtdTs  = col('atd/ts')  !== -1 ? col('atd/ts')  : col('atd t/s') !== -1 ? col('atd t/s') : (atdIs[1] ?? -1)
+  const iEtaFd  = col('eta f')
+  const iAtaFd  = col('ata f/d') !== -1 ? col('ata f/d') : col('ata f') !== -1 ? col('ata f') : (ataIs[1] ?? -1)
+  const iCurLoc = col('current')
 
-    const ata_final = xlDate(r[21])
-    const cur_raw   = str(r[24])
+  for (let ri = headerIdx + 1; ri < rows.length; ri++) {
+    const r   = rows[ri] as unknown[]
+    if (iCno === -1) continue
+    const cno = str(r[iCno]).toUpperCase()
+    if (!cno || !/^[A-Z]{4}\d/.test(cno)) continue
+
+    const ata_final = iAtaFd  !== -1 ? xlDate(r[iAtaFd])  : null
+    const cur_raw   = iCurLoc !== -1 ? str(r[iCurLoc])    : ''
     const cur_loc   = normalizeLoc(cur_raw)
 
     containers.push({
-      container_no:      cno,
-      origin:            null,
-      destination:       null,
-      transport_mode:    'Rail',
-      current_location:  cur_loc,
+      container_no:         cno,
+      origin:               null,
+      destination:          null,
+      transport_mode:       'Rail',
+      current_location:     cur_loc,
       current_location_raw: cur_raw || null,
-      eta_final:         xlDate(r[20]),
+      eta_final:            iEtaFd !== -1 ? xlDate(r[iEtaFd]) : null,
       ata_final,
-      arrived_yn:        !!ata_final,
+      arrived_yn:           !!ata_final,
     })
-
-    const s1atd = xlDate(r[17]); const s1ata = xlDate(r[18])
-    const s2atd = xlDate(r[19])
 
     segments.push(
       { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
-        segment_name: 'Origin → Transit', from_location: null, to_location: null,
-        etd: null, atd: s1atd, eta: null, ata: s1ata,
-        is_current_segment: !!s1atd && !s1ata },
+        segment_name: 'China → T/S Border', from_location: 'China', to_location: 'T/S Border',
+        etd: null, atd: iAtdPol !== -1 ? xlDate(r[iAtdPol]) : null,
+        eta: null, ata: iAtaTs  !== -1 ? xlDate(r[iAtaTs])  : null,
+        is_current_segment: false },
       { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
-        segment_name: 'Transit → Destination', from_location: null, to_location: null,
-        etd: null, atd: s2atd, eta: null, ata: ata_final,
-        is_current_segment: !!s2atd && !ata_final },
+        segment_name: 'T/S Border → Destination', from_location: 'T/S Border', to_location: null,
+        etd: null, atd: iAtdTs  !== -1 ? xlDate(r[iAtdTs])  : null,
+        eta: null, ata: ata_final,
+        is_current_segment: false },
     )
   }
+  return { containers, segments }
+}
+
+// CN→UZ sub-parser: LCL sheet (header auto-detected)
+function parseCnUzLcl(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: SegmentRow[] } {
+  const sheetName = wb.SheetNames.find(n => n.toUpperCase() === 'LCL')
+  if (!sheetName || !wb.Sheets[sheetName]) return { containers: [], segments: [] }
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: true, defval: '' }) as unknown[][]
+  const containers: ContainerRow[] = []
+  const segments:   SegmentRow[]   = []
+
+  let headerIdx = 0
+  for (let i = 0; i < Math.min(6, rows.length); i++) {
+    if ((rows[i] as unknown[]).map(str).join(' ').toUpperCase().includes('CNTR')) { headerIdx = i; break }
+  }
+  const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
+  const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
+
+  const iCno    = col('cntr')
+  const iPol    = col('pol')
+  const iPodFd  = col('pod')
+  const iAtdPol = col('etd/atd pol') !== -1 ? col('etd/atd pol') : col('dispatching')
+  const iAtaTs  = col('ata t/s')     !== -1 ? col('ata t/s')     : col('ata border')
+  const iAtdTs  = col('atd/ts')
+  const iAtaWh  = col('ata w/h')     !== -1 ? col('ata w/h')     : col('ata wh')
+
+  for (let ri = headerIdx + 1; ri < rows.length; ri++) {
+    const r   = rows[ri] as unknown[]
+    if (iCno === -1) continue
+    const cno = str(r[iCno]).toUpperCase()
+    if (!cno || !/^[A-Z]{4}\d/.test(cno)) continue
+
+    const ata_final = iAtaWh !== -1 ? xlDate(r[iAtaWh]) : null
+    const dest      = iPodFd !== -1 ? normalizeLoc(r[iPodFd]) : null
+
+    containers.push({
+      container_no:         cno,
+      origin:               iPol !== -1 ? str(r[iPol]) || null : null,
+      destination:          dest,
+      transport_mode:       'Rail',
+      current_location:     null,
+      current_location_raw: null,
+      eta_final:            null,
+      ata_final,
+      arrived_yn:           !!ata_final,
+    })
+
+    segments.push(
+      { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
+        segment_name: 'China → T/S Border',
+        from_location: iPol !== -1 ? str(r[iPol]) || 'China' : 'China', to_location: 'T/S Border',
+        etd: null, atd: iAtdPol !== -1 ? xlDate(r[iAtdPol]) : null,
+        eta: null, ata: iAtaTs  !== -1 ? xlDate(r[iAtaTs])  : null,
+        is_current_segment: false },
+      { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
+        segment_name: 'T/S Border → Destination', from_location: 'T/S Border', to_location: dest,
+        etd: null, atd: iAtdTs  !== -1 ? xlDate(r[iAtdTs])  : null,
+        eta: null, ata: ata_final,
+        is_current_segment: false },
+    )
+  }
+  return { containers, segments }
+}
+
+// CN→UZ sub-parser: RAIL+TRUCK sheet (header auto-detected around row 2)
+function parseCnUzRailTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: SegmentRow[] } {
+  const sheetName = wb.SheetNames.find(n =>
+    n.toUpperCase().includes('RAIL') || n.toUpperCase().includes('TRUCK')
+  )
+  if (!sheetName || !wb.Sheets[sheetName]) return { containers: [], segments: [] }
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: true, defval: '' }) as unknown[][]
+  const containers: ContainerRow[] = []
+  const segments:   SegmentRow[]   = []
+
+  let headerIdx = 2
+  for (let i = 0; i < Math.min(6, rows.length); i++) {
+    if ((rows[i] as unknown[]).map(str).join(' ').toUpperCase().includes('CNTR')) { headerIdx = i; break }
+  }
+  const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
+  const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
+
+  const iCno      = col('cntr')
+  const iPol      = col('pol')
+  const iPodFd    = col('pod')
+  const iPickup   = col('pick up')
+  const iEtdTao   = col('etd')
+  const iAtaKashi = col('kash')
+  const iAtaTsBrd = col('ata t/s')  !== -1 ? col('ata t/s')  : col('ata border')
+  const iAtdTs    = col('atd/ts')   !== -1 ? col('atd/ts')   : col('atd t/s')
+
+  for (let ri = headerIdx + 1; ri < rows.length; ri++) {
+    const r   = rows[ri] as unknown[]
+    if (iCno === -1) continue
+    const cno = str(r[iCno]).toUpperCase()
+    if (!cno || !/^[A-Z]{4}\d/.test(cno)) continue
+
+    const dest  = iPodFd !== -1 ? normalizeLoc(r[iPodFd]) : null
+    const s1etd = iEtdTao   !== -1 ? xlDate(r[iEtdTao])   : null
+    const s1atd = iPickup   !== -1 ? xlDate(r[iPickup])   : s1etd
+    const s1ata = iAtaKashi !== -1 ? xlDate(r[iAtaKashi]) : null
+    const s2ata = iAtaTsBrd !== -1 ? xlDate(r[iAtaTsBrd]) : null
+    const s3atd = iAtdTs    !== -1 ? xlDate(r[iAtdTs])    : null
+
+    containers.push({
+      container_no:         cno,
+      origin:               iPol !== -1 ? str(r[iPol]) || null : null,
+      destination:          dest,
+      transport_mode:       'Truck',
+      current_location:     null,
+      current_location_raw: null,
+      eta_final:            null,
+      ata_final:            null,
+      arrived_yn:           false,
+    })
+
+    segments.push(
+      { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
+        segment_name: 'China → Kashgar',
+        from_location: iPol !== -1 ? str(r[iPol]) || 'China' : 'China', to_location: 'Kashgar',
+        etd: s1etd, atd: s1atd, eta: null, ata: s1ata,
+        is_current_segment: false },
+      { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
+        segment_name: 'Kashgar → T/S Border', from_location: 'Kashgar', to_location: 'T/S Border',
+        etd: null, atd: null, eta: null, ata: s2ata,
+        is_current_segment: false },
+      { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
+        segment_name: 'T/S Border → Destination', from_location: 'T/S Border', to_location: dest,
+        etd: null, atd: s3atd, eta: null, ata: null,
+        is_current_segment: false },
+    )
+  }
+  return { containers, segments }
+}
+
+// CN→UZ: combine TCR + LCL + RAIL+TRUCK sheets
+function parseCnUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: SegmentRow[] } {
+  const { containers: tcrC, segments: tcrS } = parseCnUzTcr(wb)
+  const { containers: lclC, segments: lclS } = parseCnUzLcl(wb)
+  const { containers: rtC,  segments: rtS  } = parseCnUzRailTruck(wb)
+
+  console.log(`[parseCnUz] TCR=${tcrC.length}, LCL=${lclC.length}, RAIL+TRUCK=${rtC.length}`)
+
+  const containers = [...tcrC, ...lclC, ...rtC]
+  const segments   = [...tcrS, ...lclS, ...rtS]
 
   fixCurrentSegments(segments)
   return { containers, segments }
@@ -333,12 +506,168 @@ function parseKrKzTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; segmen
   return { containers, segments }
 }
 
-// KR→KG: column-name based, multiple sheets
+// KR→KG: Bishkek sheet parser (3-segment route: Korea → Border → KZ Border → Bishkek)
+function parseKrKgBishkekSheet(
+  rows: unknown[][],
+  headerIdx: number,
+  sheetName: string,
+): { containers: ContainerRow[]; segments: SegmentRow[] } {
+  const containers: ContainerRow[] = []
+  const segments:   SegmentRow[]   = []
+
+  const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
+  const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
+
+  const iCno       = col('CNTR NO')
+  const iAtdTao    = col('ETD/ATD TAO')
+  const iAtaPod    = col('ETA/ATA POD')
+  const iEtaBorder = col('ETA BORDER')
+  const iAtaBorder = col('ATA BORDER')
+  const iEtdKz     = col('ETD KZ')
+  const iAtdKz     = col('ATD KZ')
+  const iAtaDest   = col('ATA Destination')
+  const iCurLoc    = col('Current station') !== -1 ? col('Current station') : col('CURRENT LOCATION')
+
+  for (let ri = headerIdx + 1; ri < rows.length; ri++) {
+    const r = rows[ri] as unknown[]
+    if (iCno === -1) continue
+    const cno = str(r[iCno]).toUpperCase()
+    if (!cno) continue
+
+    const ata_dest = iAtaDest !== -1 ? xlDate(r[iAtaDest]) : null
+    const cur_raw  = iCurLoc  !== -1 ? str(r[iCurLoc])    : ''
+    const cur_loc  = normalizeLoc(cur_raw)
+
+    containers.push({
+      container_no:         cno,
+      origin:               null,
+      destination:          sheetName,
+      transport_mode:       'Rail',
+      current_location:     cur_loc,
+      current_location_raw: cur_raw || null,
+      eta_final:            null,
+      ata_final:            ata_dest,
+      arrived_yn:           !!ata_dest,
+    })
+
+    segments.push(
+      { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
+        segment_name: 'Korea → Border', from_location: null, to_location: 'Border',
+        etd: null, atd: iAtdTao    !== -1 ? xlDate(r[iAtdTao])    : null,
+        eta: null, ata: iAtaPod    !== -1 ? xlDate(r[iAtaPod])    : null,
+        is_current_segment: false },
+      { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
+        segment_name: 'Border → KZ Border', from_location: 'Border', to_location: 'KZ Border',
+        etd: null, atd: null,
+        eta: iEtaBorder !== -1 ? xlDate(r[iEtaBorder]) : null,
+        ata: iAtaBorder !== -1 ? xlDate(r[iAtaBorder]) : null,
+        is_current_segment: false },
+      { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
+        segment_name: `KZ Border → ${sheetName}`, from_location: 'KZ Border', to_location: sheetName,
+        etd: iEtdKz !== -1 ? xlDate(r[iEtdKz]) : null,
+        atd: iAtdKz !== -1 ? xlDate(r[iAtdKz]) : null,
+        eta: null, ata: ata_dest,
+        is_current_segment: false },
+    )
+  }
+  return { containers, segments }
+}
+
+// KR→KG: ALMATY sheet parser (4-segment route via Xi'an: Korea → T/S → Xi'an → Border → Almaty)
+function parseKrKgAlmatySheet(
+  rows: unknown[][],
+  headerIdx: number,
+): { containers: ContainerRow[]; segments: SegmentRow[] } {
+  const containers: ContainerRow[] = []
+  const segments:   SegmentRow[]   = []
+
+  const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
+  const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
+
+  const iCno      = col('cntr')
+  const iDest     = col('destination')
+  // S1: Korea → T/S  (ATD TAO → ATA POD)
+  // "atd tao" ⊂ "etd/atd tao" ✓   "ata pod" ⊂ "eta/ata pod" ✓
+  const iAtdTao   = col('atd tao')
+  const iAtaPod   = col('ata pod')
+  // S2: T/S → Xi'an  (no ATD → ATA XIAN)
+  // "ata xian" ⊂ "eta/ata xian" ✓  but NOT ⊂ "etd/atd xian" ✓
+  const iAtaXian  = col('ata xian')
+  // S3: Xi'an → Border  (ATD XIAN → ATA BORDER)
+  // "atd xian" ⊂ "etd/atd xian" ✓  but NOT ⊂ "eta/ata xian" ✓
+  const iAtdXian  = col('atd xian')
+  // Prefer column whose header starts with "ATA BORDER" over "ETD/ATA BORDER"
+  const iAtaBord  = (() => {
+    const strict = headers.findIndex(h => /^ata\s+border/i.test(h))
+    return strict !== -1 ? strict : col('ata border')
+  })()
+  // S4: Border → Almaty  (ATD KZ BORDER → ATA Destination)
+  // "atd kz border" ⊂ "etd/atd kz border" ✓
+  const iAtdKzBrd = col('atd kz border')
+  const iAtaDest  = col('ata destination') !== -1 ? col('ata destination') : col('ata dest')
+  // Current location: collect ALL "current" columns, take last non-empty value per row
+  // (handles sheets where "Current station" appears twice as a duplicate header)
+  const curIdxs   = headers.reduce<number[]>((a, h, i) => {
+    if (h.toLowerCase().includes('current')) a.push(i)
+    return a
+  }, [])
+
+  for (let ri = headerIdx + 1; ri < rows.length; ri++) {
+    const r   = rows[ri] as unknown[]
+    if (iCno === -1) continue
+    const cno = str(r[iCno]).toUpperCase()
+    if (!cno || !/^[A-Z]{4}\d/.test(cno)) continue
+
+    const ata_final = iAtaDest !== -1 ? xlDate(r[iAtaDest]) : null
+    const cur_raw   = curIdxs.reduce((acc, idx) => { const v = str(r[idx]); return v ? v : acc }, '')
+    const cur_loc   = normalizeLoc(cur_raw)
+    const dest      = iDest !== -1 ? (normalizeLoc(r[iDest]) ?? 'Almaty') : 'Almaty'
+
+    containers.push({
+      container_no:         cno,
+      origin:               null,
+      destination:          dest,
+      transport_mode:       'Rail',
+      current_location:     cur_loc,
+      current_location_raw: cur_raw || null,
+      eta_final:            null,
+      ata_final,
+      arrived_yn:           !!ata_final,
+    })
+
+    segments.push(
+      { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
+        segment_name: 'Korea → T/S', from_location: 'Korea', to_location: 'T/S',
+        etd: null, atd: iAtdTao  !== -1 ? xlDate(r[iAtdTao])  : null,
+        eta: null, ata: iAtaPod  !== -1 ? xlDate(r[iAtaPod])  : null,
+        is_current_segment: false },
+      { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
+        segment_name: "T/S → Xi'an", from_location: 'T/S', to_location: "Xi'an",
+        etd: null, atd: null,
+        eta: null, ata: iAtaXian !== -1 ? xlDate(r[iAtaXian]) : null,
+        is_current_segment: false },
+      { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
+        segment_name: "Xi'an → Border", from_location: "Xi'an", to_location: 'Border',
+        etd: null, atd: iAtdXian !== -1 ? xlDate(r[iAtdXian]) : null,
+        eta: null, ata: iAtaBord !== -1 ? xlDate(r[iAtaBord]) : null,
+        is_current_segment: false },
+      { segment_id: `${cno}-S4`, container_no: cno, segment_no: 4,
+        segment_name: 'Border → Almaty', from_location: 'Border', to_location: dest,
+        etd: null, atd: iAtdKzBrd !== -1 ? xlDate(r[iAtdKzBrd]) : null,
+        eta: null, ata: ata_final,
+        is_current_segment: false },
+    )
+  }
+  return { containers, segments }
+}
+
+// KR→KG: column-name based, multiple sheets; dispatches to Bishkek or Almaty parser
 function parseKrKg(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: SegmentRow[] } {
   const containers: ContainerRow[] = []
-  const segments: SegmentRow[] = []
+  const segments:   SegmentRow[]   = []
   const sheetsToParse = wb.SheetNames.filter(n =>
-    n.toLowerCase().includes('bishkek') || n.toLowerCase().includes('almaty') || n.toLowerCase().includes('ош') || n.toLowerCase().includes('osh')
+    n.toLowerCase().includes('bishkek') || n.toLowerCase().includes('almaty') ||
+    n.toLowerCase().includes('ош') || n.toLowerCase().includes('osh')
   )
   const targetSheets = sheetsToParse.length > 0 ? sheetsToParse : [wb.SheetNames[0]]
 
@@ -352,62 +681,15 @@ function parseKrKg(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
       const joined = (rows[i] as unknown[]).map(str).join(' ')
       if (joined.includes('CNTR') || joined.includes('CONT')) { headerIdx = i; break }
     }
-    const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
-    const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
 
-    const iCno       = col('CNTR NO')
-    const iAtdTao    = col('ETD/ATD TAO')
-    const iAtaPod    = col('ETA/ATA POD')
-    const iEtaBorder = col('ETA BORDER')
-    const iAtaBorder = col('ATA BORDER')
-    const iEtdKz     = col('ETD KZ')
-    const iAtdKz     = col('ATD KZ')
-    const iAtaDest   = col('ATA Destination')
-    const iCurLoc    = col('Current station') !== -1 ? col('Current station') : col('CURRENT LOCATION')
-
-    for (let ri = headerIdx + 1; ri < rows.length; ri++) {
-      const r = rows[ri] as unknown[]
-      if (iCno === -1) continue
-      const cno = str(r[iCno]).toUpperCase()
-      if (!cno) continue
-
-      const ata_dest = iAtaDest !== -1 ? xlDate(r[iAtaDest]) : null
-      const cur_raw  = iCurLoc !== -1 ? str(r[iCurLoc]) : ''
-      const cur_loc  = normalizeLoc(cur_raw)
-
-      containers.push({
-        container_no:      cno,
-        origin:            null,
-        destination:       sheetName,
-        transport_mode:    'Rail',
-        current_location:  cur_loc,
-        current_location_raw: cur_raw || null,
-        eta_final:         null,
-        ata_final:         ata_dest,
-        arrived_yn:        !!ata_dest,
-      })
-
-      const s1atd = iAtdTao    !== -1 ? xlDate(r[iAtdTao])    : null
-      const s1ata = iAtaPod    !== -1 ? xlDate(r[iAtaPod])    : null
-      const s2eta = iEtaBorder !== -1 ? xlDate(r[iEtaBorder]) : null
-      const s2ata = iAtaBorder !== -1 ? xlDate(r[iAtaBorder]) : null
-      const s3etd = iEtdKz     !== -1 ? xlDate(r[iEtdKz])     : null
-      const s3atd = iAtdKz     !== -1 ? xlDate(r[iAtdKz])     : null
-
-      segments.push(
-        { segment_id: `${cno}-S1`, container_no: cno, segment_no: 1,
-          segment_name: 'Korea → Border', from_location: null, to_location: 'Border',
-          etd: null, atd: s1atd, eta: null, ata: s1ata,
-          is_current_segment: !!s1atd && !s1ata },
-        { segment_id: `${cno}-S2`, container_no: cno, segment_no: 2,
-          segment_name: 'Border → KZ Border', from_location: 'Border', to_location: 'KZ Border',
-          etd: null, atd: null, eta: s2eta, ata: s2ata,
-          is_current_segment: !!s1ata && !s2ata },
-        { segment_id: `${cno}-S3`, container_no: cno, segment_no: 3,
-          segment_name: `KZ Border → ${sheetName}`, from_location: 'KZ Border', to_location: sheetName,
-          etd: s3etd, atd: s3atd, eta: null, ata: ata_dest,
-          is_current_segment: !!s3atd && !ata_dest },
-      )
+    if (sheetName.toUpperCase() === 'ALMATY') {
+      const { containers: c, segments: s } = parseKrKgAlmatySheet(rows, headerIdx)
+      containers.push(...c)
+      segments.push(...s)
+    } else {
+      const { containers: c, segments: s } = parseKrKgBishkekSheet(rows, headerIdx, sheetName)
+      containers.push(...c)
+      segments.push(...s)
     }
   }
 
