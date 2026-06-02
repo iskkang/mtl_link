@@ -81,6 +81,7 @@ const ROUTE_ORDER: Record<string, number> = {
   'kartaly':       52,
   'nildy':         55,
   'spiridonovka':  56,
+  'negoreloye':    57,
   'nieharelaye':   58,
   'brest':         60,
   'małaszewicze':  65,
