@@ -41,7 +41,8 @@
     { "source": "/((?!api/|@|src/|node_modules/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/fesco/weekly-report",           "schedule": "0 0 * * 1" },
-    { "path": "/api/tcr?action=delay-notify",        "schedule": "0 1 * * *" }
+    { "path": "/api/fesco/weekly-report",  "schedule": "0 0 * * 1" },
+    { "path": "/api/tcr?action=delay-notify", "schedule": "0 1 * * *" },
+    { "path": "/api/tracing/send",         "schedule": "0 1 * * *" }
   ]
 }

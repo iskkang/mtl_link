@@ -1014,7 +1014,9 @@ export function TcrUploadPage() {
   }, [])
 
   const validFiles = parsedFiles.filter(p => !p.error && p.containers.length > 0)
-  const allContainers = validFiles.flatMap(p => p.containers)
+  const allContainers = validFiles.flatMap(p =>
+    p.containers.map(c => ({ ...c, file_type: p.fileType })),
+  )
   const allSegments   = validFiles.flatMap(p => p.segments)
 
   const handleSubmit = useCallback(async () => {

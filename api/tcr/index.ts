@@ -638,6 +638,8 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
       }
       if (c.current_location_raw) row.current_location_raw = c.current_location_raw
       if ((c as Record<string, unknown>).transit_time_days != null) row.transit_time_days = (c as Record<string, unknown>).transit_time_days
+      const ft = String((c as Record<string, unknown>).file_type ?? '').trim()
+      if (ft) row.file_type = ft
       return row
     })
 
