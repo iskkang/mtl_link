@@ -17,6 +17,7 @@ interface TcrContainer {
   latitude:             number | null
   longitude:            number | null
   signal:               TcrSignal
+  signal_reason:        string | null
   eta_final:            string | null
   ata_final:            string | null
   current_segment_name: string | null
@@ -552,6 +553,11 @@ function DetailPanel({
                 {c.current_location && (
                   <div className="text-[10px] truncate" style={{ color: 'var(--ink-400)' }}>{c.current_location}</div>
                 )}
+                {(c.signal === 'red' || c.signal === 'yellow') && c.signal_reason && (
+                  <div className="text-[10px] truncate font-medium" style={{ color: SIG_COLOR[c.signal] }}>
+                    {c.signal_reason}
+                  </div>
+                )}
               </div>
             </button>
           ))}
@@ -803,6 +809,11 @@ function MobileTcrView({
                 <div style={{ fontSize: 10, color: 'var(--ink-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {c.origin ?? '—'} → {c.destination ?? '—'}
                 </div>
+                {(c.signal === 'red' || c.signal === 'yellow') && c.signal_reason && (
+                  <div style={{ fontSize: 10, fontWeight: 500, color: SIG_COLOR[c.signal], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {c.signal_reason}
+                  </div>
+                )}
               </div>
               <ChevronRight size={14} style={{ color: 'var(--ink-300)', flexShrink: 0 }} />
             </button>

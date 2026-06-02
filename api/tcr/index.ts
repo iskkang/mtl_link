@@ -473,7 +473,7 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
         null
 
     const alerts = alertMap.get(r.container_no) ?? []
-    const signal  = calcSignal(
+    const { signal, reason } = calcSignalAndReason(
       arrived,
       segDataMap.get(r.container_no) ?? null,
       r.current_location_since,
@@ -488,6 +488,7 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
       longitude:            geo?.longitude ?? null,
       arrived_yn:           arrived,
       signal,
+      signal_reason:        reason || null,
       eta_final:            r.eta_final ?? null,
       ata_final:            r.ata_final ?? null,
       current_segment_name: segMap.get(r.container_no) ?? null,
