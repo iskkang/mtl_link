@@ -49,45 +49,20 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
     .in('id', memberIds)
   if (e4) throw e4
 
-  // 5. 언리드 카운트 (병렬)
+  // 5. 언리드 카운트 + 마지막 메시지 (단일 RPC 호출)
   const myMemMap = Object.fromEntries(myMems.map(m => [m.room_id, m]))
-  const unreadCounts = await Promise.all(
-    rooms.map(async room => {
-      const lastRead = myMemMap[room.id]?.last_read_at
-      if (!lastRead) return { roomId: room.id, count: 0 }
-      const { count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('room_id', room.id)
-        .gt('created_at', lastRead)
-        .is('deleted_at', null)
-        .is('thread_root_id', null)
-        .neq('sender_id', user.id)
-      return { roomId: room.id, count: count ?? 0 }
-    }),
-  )
-
-  // NOTE: N+1 query pattern. Acceptable for current scale (5-10 rooms).
-  // For future scaling beyond ~50 rooms, migrate to:
-  //   - Database view (rooms_with_last_message)
-  //   - Or RPC function with single query
-  //   - Or denormalized last_message column with DB trigger
-  const lastMessages = await Promise.all(
-    rooms.map(async room => {
-      const { data } = await supabase
-        .from('messages')
-        .select('content, created_at, message_type')
-        .eq('room_id', room.id)
-        .is('deleted_at', null)
-        .is('thread_root_id', null)
-        .neq('message_type', 'system')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      return { roomId: room.id, msg: data }
-    }),
-  )
-  const lastMsgMap = Object.fromEntries(lastMessages.map(x => [x.roomId, x.msg]))
+  const { data: roomListData } = await (supabase as any).rpc('get_room_list_data', {
+    p_room_ids: roomIds,
+    p_user_id:  user.id,
+  })
+  const unreadMap: Record<string, number> = {}
+  const lastMsgMap: Record<string, { content: string | null; created_at: string; message_type: string } | null> = {}
+  for (const row of roomListData ?? []) {
+    unreadMap[row.room_id]  = Number(row.unread_count ?? 0)
+    lastMsgMap[row.room_id] = row.last_message_at
+      ? { content: row.last_message_content, created_at: row.last_message_at, message_type: row.last_message_type }
+      : null
+  }
 
   // 조합
   const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
@@ -97,8 +72,6 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
     const p = profileMap[m.user_id]
     if (p) membersByRoom[m.room_id].push({ ...p, last_read_at: m.last_read_at ?? null })
   }
-  const unreadMap = Object.fromEntries(unreadCounts.map(u => [u.roomId, u.count]))
-
   // 로컬 스토어에 낙관적으로 적용된 last_read_at이 서버보다 최신일 수 있음.
   // fetchRooms 응답이 stale한 last_read_at을 가져오면 unread가 되살아나므로
   // 로컬값이 더 최신이면 로컬을 우선한다.
