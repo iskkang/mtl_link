@@ -8,6 +8,10 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { sendTcrDelayDigestEmail, type TcrDigestAlert } from '../_lib/resend.js'
+import { PROFILES, buildSubject } from '../../src/lib/tracing/report-profiles.js'
+import { loadRows } from '../../src/lib/tracing/loaders.js'
+import { rowHash } from '../../src/lib/tracing/diff.js'
+import { renderEmail } from '../../src/lib/tracing/render.js'
 
 type TcrSignal = 'green' | 'red' | 'yellow' | 'blue'
 
@@ -875,6 +879,97 @@ async function handleDelayNotify(req: VercelRequest, res: VercelResponse, supaba
   return res.json({ ok: true, checked: computed.length, newAlerts: digestAlerts.length, resolved: toResolve.length, updated: toUpdate.length, emailSent })
 }
 
+// ── Tracing report send ───────────────────────────────────────────────────────
+async function handleTracingSend(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    const auth = (req.headers['authorization'] ?? '').toString()
+    if (auth !== `Bearer ${cronSecret}`) return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const resendKey = process.env.RESEND_API_KEY ?? ''
+  const from      = 'MTL Link <noreply@mtlb.co.kr>'
+
+  const reportFilter = String(req.query.report ?? '').trim()
+  const profiles = reportFilter ? PROFILES.filter(p => p.reportKey === reportFilter) : PROFILES
+  if (profiles.length === 0) {
+    return res.status(400).json({ ok: false, error: `Unknown report: ${reportFilter}` })
+  }
+
+  const results: object[] = []
+
+  for (const profile of profiles) {
+    let rowCount = 0, changedRows = 0, stalledRows = 0, changed = false, sent = false
+    try {
+      const rows  = await loadRows(profile, supabase)
+      rowCount    = rows.length
+      stalledRows = rows.filter(r => r.stalled).length
+
+      if (rows.length === 0) {
+        await supabase.from('tracing_report_runs').insert({ report_key: profile.reportKey, changed: false, sent: false, row_count: 0, changed_rows: 0, stalled_rows: 0 })
+        results.push({ report: profile.reportKey, sent: false, reason: 'no_rows' })
+        continue
+      }
+
+      type StateRow = { row_key: string; row_hash: string }
+      const { data: prevState } = await supabase
+        .from('tracing_report_state').select('row_key, row_hash').eq('report_key', profile.reportKey)
+      const prevMap = new Map<string, string>()
+      for (const s of (prevState ?? []) as StateRow[]) prevMap.set(s.row_key, s.row_hash)
+
+      const currentKeys = new Set(rows.map(r => r.rowKey))
+      for (const r of rows) {
+        const h = rowHash(r)
+        if (!prevMap.has(r.rowKey) || prevMap.get(r.rowKey) !== h) { changedRows++; changed = true }
+      }
+      for (const k of prevMap.keys()) {
+        if (!currentKeys.has(k)) { changedRows++; changed = true }
+      }
+
+      if (!changed) {
+        await supabase.from('tracing_report_runs').insert({ report_key: profile.reportKey, changed: false, sent: false, row_count: rowCount, changed_rows: 0, stalled_rows: stalledRows })
+        results.push({ report: profile.reportKey, sent: false, reason: 'no_change', rowCount })
+        continue
+      }
+
+      const html    = renderEmail(profile, rows)
+      const subject = buildSubject(profile)
+      if (resendKey) {
+        await fetch('https://api.resend.com/emails', {
+          method:  'POST',
+          headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ from, to: profile.to, subject, html }),
+        })
+      }
+      sent = true
+
+      const removedKeys = [...prevMap.keys()].filter(k => !currentKeys.has(k))
+      if (removedKeys.length > 0) {
+        await supabase.from('tracing_report_state').delete().eq('report_key', profile.reportKey).in('row_key', removedKeys)
+      }
+      await supabase.from('tracing_report_state').upsert(
+        rows.map(r => ({
+          report_key: profile.reportKey,
+          row_key:    r.rowKey,
+          row_hash:   rowHash(r),
+          raw:        { display: r.display, currentLocation: r.currentLocation, stalled: r.stalled },
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: 'report_key,row_key' },
+      )
+      await supabase.from('tracing_report_runs').insert({ report_key: profile.reportKey, changed, sent, row_count: rowCount, changed_rows: changedRows, stalled_rows: stalledRows })
+      results.push({ report: profile.reportKey, sent: true, rowCount, changedRows, stalledRows })
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      console.error(`[tracing-send] ${profile.reportKey} failed:`, err)
+      await supabase.from('tracing_report_runs').insert({ report_key: profile.reportKey, changed, sent, row_count: rowCount, changed_rows: changedRows, stalled_rows: stalledRows, error: errMsg }).catch(() => null)
+      results.push({ report: profile.reportKey, sent: false, error: errMsg })
+    }
+  }
+
+  return res.json({ ok: true, results })
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL
@@ -891,6 +986,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (action === 'upload_log')    return handleUploadLog(req, res, supabase)
   if (action === 'delay-notify')  return handleDelayNotify(req, res, supabase)
+  if (action === 'tracing-send')  return handleTracingSend(req, res, supabase)
   if (action === 'detail')        return handleDetail(req, res, supabase)
   if (action === 'weather')       return handleWeather(res, supabase)
   return handleList(req, res, supabase)

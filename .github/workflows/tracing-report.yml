@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Call /api/tracing/send
+      - name: Call /api/tcr?action=tracing-send
         run: |
           response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/tracing/send")
+            "${{ secrets.APP_URL }}/api/tcr?action=tracing-send")
           echo "HTTP status: $response"
           echo "Response body:"
           cat /tmp/body.json
