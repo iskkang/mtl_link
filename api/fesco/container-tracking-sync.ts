@@ -899,6 +899,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   last_seen_at:       now,
                 })
               staleAlertsOpened++
+
+              // stale_tracking_risk(red) = 신규 발생 시 이메일 발송
+              if (stale.severity === 'red' && !dryRun) {
+                sendContainerAlertEmail({
+                  containerNumber: row.container_number as string,
+                  alertType:       stale.alertType,
+                  message:         stale.message,
+                  route:           '',
+                }).catch(err => console.error('[email] stale alert failed:', err))
+              }
             }
 
             // Upgrade alert_level on current row only if stale priority is strictly higher
