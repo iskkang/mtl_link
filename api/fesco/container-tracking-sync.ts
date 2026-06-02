@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { sendContainerAlertEmail } from '../_lib/resend.js'
+import { sendDelayDigestEmail, type DigestAlert } from '../_lib/resend.js'
 // Safety policy: same conservative constraints as order sync.
 // Sequential fetching only. No parallelism. No mass container sweep by default.
 
@@ -439,6 +439,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let staleAlertsOpened    = 0
   let staleAlertsUpdated   = 0
   let staleAlertsResolved  = 0
+  const newAlerts: DigestAlert[] = []
   const sampleNormalized: unknown[] = []
 
   try {
@@ -748,20 +749,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             })
           alertsOpened++
 
-          // Phase 2: RED 알림 + 선박 지연 이메일
-          const shouldEmail =
-            alert.alert_level === 'red' ||
-            alert.alert_type?.startsWith('vessel_arrival')
-
-          if (shouldEmail && !dryRun) {
+          // 신규 alert 수집 — cron 완료 후 digest 1통으로 발송
+          if (!dryRun && (alert.alert_level === 'red' || alert.alert_level === 'yellow')) {
             const route = [currentRow.current_from, currentRow.current_to]
               .filter(Boolean).join(' → ')
-            sendContainerAlertEmail({
+            newAlerts.push({
               containerNumber: ctrNum,
               alertType:       alert.alert_type ?? '',
-              message:         alert.message    ?? '',
+              alertLevel:      alert.alert_level as 'red' | 'yellow',
               route,
-            }).catch(err => console.error('[email] failed:', err))
+            })
           }
 
           // Resolve open alerts of different types (stale alerts superseded by current one)
@@ -918,14 +915,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 })
               staleAlertsOpened++
 
-              // stale_tracking_risk(red) = 신규 발생 시 이메일 발송
-              if (stale.severity === 'red' && !dryRun) {
-                sendContainerAlertEmail({
+              // 신규 stale alert 수집
+              if (!dryRun) {
+                newAlerts.push({
                   containerNumber: row.container_number as string,
                   alertType:       stale.alertType,
-                  message:         stale.message,
+                  alertLevel:      stale.severity,
                   route:           '',
-                }).catch(err => console.error('[email] stale alert failed:', err))
+                })
               }
             }
 
@@ -956,6 +953,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       console.log(`[ctr-sync] step 7 OK: stale opened=${staleAlertsOpened} updated=${staleAlertsUpdated} resolved=${staleAlertsResolved}`)
+    }
+
+    // ── 8. Digest email — 신규 alert 전체를 메일 1통으로 발송 ────────────────
+    if (!dryRun && newAlerts.length > 0) {
+      console.log(`[ctr-sync] step 8: sending digest email (${newAlerts.length} new alerts)`)
+      await sendDelayDigestEmail(newAlerts).catch(err =>
+        console.error('[email] digest failed:', err),
+      )
     }
 
     const result: Record<string, unknown> = {
