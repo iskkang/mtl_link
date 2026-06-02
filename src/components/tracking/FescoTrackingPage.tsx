@@ -275,13 +275,14 @@ interface MobileFescoViewProps {
   onCardClick:         (id: number) => void
   onClose:             () => void
   onRefresh:           () => void
+  alertSummaries:      Record<number, OrderAlertSummary>
 }
 
 function MobileFescoView({
   filteredOrders, loading, error, searchInput, setSearchInput,
   q, setQ, statusTab, setStatusTab, selectedId, detail, detailLoading, detailError,
   containerTracking, trackingLoading, trackingError, expandedStaleCtr, setExpandedStaleCtr,
-  onCardClick, onClose, onRefresh,
+  onCardClick, onClose, onRefresh, alertSummaries,
 }: MobileFescoViewProps) {
   const [mobileTab, setMobileTab] = useState<'action' | 'all'>('all')
 
@@ -457,9 +458,11 @@ function MobileFescoView({
             </div>
           )}
           {!loading && displayOrders.map(order => {
-            const { signal } = getFescoSignal(order)
-            const color      = SIGNAL_COLOR[signal]
-            const ctrs       = order.containers ?? []
+            const { signal: rawSignal } = getFescoSignal(order)
+            const ctrSum = alertSummaries[order.id]
+            const signal = (rawSignal !== 'gray' && (ctrSum?.red ?? 0) > 0) ? 'red' : rawSignal
+            const color  = SIGNAL_COLOR[signal]
+            const ctrs   = order.containers ?? []
             return (
               <button
                 key={order.id}
@@ -787,6 +790,7 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
         onCardClick={handleCardClick}
         onClose={handleClose}
         onRefresh={handleRefresh}
+        alertSummaries={alertSummaries}
       />
     )
   }
@@ -944,14 +948,14 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
                 const isSelected     = order.id === selectedId
                 const containers     = order.containers ?? []
                 const containerCount = containers.length
-                const { signal, region, elapsedDays } = getFescoSignal(order)
-                const color          = SIGNAL_COLOR[signal]
-                const statusStr      = (order.status ?? '').toLowerCase()
-                const pillClass      = statusStr === 'active'   ? 'active'
-                                     : statusStr === 'rejected' ? 'rejected'
-                                     : 'complete'
-
+                const { signal: rawSignal, region, elapsedDays } = getFescoSignal(order)
                 const ctrSummary = alertSummaries[order.id]
+                const signal     = (rawSignal !== 'gray' && (ctrSummary?.red ?? 0) > 0) ? 'red' : rawSignal
+                const color      = SIGNAL_COLOR[signal]
+                const statusStr  = (order.status ?? '').toLowerCase()
+                const pillClass  = statusStr === 'active'   ? 'active'
+                                 : statusStr === 'rejected' ? 'rejected'
+                                 : 'complete'
 
                 return (
                   <button

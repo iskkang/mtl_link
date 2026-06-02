@@ -212,8 +212,13 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
   }
 
   // Planned arrival overdue (check destination first — higher impact)
+  // Also fires when destinationDate is set but remainingDistance > 0 (FESCO premature completion).
+  const _evts = item.events?.data ?? []
+  const _lastEvt = _evts.length > 0 ? _evts[0] : null
+  const _remaining = _lastEvt?.remainingDistance != null ? parseFloat(String(_lastEvt.remainingDistance)) : null
+  const isPrematureCompletion = _remaining !== null && !isNaN(_remaining) && _remaining > 0
   for (const s of (item.segments ?? [])) {
-    if (s.planingDestinationDate && !s.destinationDate &&
+    if (s.planingDestinationDate && (!s.destinationDate || isPrematureCompletion) &&
         !((s as any).completed && (s as any).inProgress)) {
       const t = new Date(s.planingDestinationDate).getTime()
       if (!isNaN(t)) {
