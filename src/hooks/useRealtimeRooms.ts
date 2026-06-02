@@ -61,7 +61,7 @@ export function useRealtimeRooms(userId: string | undefined) {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`[Realtime] ${status} on rooms channel, refetching`)
           fetchRooms()
-            .then(rooms => useRoomStore.getState().setRooms(rooms))
+            .then(({ rooms }) => useRoomStore.getState().setRooms(rooms))
             .catch(console.error)
         }
         if (err) console.error('[Realtime] rooms error:', err)

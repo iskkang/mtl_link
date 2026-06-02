@@ -41,7 +41,7 @@ export function ChannelsPanel({ onSelectRoom, onEnterRoom }: Props) {
     try {
       await joinChannel(ch.id)
       setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, isJoined: true, memberCount: c.memberCount + 1 } : c))
-      const rooms = await fetchRooms()
+      const { rooms } = await fetchRooms()
       setRooms(rooms)
       onSelectRoom?.(ch.id)
     } finally {

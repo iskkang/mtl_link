@@ -104,7 +104,7 @@ export default function ChatPage() {
     if (!user?.id) return
     getOrCreateMintDmRoom()
       .then(() => fetchRooms())
-      .then(rooms => useRoomStore.getState().setRooms(rooms))
+      .then(({ rooms }) => useRoomStore.getState().setRooms(rooms))
       .catch(err => console.error('[mint_dm] ensure failed:', err))
   }, [user?.id])
 
@@ -136,7 +136,7 @@ export default function ChatPage() {
   const handleSelectFriend = async (userId: string) => {
     try {
       const roomId = await createDirectRoom(userId)
-      const updatedRooms = await fetchRooms()
+      const { rooms: updatedRooms } = await fetchRooms()
       useRoomStore.getState().setRooms(updatedRooms)
       if (userId === BOT_USER_ID) {
         useRoomStore.getState().resetUnread(roomId)
@@ -167,7 +167,7 @@ export default function ChatPage() {
     if (s === 'bots') {
       try {
         const roomId = await createDirectRoom(BOT_USER_ID)
-        const rooms = await fetchRooms()
+        const { rooms } = await fetchRooms()
         useRoomStore.getState().setRooms(rooms)
         handleSelectRoom(roomId)
       } catch (err) {

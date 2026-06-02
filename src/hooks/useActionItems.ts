@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import {
-  getMyActionItems,
-  getCreatedActionItems,
-  getDoneActionItems,
-  type ActionItem,
-} from '../services/actionItemService'
+import { getAllActionItems, type ActionItem } from '../services/actionItemService'
 import { useAuth } from './useAuth'
 
 interface ActionItemsState {
@@ -26,11 +21,7 @@ export function useActionItems() {
 
   const reload = useCallback(async () => {
     if (!user) return
-    const [received, created, done] = await Promise.all([
-      getMyActionItems(),
-      getCreatedActionItems(),
-      getDoneActionItems(),
-    ])
+    const { received, created, done } = await getAllActionItems()
     setState({ received, created, done, loading: false })
   }, [user])
 

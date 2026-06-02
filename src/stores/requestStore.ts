@@ -4,12 +4,15 @@ import { supabase } from '../lib/supabase'
 interface RequestStore {
   receivedCount: number
   sentCount:     number
+  setCounts:     (received: number, sent: number) => void
+  // 사용자 액션 후 즉각 반영용 (폴링에는 미사용)
   loadCounts:    () => Promise<void>
 }
 
 export const useRequestStore = create<RequestStore>((set) => ({
   receivedCount: 0,
   sentCount:     0,
+  setCounts: (received, sent) => set({ receivedCount: received, sentCount: sent }),
   loadCounts: async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return

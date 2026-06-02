@@ -14,7 +14,7 @@ export function useRooms() {
     if (!user) return
     store.setLoading(true)
     fetchRooms()
-      .then(store.setRooms)
+      .then(({ rooms }) => store.setRooms(rooms))
       .catch(err => store.setError(String(err?.message ?? err)))
       .finally(() => store.setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -27,7 +27,7 @@ export function useRooms() {
     loading: store.loading,
     error:   store.error,
     refresh: () => {
-      fetchRooms().then(store.setRooms).catch(console.error)
+      fetchRooms().then(({ rooms }) => store.setRooms(rooms)).catch(console.error)
     },
   }
 }

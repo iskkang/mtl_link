@@ -39,6 +39,17 @@ export async function createActionItem(params: {
   return data as ActionItem
 }
 
+// 3개 쿼리를 단일 RPC 호출로 통합
+export async function getAllActionItems(): Promise<{ received: ActionItem[]; created: ActionItem[]; done: ActionItem[] }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { received: [], created: [], done: [] }
+
+  const { data, error } = await (supabase as any).rpc('get_action_items_data', { p_user_id: user.id })
+  if (error) throw error
+  const d = (data ?? {}) as { received?: ActionItem[]; created?: ActionItem[]; done?: ActionItem[] }
+  return { received: d.received ?? [], created: d.created ?? [], done: d.done ?? [] }
+}
+
 export async function getMyActionItems(): Promise<ActionItem[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []

@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 subscribeToPushNotifications().catch(() => {})
               }
             })
-            void useRequestStore.getState().loadCounts()
+            // requestCounts는 usePollingRefresh → fetchRooms(get_dashboard_data) 에서 일괄 동기화
           }, 0)
         } else {
           // 로그아웃 또는 세션 만료 시 stale 데이터 제거
@@ -117,17 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchProfile])
 
-  // Realtime subscription for request counts — active whenever a user is logged in
-  useEffect(() => {
-    if (!user) return
-    const channel = supabase
-      .channel('request-counts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        void useRequestStore.getState().loadCounts()
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [user?.id])
+  // request-counts realtime 구독 제거됨 — 폴링(get_dashboard_data)이 30초마다 동기화
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

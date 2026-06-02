@@ -11,85 +11,66 @@ function roomMsgPreview(msg: { message_type: string; content: string | null }): 
   }
 }
 
-export async function fetchRooms(): Promise<RoomListItem[]> {
+// fetchRooms + requestCounts를 단일 RPC(get_dashboard_data)로 처리.
+// 반환값의 requestCounts는 usePollingRefresh에서 requestStore에 주입.
+export async function fetchRooms(): Promise<{ rooms: RoomListItem[]; requestCounts: { received: number; sent: number } }> {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  if (!user) return { rooms: [], requestCounts: { received: 0, sent: 0 } }
 
-  // 1. 내가 속한 방 멤버십
-  const { data: myMems, error: e1 } = await supabase
-    .from('room_members')
-    .select('room_id, is_pinned, is_muted, last_read_at')
-    .eq('user_id', user.id)
-  if (e1) throw e1
-  if (!myMems?.length) return []
+  const { data, error } = await (supabase as any).rpc('get_dashboard_data', { p_user_id: user.id })
+  if (error) throw error
 
-  const roomIds = myMems.map(m => m.room_id)
-
-  // 2. 방 기본 정보
-  const { data: rooms, error: e2 } = await supabase
-    .from('rooms')
-    .select('*')
-    .in('id', roomIds)
-    .order('last_message_at', { ascending: false, nullsFirst: false })
-  if (e2) throw e2
-  if (!rooms?.length) return []
-
-  // 3. 방 멤버 목록 (room_id + user_id + last_read_at)
-  const { data: allMems, error: e3 } = await supabase
-    .from('room_members')
-    .select('room_id, user_id, last_read_at')
-    .in('room_id', roomIds)
-  if (e3) throw e3
-
-  // 4. 멤버 프로필
-  const memberIds = [...new Set((allMems ?? []).map(m => m.user_id))]
-  const { data: profiles, error: e4 } = await supabase
-    .from('profiles')
-    .select('id, name, avatar_url, avatar_color, preferred_language, is_bot, presence_status, status_message')
-    .in('id', memberIds)
-  if (e4) throw e4
-
-  // 5. 언리드 카운트 + 마지막 메시지 (단일 RPC 호출)
-  const myMemMap = Object.fromEntries(myMems.map(m => [m.room_id, m]))
-  const { data: roomListData } = await (supabase as any).rpc('get_room_list_data', {
-    p_room_ids: roomIds,
-    p_user_id:  user.id,
-  })
-  const unreadMap: Record<string, number> = {}
-  const lastMsgMap: Record<string, { content: string | null; created_at: string; message_type: string } | null> = {}
-  for (const row of roomListData ?? []) {
-    unreadMap[row.room_id]  = Number(row.unread_count ?? 0)
-    lastMsgMap[row.room_id] = row.last_message_at
-      ? { content: row.last_message_content, created_at: row.last_message_at, message_type: row.last_message_type }
-      : null
+  const {
+    myMems    = [],
+    rooms     = [],
+    allMems   = [],
+    profiles  = [],
+    roomListData = [],
+    requestCounts = { received: 0, sent: 0 },
+  } = (data ?? {}) as {
+    myMems:        { room_id: string; is_pinned: boolean; is_muted: boolean; last_read_at: string | null }[]
+    rooms:         Record<string, unknown>[]
+    allMems:       { room_id: string; user_id: string; last_read_at: string | null }[]
+    profiles:      Pick<Profile, 'id' | 'name' | 'avatar_url' | 'avatar_color' | 'preferred_language' | 'is_bot' | 'presence_status' | 'status_message'>[]
+    roomListData:  { room_id: string; unread_count: number; last_message_content: string | null; last_message_at: string | null; last_message_type: string | null }[]
+    requestCounts: { received: number; sent: number }
   }
 
-  // 조합
-  const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]))
+  if (!rooms.length) return { rooms: [], requestCounts }
+
+  const myMemMap   = Object.fromEntries(myMems.map(m => [m.room_id, m]))
+  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+
   const membersByRoom: Record<string, (Pick<Profile, 'id' | 'name' | 'avatar_url' | 'avatar_color' | 'preferred_language' | 'is_bot' | 'presence_status' | 'status_message'> & { last_read_at: string | null })[]> = {}
-  for (const m of allMems ?? []) {
+  for (const m of allMems) {
     if (!membersByRoom[m.room_id]) membersByRoom[m.room_id] = []
     const p = profileMap[m.user_id]
     if (p) membersByRoom[m.room_id].push({ ...p, last_read_at: m.last_read_at ?? null })
   }
-  // 로컬 스토어에 낙관적으로 적용된 last_read_at이 서버보다 최신일 수 있음.
-  // fetchRooms 응답이 stale한 last_read_at을 가져오면 unread가 되살아나므로
-  // 로컬값이 더 최신이면 로컬을 우선한다.
+
+  const unreadMap: Record<string, number> = {}
+  const lastMsgMap: Record<string, { content: string | null; created_at: string; message_type: string } | null> = {}
+  for (const row of roomListData) {
+    unreadMap[row.room_id]  = Number(row.unread_count ?? 0)
+    lastMsgMap[row.room_id] = row.last_message_at
+      ? { content: row.last_message_content, created_at: row.last_message_at, message_type: row.last_message_type! }
+      : null
+  }
+
   const localRooms = useRoomStore.getState().rooms
   const localMap   = new Map(localRooms.map(r => [r.id, r]))
 
-  const mapped = rooms.map(room => {
-    const lastMsg = lastMsgMap[room.id]
+  const mapped = (rooms as any[]).map(room => {
+    const lastMsg            = lastMsgMap[room.id as string]
     const lastMessagePreview = lastMsg ? roomMsgPreview(lastMsg) : (room.last_message ?? null)
-    const lastMessageAt = lastMsg ? lastMsg.created_at : (room.last_message_at ?? null)
+    const lastMessageAt      = lastMsg ? lastMsg.created_at : (room.last_message_at ?? null)
 
     const serverLastRead = myMemMap[room.id]?.last_read_at ?? null
     const localLastRead  = localMap.get(room.id)?.last_read_at ?? null
 
-    // 로컬값이 서버값보다 최신이면 로컬을 사용하고 unread를 0으로 고정
-    const useLocal = localLastRead && serverLastRead && localLastRead > serverLastRead
-    const lastReadAt   = useLocal ? localLastRead : serverLastRead
-    const unreadCount  = useLocal ? 0 : (unreadMap[room.id] ?? 0)
+    const useLocal    = localLastRead && serverLastRead && localLastRead > serverLastRead
+    const lastReadAt  = useLocal ? localLastRead : serverLastRead
+    const unreadCount = useLocal ? 0 : (unreadMap[room.id] ?? 0)
 
     return {
       ...room,
@@ -100,10 +81,10 @@ export async function fetchRooms(): Promise<RoomListItem[]> {
       is_muted:        myMemMap[room.id]?.is_muted  ?? false,
       last_read_at:    lastReadAt,
       unread_count:    unreadCount,
-    }
+    } as RoomListItem
   })
 
-  return sortByRecency(mapped)
+  return { rooms: sortByRecency(mapped), requestCounts }
 }
 
 export async function markAsRead(roomId: string): Promise<void> {

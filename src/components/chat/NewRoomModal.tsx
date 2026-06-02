@@ -65,7 +65,7 @@ export function NewRoomModal({ open, onClose, onRoomCreated, initialTab }: Props
   }, [open, onClose])
 
   const refreshRooms = async () => {
-    const rooms = await fetchRooms()
+    const { rooms } = await fetchRooms()
     setRooms(rooms)
   }
 
