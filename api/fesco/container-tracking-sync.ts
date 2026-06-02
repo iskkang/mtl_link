@@ -97,8 +97,21 @@ interface AlertResult {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Operations that definitively indicate delivery to consignee — case-insensitive check.
+const DELIVERED_OPERATIONS = new Set([
+  'departed full to consignee',
+])
+
 function deriveStatus(item: FescoTrackingItem): string {
   if (item.unavailable === true) return 'unavailable'
+
+  // "Departed Full to Consignee" in the latest event = container delivered, case closed.
+  // Check this before segment-date logic because it's unambiguous regardless of segment state.
+  const events = item.events?.data ?? []
+  const latestEvent = events.length > 0 ? events[0] : null
+  const latestOp = (latestEvent?.operationLatin ?? latestEvent?.operation ?? '').trim().toLowerCase()
+  if (latestOp && DELIVERED_OPERATIONS.has(latestOp)) return 'completed'
+
   const segs = item.segments ?? []
   if (segs.length === 0) return 'unknown'
   const last = segs[segs.length - 1]
@@ -107,7 +120,6 @@ function deriveStatus(item: FescoTrackingItem): string {
   // Cross-check with the latest event's remainingDistance: if > 0, FESCO prematurely
   // closed the segment (e.g. train breakdown recorded as arrival). Keep as in_progress.
   if (last?.destinationDate) {
-    const events = item.events?.data ?? []
     const lastEvent = events.length > 0 ? events[0] : null
     const remaining = lastEvent?.remainingDistance != null
       ? parseFloat(String(lastEvent.remainingDistance))
