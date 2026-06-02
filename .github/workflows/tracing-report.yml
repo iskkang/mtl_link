@@ -1,0 +1,25 @@
+name: Tracing Report
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 매일 10:00 KST (UTC 01:00)
+  workflow_dispatch:        # GitHub Actions UI에서 수동 실행
+
+jobs:
+  send-reports:
+    name: Send 6 tracing report emails
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call /api/tracing/send
+        run: |
+          response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/tracing/send")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "Tracing report send failed"
+            exit 1
+          fi
