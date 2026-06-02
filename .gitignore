@@ -37,6 +37,10 @@ scripts/import_glossary.mjs
 # 데이터 파일 (DB에 적재됨, 원본은 별도 보관)
 supabase/knowledge-base/10_Data/
 
+# 로컬 작업 데이터 (커밋 불필요)
+pst-inspect/
+tcr_tracking_data/
+
 # Python
 __pycache__/
 *.pyc
