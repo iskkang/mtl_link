@@ -4,8 +4,8 @@ import { useRoomStore } from '../stores/roomStore'
 import { fetchRooms, getOrCreateMintDmRoom } from '../services/roomService'
 import { useAuth } from './useAuth'
 
-const POLLING_INTERVAL = 30_000
-const MIN_REFRESH_INTERVAL = 10_000 // focus/visibility 이벤트 최소 간격
+const POLLING_INTERVAL = 300_000    // 5분 — Realtime이 실시간 변경을 담당, 폴링은 동기화 안전망
+const MIN_REFRESH_INTERVAL = 120_000 // 포커스/visibilitychange 재발화 최소 2분
 
 export function usePollingRefresh(selectedRoomId: string | null = null) {
   const { user } = useAuth()
