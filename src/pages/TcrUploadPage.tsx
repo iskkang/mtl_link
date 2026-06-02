@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, ArrowLeft, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import * as XLSX from 'xlsx'
@@ -17,6 +17,7 @@ interface ContainerRow {
   eta_final: string | null
   ata_final: string | null
   arrived_yn: boolean
+  transit_time_days: number | null
 }
 
 interface SegmentRow {
@@ -43,6 +44,16 @@ interface ParsedFile {
 }
 
 type SubmitResult = { updated_containers: number; updated_segments: number; errors: string[] }
+
+interface ServerLog {
+  id:               number
+  uploaded_at:      string
+  uploader_ip:      string | null
+  file_name:        string
+  file_type:        string
+  containers_count: number
+  segments_count:   number
+}
 
 /* ── Helpers ────────────────────────────────────────────────────────── */
 const FILE_TYPE_LABELS: Record<FileType, string> = {
@@ -125,6 +136,12 @@ function xlDate(v: unknown): string | null {
     return null
   }
   return null
+}
+
+function parseTT(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = parseInt(String(v).trim().replace(/[^0-9]/g, ''), 10)
+  return !isNaN(n) && n > 0 ? n : null
 }
 
 function readSheetRows(wb: XLSX.WorkBook, hint?: string): unknown[][] {
@@ -218,6 +235,7 @@ function parseKrUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
       eta_final:         xlDate(r[24]),
       ata_final,
       arrived_yn:        !!ata_final,
+      transit_time_days: parseTT(r[26]),
     })
 
     const s1atd = xlDate(r[18]); const s1ata = xlDate(r[19])
@@ -252,9 +270,10 @@ function parseCnUzTcr(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
   const containers: ContainerRow[] = []
   const segments:   SegmentRow[]   = []
 
+  // Use 'CNTR NO' (not just 'CNTR') to avoid matching title rows like "CNTR ARRIVED"
   let headerIdx = 2
   for (let i = 0; i < Math.min(6, rows.length); i++) {
-    if ((rows[i] as unknown[]).map(str).join(' ').toUpperCase().includes('CNTR')) { headerIdx = i; break }
+    if ((rows[i] as unknown[]).map(str).join(' ').toUpperCase().includes('CNTR NO')) { headerIdx = i; break }
   }
   const headers = (rows[headerIdx] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
   const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
@@ -269,6 +288,7 @@ function parseCnUzTcr(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
   const iEtaFd  = col('eta f')
   const iAtaFd  = col('ata f/d') !== -1 ? col('ata f/d') : col('ata f') !== -1 ? col('ata f') : (ataIs[1] ?? -1)
   const iCurLoc = col('current')
+  const iTT     = headers.findIndex(h => /t\/t|transit.*time/i.test(h))
 
   for (let ri = headerIdx + 1; ri < rows.length; ri++) {
     const r   = rows[ri] as unknown[]
@@ -290,6 +310,7 @@ function parseCnUzTcr(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
       eta_final:            iEtaFd !== -1 ? xlDate(r[iEtaFd]) : null,
       ata_final,
       arrived_yn:           !!ata_final,
+      transit_time_days:    iTT !== -1 ? parseTT(r[iTT]) : null,
     })
 
     segments.push(
@@ -330,6 +351,7 @@ function parseCnUzLcl(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
   const iAtaTs  = col('ata t/s')     !== -1 ? col('ata t/s')     : col('ata border')
   const iAtdTs  = col('atd/ts')
   const iAtaWh  = col('ata w/h')     !== -1 ? col('ata w/h')     : col('ata wh')
+  const iTT     = headers.findIndex(h => /t\/t|transit.*time/i.test(h))
 
   for (let ri = headerIdx + 1; ri < rows.length; ri++) {
     const r   = rows[ri] as unknown[]
@@ -350,6 +372,7 @@ function parseCnUzLcl(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
       eta_final:            null,
       ata_final,
       arrived_yn:           !!ata_final,
+      transit_time_days:    iTT !== -1 ? parseTT(r[iTT]) : null,
     })
 
     segments.push(
@@ -394,6 +417,7 @@ function parseCnUzRailTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; se
   const iAtaKashi = col('kash')
   const iAtaTsBrd = col('ata t/s')  !== -1 ? col('ata t/s')  : col('ata border')
   const iAtdTs    = col('atd/ts')   !== -1 ? col('atd/ts')   : col('atd t/s')
+  const iTT       = headers.findIndex(h => /t\/t|transit.*time/i.test(h))
 
   for (let ri = headerIdx + 1; ri < rows.length; ri++) {
     const r   = rows[ri] as unknown[]
@@ -418,6 +442,7 @@ function parseCnUzRailTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; se
       eta_final:            null,
       ata_final:            null,
       arrived_yn:           false,
+      transit_time_days:    iTT !== -1 ? parseTT(r[iTT]) : null,
     })
 
     segments.push(
@@ -479,6 +504,7 @@ function parseKrKzTruck(wb: XLSX.WorkBook): { containers: ContainerRow[]; segmen
       eta_final:         xlDate(r[13]),
       ata_final:         ata_almaty,
       arrived_yn:        !!ata_almaty,
+      transit_time_days: null,
     })
 
     const s1etd = xlDate(r[4]); const s1atd = xlDate(r[5])
@@ -548,6 +574,7 @@ function parseKrKgBishkekSheet(
       eta_final:            null,
       ata_final:            ata_dest,
       arrived_yn:           !!ata_dest,
+      transit_time_days:    null,
     })
 
     segments.push(
@@ -633,6 +660,7 @@ function parseKrKgAlmatySheet(
       eta_final:            null,
       ata_final,
       arrived_yn:           !!ata_final,
+      transit_time_days:    null,
     })
 
     segments.push(
@@ -721,7 +749,8 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
   const iAtaMala = headers.findIndex(h => /^ATA$/i.test(h))
   const iStopBy  = col('STOP BY')
 
-  for (let ri = 2; ri < rows.length; ri++) {
+  // Start from row 1 (not 2) — row 0 is the header, row 1 is the first data row
+  for (let ri = 1; ri < rows.length; ri++) {
     const r = rows[ri] as unknown[]
     if (iCno === -1) continue
     const cno = str(r[iCno]).toUpperCase()
@@ -741,6 +770,7 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
       eta_final:         iEtaMala !== -1 ? xlDate(r[iEtaMala]) : null,
       ata_final,
       arrived_yn:        !!ata_final,
+      transit_time_days: null,
     })
 
     const s1atd  = iAtdPol  !== -1 ? xlDate(r[iAtdPol])  : null
@@ -782,21 +812,12 @@ function parseWorkbook(wb: XLSX.WorkBook, fileType: FileType): { containers: Con
 }
 
 /* ── Upload history ─────────────────────────────────────────────────── */
-interface UploadHistory {
-  filename: string
-  file_type: string
-  uploaded_at: string
-  containers_count: number
-  segments_count: number
-}
-
-function loadHistory(): UploadHistory[] {
-  try { return JSON.parse(localStorage.getItem('tcr_upload_history') ?? '[]') } catch { return [] }
-}
-
-function saveHistory(entry: UploadHistory) {
-  const prev = loadHistory()
-  localStorage.setItem('tcr_upload_history', JSON.stringify([entry, ...prev].slice(0, 20)))
+async function fetchServerLog(): Promise<ServerLog[]> {
+  try {
+    const r = await fetch('/api/tcr?action=upload_log')
+    const d = await r.json() as { ok: boolean; logs?: ServerLog[] }
+    return d.ok ? (d.logs ?? []) : []
+  } catch { return [] }
 }
 
 /* ── Preview table ──────────────────────────────────────────────────── */
@@ -940,8 +961,12 @@ export function TcrUploadPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [history] = useState<UploadHistory[]>(() => loadHistory())
+  const [serverLog, setServerLog] = useState<ServerLog[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetchServerLog().then(setServerLog)
+  }, [])
 
   const processFiles = useCallback(async (files: FileList | File[]) => {
     const newParsed: ParsedFile[] = []
@@ -1001,16 +1026,23 @@ export function TcrUploadPage() {
       const res = await fetch('/api/tcr?action=upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ containers: allContainers, segments: allSegments }),
+        body: JSON.stringify({
+          containers: allContainers,
+          segments:   allSegments,
+          files_info: validFiles.map(p => ({
+            file_name:        p.file.name,
+            file_type:        p.fileTypeLabel,
+            containers_count: p.containers.length,
+            segments_count:   p.segments.length,
+          })),
+        }),
       })
       const json = await res.json() as { ok: boolean; updated_containers?: number; updated_segments?: number; errors?: string[]; error?: string }
       if (!json.ok) throw new Error(json.error ?? '알 수 없는 오류')
       const result: SubmitResult = { updated_containers: json.updated_containers ?? 0, updated_segments: json.updated_segments ?? 0, errors: json.errors ?? [] }
       setSubmitResult(result)
-      // Save to history
-      for (const p of validFiles) {
-        saveHistory({ filename: p.file.name, file_type: p.fileTypeLabel, uploaded_at: new Date().toISOString(), containers_count: p.containers.length, segments_count: p.segments.length })
-      }
+      // Refresh server log after successful upload
+      fetchServerLog().then(setServerLog)
     } catch (e) {
       setSubmitError(String(e))
     } finally {
@@ -1163,34 +1195,39 @@ export function TcrUploadPage() {
           </div>
         )}
 
-        {/* Upload history */}
-        {history.length > 0 && (
-          <div style={{ marginTop: 24 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-400)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>최근 업로드 이력</div>
+        {/* Upload history — server-side, visible to all users */}
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-400)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            전체 업로드 이력 (모든 계정)
+          </div>
+          {serverLog.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--ink-400)', padding: '12px 0' }}>이력이 없습니다.</div>
+          ) : (
             <div style={{ borderRadius: 8, border: '1px solid var(--ink-200)', overflow: 'hidden' }}>
               <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--ink-50)', borderBottom: '1px solid var(--ink-200)' }}>
-                    {['파일명', '종류', '컨테이너', '세그먼트', '업로드 시각'].map(h => (
+                    {['파일명', '종류', '컨테이너', '세그먼트', 'IP', '업로드 시각'].map(h => (
                       <th key={h} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: 'var(--ink-500)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {history.map((h, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--ink-100)' }}>
-                      <td style={{ padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{h.filename}</td>
+                  {serverLog.map(h => (
+                    <tr key={h.id} style={{ borderBottom: '1px solid var(--ink-100)' }}>
+                      <td style={{ padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{h.file_name}</td>
                       <td style={{ padding: '5px 10px', color: 'var(--ink-600)' }}>{h.file_type}</td>
                       <td style={{ padding: '5px 10px', color: 'var(--ink-600)', textAlign: 'right' }}>{h.containers_count}</td>
                       <td style={{ padding: '5px 10px', color: 'var(--ink-600)', textAlign: 'right' }}>{h.segments_count}</td>
+                      <td style={{ padding: '5px 10px', color: 'var(--ink-400)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>{h.uploader_ip ?? '-'}</td>
                       <td style={{ padding: '5px 10px', color: 'var(--ink-400)' }}>{new Date(h.uploaded_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

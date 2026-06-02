@@ -551,11 +551,24 @@ async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: R
   })
 }
 
+// ── Upload log (admin history view) ──────────────────────────────────────────
+async function handleUploadLog(_req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  const { data, error } = await supabase
+    .from('tcr_upload_log')
+    .select('id, uploaded_at, uploader_ip, file_name, file_type, containers_count, segments_count')
+    .order('uploaded_at', { ascending: false })
+    .limit(100)
+
+  if (error) return res.status(500).json({ ok: false, error: error.message })
+  return res.json({ ok: true, logs: data ?? [] })
+}
+
 // ── Upsert (Excel upload from TcrUploadPage) ──────────────────────────────────
 async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
   const body = req.body as {
     containers?: Record<string, unknown>[]
     segments?:   Record<string, unknown>[]
+    files_info?: { file_name: string; file_type: string; containers_count: number; segments_count: number }[]
   }
   if (!body || !Array.isArray(body.containers)) {
     return res.status(400).json({ ok: false, error: 'Missing containers array in body' })
@@ -622,8 +635,8 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
         ata_final:              c.ata_final        ?? null,
         arrived_yn:             Boolean(c.arrived_yn),
       }
-      // Include current_location_raw only if the value is non-null (column may not exist in all schemas)
       if (c.current_location_raw) row.current_location_raw = c.current_location_raw
+      if ((c as Record<string, unknown>).transit_time_days != null) row.transit_time_days = (c as Record<string, unknown>).transit_time_days
       return row
     })
 
@@ -697,6 +710,20 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
     }
   }
 
+  // Log each uploaded file to tcr_upload_log (fire-and-forget, non-blocking)
+  const filesInfo = body.files_info ?? []
+  if (filesInfo.length > 0) {
+    const ip = String((req.headers['x-forwarded-for'] as string | undefined) ?? '').split(',')[0].trim() || null
+    const logRows = filesInfo.map(f => ({
+      uploader_ip:      ip,
+      file_name:        String(f.file_name ?? ''),
+      file_type:        String(f.file_type ?? ''),
+      containers_count: Number(f.containers_count ?? 0),
+      segments_count:   Number(f.segments_count ?? 0),
+    }))
+    supabase.from('tcr_upload_log').insert(logRows).then(() => null).catch(() => null)
+  }
+
   return res.json({ ok: true, updated_containers: updatedContainers, updated_segments: updatedSegments, errors })
 }
 
@@ -713,6 +740,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'POST' && action === 'upsert') return handleUpsert(req, res, supabase)
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
+
+  if (action === 'upload_log') return handleUploadLog(req, res, supabase)
 
   if (action === 'detail')  return handleDetail(req, res, supabase)
   if (action === 'weather') return handleWeather(res, supabase)
