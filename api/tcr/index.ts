@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true 
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { sendTcrDelayDigestEmail, type TcrDigestAlert } from '../_lib/resend.js'
 
 type TcrSignal = 'green' | 'red' | 'yellow' | 'blue'
 
@@ -727,6 +728,151 @@ async function handleUpsert(req: VercelRequest, res: VercelResponse, supabase: R
   return res.json({ ok: true, updated_containers: updatedContainers, updated_segments: updatedSegments, errors })
 }
 
+// ── Delay notify (merged from tcr/delay-notify.ts) ────────────────────────────
+function calcSignalAndReason(
+  arrivedYn: boolean,
+  seg: { etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
+  currentLocationSince: string | null,
+): { signal: TcrSignal; reason: string } {
+  if (arrivedYn) return { signal: 'green', reason: '' }
+
+  const today = new Date().toISOString().split('T')[0]
+  let maxDelay = 0
+  let reason = ''
+
+  if (seg) {
+    const depDelay = daysDiff(seg.etd, seg.atd ?? today)
+    if (depDelay !== null && depDelay > maxDelay) {
+      maxDelay = depDelay
+      reason = `출발 ${Math.floor(depDelay)}일 초과`
+    }
+    const arrDelay = daysDiff(seg.eta, seg.ata ?? today)
+    if (arrDelay !== null && arrDelay > maxDelay) {
+      maxDelay = arrDelay
+      reason = `도착 ${Math.floor(arrDelay)}일 초과`
+    }
+  }
+
+  const dwell = daysDiff(currentLocationSince, today)
+  if (dwell !== null && dwell > maxDelay) {
+    maxDelay = dwell
+    reason = `동일 위치 ${Math.floor(dwell)}일 정체`
+  }
+
+  if (maxDelay >= 5) return { signal: 'red',    reason }
+  if (maxDelay >= 3) return { signal: 'yellow', reason }
+  return { signal: 'blue', reason: '' }
+}
+
+async function handleDelayNotify(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    const auth = (req.headers['authorization'] ?? '').toString()
+    if (auth !== `Bearer ${cronSecret}`) return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { data: ctrRows, error: ctrErr } = await supabase
+    .from('tcr_containers_current')
+    .select('container_no, origin, destination, current_location, current_location_since, eta_final, ata_final, arrived_yn')
+    .eq('arrived_yn', false)
+
+  if (ctrErr) return res.status(500).json({ ok: false, error: ctrErr.message })
+
+  const containers = (ctrRows ?? []) as {
+    container_no: string; origin: string | null; destination: string | null
+    current_location: string | null; current_location_since: string | null
+    eta_final: string | null; ata_final: string | null; arrived_yn: boolean
+  }[]
+
+  if (containers.length === 0) return res.json({ ok: true, checked: 0, newAlerts: 0, emailSent: false })
+
+  const containerNos = containers.map(c => c.container_no)
+
+  const { data: segRows } = await supabase
+    .from('tcr_route_segments')
+    .select('container_no, segment_id, segment_no, to_location, etd, atd, eta, ata')
+    .in('container_no', containerNos)
+    .order('segment_no')
+
+  type FullSeg = SegmentLike & { etd: string | null; eta: string | null }
+  const allSegs = (segRows ?? []) as FullSeg[]
+  const segsByContainer = new Map<string, FullSeg[]>()
+  for (const s of allSegs) {
+    const arr = segsByContainer.get(s.container_no) ?? []
+    arr.push(s)
+    segsByContainer.set(s.container_no, arr)
+  }
+
+  type Computed = { container_no: string; signal: TcrSignal; reason: string; route: string; currentLocation: string }
+  const computed: Computed[] = []
+
+  for (const c of containers) {
+    const segs    = (segsByContainer.get(c.container_no) ?? []).sort((a, b) => a.segment_no - b.segment_no)
+    const arrived = isArrived(c, segs)
+    if (arrived) continue
+
+    const curSegId = computeCurrentSeg(segs, c.current_location, c.destination)
+    const curSeg   = curSegId ? segs.find(s => s.segment_id === curSegId) ?? null : null
+    const segData  = curSeg ? { etd: curSeg.etd, atd: curSeg.atd, eta: curSeg.eta, ata: curSeg.ata } : null
+
+    const { signal, reason } = calcSignalAndReason(false, segData, c.current_location_since)
+    computed.push({
+      container_no:    c.container_no,
+      signal, reason,
+      route:           [c.origin, c.destination].filter(Boolean).join(' → '),
+      currentLocation: c.current_location ?? '—',
+    })
+  }
+
+  const { data: existingAlerts } = await supabase
+    .from('tcr_risk_alerts')
+    .select('id, container_no, severity, status')
+    .in('container_no', containerNos)
+    .eq('alert_type', 'DELAY_AUTO')
+    .eq('status', 'Open')
+
+  type ExAlert = { id: string; container_no: string; severity: string; status: string }
+  const existingMap = new Map<string, ExAlert>()
+  for (const a of (existingAlerts ?? []) as ExAlert[]) existingMap.set(a.container_no, a)
+
+  const now = new Date().toISOString()
+  const digestAlerts: TcrDigestAlert[] = []
+  const toInsert: object[] = []
+  const toResolve: string[] = []
+  const toUpdate: { id: string; severity: string }[] = []
+
+  for (const c of computed) {
+    const ex = existingMap.get(c.container_no)
+    if (c.signal === 'red' || c.signal === 'yellow') {
+      const severity = c.signal === 'red' ? 'Critical' : 'Watch'
+      if (!ex) {
+        toInsert.push({ container_no: c.container_no, alert_type: 'DELAY_AUTO', severity, status: 'Open', first_seen_at: now, last_seen_at: now })
+        digestAlerts.push({ containerNo: c.container_no, route: c.route, currentLocation: c.currentLocation, severity, delayReason: c.reason || (severity === 'Critical' ? '5일 이상 지연' : '3일 이상 지연') })
+      } else if (ex.severity !== severity) {
+        toUpdate.push({ id: ex.id, severity })
+      }
+      existingMap.delete(c.container_no)
+    } else {
+      existingMap.delete(c.container_no)
+    }
+  }
+  for (const ex of existingMap.values()) toResolve.push(ex.id)
+
+  await Promise.all([
+    toInsert.length  ? supabase.from('tcr_risk_alerts').insert(toInsert) : null,
+    toResolve.length ? supabase.from('tcr_risk_alerts').update({ status: 'Resolved' }).in('id', toResolve) : null,
+    ...toUpdate.map(u => supabase.from('tcr_risk_alerts').update({ severity: u.severity, status: 'Open', last_seen_at: now }).eq('id', u.id)),
+  ].filter(Boolean))
+
+  let emailSent = false
+  if (digestAlerts.length > 0) {
+    await sendTcrDelayDigestEmail(digestAlerts).catch(err => console.error('[tcr-delay-notify] email failed:', err))
+    emailSent = true
+  }
+
+  return res.json({ ok: true, checked: computed.length, newAlerts: digestAlerts.length, resolved: toResolve.length, updated: toUpdate.length, emailSent })
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL
@@ -741,9 +887,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST' && action === 'upsert') return handleUpsert(req, res, supabase)
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
 
-  if (action === 'upload_log') return handleUploadLog(req, res, supabase)
-
-  if (action === 'detail')  return handleDetail(req, res, supabase)
-  if (action === 'weather') return handleWeather(res, supabase)
+  if (action === 'upload_log')    return handleUploadLog(req, res, supabase)
+  if (action === 'delay-notify')  return handleDelayNotify(req, res, supabase)
+  if (action === 'detail')        return handleDetail(req, res, supabase)
+  if (action === 'weather')       return handleWeather(res, supabase)
   return handleList(req, res, supabase)
 }
