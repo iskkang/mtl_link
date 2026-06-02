@@ -141,8 +141,10 @@ function buildPopupHtml(
       <span style="font-size:11px;color:#1e293b">${fmtDate(eta)}</span>
     </div>` : ''
 
+  const alertBg   = sig === 'red' ? '#fef2f2' : sig === 'yellow' ? '#fefce8' : '#f8fafc'
+  const alertColor = sig === 'red' ? '#dc2626' : sig === 'yellow' ? '#d97706' : '#475569'
   const alertHtml = (alert && sig !== 'green' && sig !== 'gray') ? `
-    <div style="margin-top:8px;padding:4px 8px;border-radius:4px;background:#f8fafc;font-size:11px;color:#475569">
+    <div style="margin-top:8px;padding:4px 8px;border-radius:4px;background:${alertBg};font-size:11px;color:${alertColor};font-weight:500">
       ${alert}
     </div>` : ''
 

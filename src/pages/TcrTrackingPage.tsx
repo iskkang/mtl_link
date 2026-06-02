@@ -1066,7 +1066,7 @@ export function TcrTrackingPage() {
         last_event_location:      c.current_location,
         last_success_at:          null,
         planned_destination_date: c.eta_final,
-        alert_reason:             c.open_alert_count > 0 ? `${c.open_alert_count}개 경고` : null,
+        alert_reason:             c.signal_reason ?? (c.open_alert_count > 0 ? `${c.open_alert_count}개 경고` : null),
       }
     }
     return m
