@@ -96,6 +96,8 @@ const LOC_MAP: Record<string, string | null> = {
   'linqing':                'Kashgar',
   'shijiazhuangxi':         'Kashgar',
   'ANDIJON':                'Andijan',
+  'GANSU':                  'Gansu',
+  'Gansu':                  'Gansu',
   'ALASHANKOU':             'Alashankou',
   'Alashankou':             'Alashankou',
   'ALASHAN KOU':            'Alashankou',
