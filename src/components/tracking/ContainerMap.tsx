@@ -420,7 +420,10 @@ export function ContainerMap({
         ? detailApiUrlRef.current(cn)
         : `/api/fesco/containers?number=${encodeURIComponent(cn)}`
 
-      if (!apiUrl) return   // caller opted out of detail fetch (e.g. TCR page)
+      if (!apiUrl) {
+        popupRef.current?.setHTML(buildPopupHtml(cn, detail, null, i18nKeys))
+        return
+      }
 
       try {
         const resp = await fetch(apiUrl, { signal: ctrl.signal })
