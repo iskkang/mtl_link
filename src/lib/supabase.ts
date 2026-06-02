@@ -23,6 +23,12 @@ export const supabase = createClient<Database>(url, anonKey, {
   },
 })
 
+/** Returns the current user from the local session cache — no network request. */
+export async function getSessionUser() {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.user ?? null
+}
+
 /** Call at service / hook level when an API call returns a 403 or JWT error. */
 export function handleAuthError(error: { status?: number; message?: string } | null): boolean {
   if (!error) return false

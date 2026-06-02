@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 
 interface RequestStore {
   receivedCount: number
@@ -14,7 +14,7 @@ export const useRequestStore = create<RequestStore>((set) => ({
   sentCount:     0,
   setCounts: (received, sent) => set({ receivedCount: received, sentCount: sent }),
   loadCounts: async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getSessionUser()
     if (!user) return
     const [{ count: r }, { count: s }] = await Promise.all([
       supabase.from('messages')

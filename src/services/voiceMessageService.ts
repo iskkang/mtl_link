@@ -10,11 +10,9 @@ export async function sendVoiceTranslatedMessage({
   audioBlob:      Blob
   targetLanguage: string
 }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증되지 않았습니다')
-
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('세션이 없습니다')
+  const user = session.user
 
   // Edge Function 호출 — audio는 메모리 내에서만 처리, 저장 안 됨
   const formData = new FormData()

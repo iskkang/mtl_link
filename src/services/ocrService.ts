@@ -45,8 +45,7 @@ export async function sendOcrTranslation({
     target_language:   string
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  const user = session.user
 
   const { error } = await supabase.from('messages').insert({
     room_id:              roomId,

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -49,7 +49,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
       if (import.meta.env.DEV) console.log('[Push] Reusing existing subscription')
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getSessionUser()
     if (!user) {
       console.warn('[Push] No authenticated user')
       return null
@@ -88,7 +88,7 @@ export async function unsubscribeFromPushNotifications(): Promise<void> {
     await subscription.unsubscribe()
     if (import.meta.env.DEV) console.log('[Push] Unsubscribed from browser')
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getSessionUser()
     if (user) {
       await supabase
         .from('push_subscriptions')

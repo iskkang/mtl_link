@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionUser } from '../../lib/supabase'
 import type { TranslationTarget } from '../../types/chat'
 
 const LANGUAGES = [
@@ -35,7 +35,7 @@ export function TranslationLanguageModal({
     setSelected(code)
     setSaving(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) return
       await supabase
         .from('translation_preferences')

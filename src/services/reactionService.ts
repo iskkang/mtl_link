@@ -1,7 +1,7 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 
 export async function addReaction(messageId: string, roomId: string, emoji: string) {
-  const userId = (await supabase.auth.getUser()).data.user?.id
+  const userId = (await getSessionUser())?.id
   if (!userId) throw new Error('Not authenticated')
   const { error } = await supabase
     .from('message_reactions')
@@ -15,7 +15,7 @@ export async function removeReaction(messageId: string, emoji: string) {
     .delete()
     .eq('message_id', messageId)
     .eq('emoji', emoji)
-    .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+    .eq('user_id', (await getSessionUser())?.id ?? '')
   if (error) throw error
 }
 

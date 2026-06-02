@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 import { useRoomStore, sortByRecency } from '../stores/roomStore'
 import type { RoomListItem, Profile } from '../types/chat'
 
@@ -14,7 +14,7 @@ function roomMsgPreview(msg: { message_type: string; content: string | null }): 
 // fetchRooms + requestCounts를 단일 RPC(get_dashboard_data)로 처리.
 // 반환값의 requestCounts는 usePollingRefresh에서 requestStore에 주입.
 export async function fetchRooms(): Promise<{ rooms: RoomListItem[]; requestCounts: { received: number; sent: number } }> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return { rooms: [], requestCounts: { received: 0, sent: 0 } }
 
   const { data, error } = await (supabase as any).rpc('get_dashboard_data', { p_user_id: user.id })
@@ -100,7 +100,7 @@ export async function markAsRead(roomId: string): Promise<void> {
   if (error) {
     // RPC 미존재(PGRST202) 시 직접 UPDATE로 폴백
     if (error.code === 'PGRST202' || error.message?.includes('Could not find')) {
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSessionUser()
       if (!user) return
       const { error: updateError } = await supabase
         .from('room_members')
@@ -170,7 +170,7 @@ export interface PublicChannel {
 }
 
 export async function fetchPublicChannels(): Promise<PublicChannel[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data: channels, error } = await supabase
@@ -227,7 +227,7 @@ export async function createChannel(params: {
 
   if (roomErr) throw roomErr
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   const allMemberIds = [...new Set([user!.id, ...memberIds])]
 
   const { error: memberErr } = await supabase

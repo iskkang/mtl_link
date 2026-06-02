@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 
 export interface FriendProfile {
   id:                 string
@@ -15,7 +15,7 @@ export interface FriendProfile {
 }
 
 export async function fetchFriends(): Promise<FriendProfile[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase

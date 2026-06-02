@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, getSessionUser } from './supabase'
 
 /**
  * Forward a message to one or more rooms.
@@ -11,7 +11,7 @@ export async function forwardMessage(
 ): Promise<void> {
   if (targetRoomIds.length === 0) return
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) throw new Error('인증되지 않았습니다')
 
   // Fetch source message + sender name

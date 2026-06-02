@@ -5,7 +5,7 @@ import { markAsRead } from '../services/roomService'
 import { sendTextMessage } from '../services/messageService'
 import { useRealtimeMessages } from './useRealtimeMessages'
 import { useAuth } from './useAuth'
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 import { BOT_USER_ID } from '../constants/bot'
 import type { ReplyRef, MessageWithSender } from '../types/chat'
 
@@ -34,7 +34,7 @@ export function useMessages(roomId: string | null) {
       store.fetchMessages(roomId)
         .then(async () => {
           // 나에게만 삭제된 메시지 ID 로드
-          const { data: { user } } = await supabase.auth.getUser()
+          const user = await getSessionUser()
           if (user) {
             const msgs = useMessageStore.getState().messagesByRoom[roomId]
             const msgIds = (msgs ?? []).map(m => m.id).filter(Boolean)

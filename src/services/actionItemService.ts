@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 import type { Database } from '../types/database'
 
 export type ActionItem = Database['public']['Tables']['action_items']['Row'] & {
@@ -19,7 +19,7 @@ export async function createActionItem(params: {
   title:       string
   due_date?:   string | null
 }): Promise<ActionItem> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) throw new Error('Not authenticated')
 
   const { data, error } = await supabase
@@ -41,7 +41,7 @@ export async function createActionItem(params: {
 
 // 3개 쿼리를 단일 RPC 호출로 통합
 export async function getAllActionItems(): Promise<{ received: ActionItem[]; created: ActionItem[]; done: ActionItem[] }> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return { received: [], created: [], done: [] }
 
   const { data, error } = await (supabase as any).rpc('get_action_items_data', { p_user_id: user.id })
@@ -51,7 +51,7 @@ export async function getAllActionItems(): Promise<{ received: ActionItem[]; cre
 }
 
 export async function getMyActionItems(): Promise<ActionItem[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -66,7 +66,7 @@ export async function getMyActionItems(): Promise<ActionItem[]> {
 }
 
 export async function getCreatedActionItems(): Promise<ActionItem[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -81,7 +81,7 @@ export async function getCreatedActionItems(): Promise<ActionItem[]> {
 }
 
 export async function getDoneActionItems(): Promise<ActionItem[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase

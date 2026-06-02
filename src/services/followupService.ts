@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 
 export interface PendingFollowup {
   message_id: string
@@ -14,7 +14,7 @@ export interface PendingFollowup {
 }
 
 export async function getMyPendingFollowups(): Promise<PendingFollowup[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) throw new Error('Not authenticated')
 
   const { data, error } = await supabase

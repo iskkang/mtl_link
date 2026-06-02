@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 import { useMessageStore } from '../stores/messageStore'
 import { useRoomStore } from '../stores/roomStore'
 import { validateFiles } from '../lib/fileValidation'
@@ -22,7 +22,7 @@ export async function sendTextMessage(
   if (!trimmed) throw new Error('메시지가 비어있습니다')
   if (trimmed.length > 4000) throw new Error('메시지는 4,000자 이내로 입력하세요')
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) throw new Error('인증되지 않았습니다')
 
   const localId = crypto.randomUUID()
@@ -136,7 +136,7 @@ export async function softDeleteMessage(messageId: string): Promise<void> {
 }
 
 export async function hideMessageForMe(messageId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
@@ -158,7 +158,7 @@ export async function sendFileMessage(
   const validation = validateFiles(files)
   if (!validation.ok) throw new Error(validation.error)
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) throw new Error('인증되지 않았습니다')
 
   const hasNonImage = validation.results!.some(r => r.kind !== 'image')

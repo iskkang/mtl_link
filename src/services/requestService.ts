@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionUser } from '../lib/supabase'
 
 export interface RequestItem {
   message_id:      string
@@ -48,7 +48,7 @@ function toItem(m: Record<string, unknown>, now: number): RequestItem {
 
 /** 내가 답해야 할 다른 사람의 질문 */
 export async function getReceivedRequests(): Promise<RequestItem[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -78,7 +78,7 @@ export async function toggleRequestFlag(messageId: string, value: boolean): Prom
 
 /** 내가 보냈는데 아직 답변 못 받은 질문 */
 export async function getSentRequests(): Promise<RequestItem[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase
