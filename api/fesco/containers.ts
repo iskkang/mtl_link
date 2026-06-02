@@ -483,7 +483,7 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
     .eq('consecutive_errors', 0)
     .or(`cleanup_dismissed_until.is.null,cleanup_dismissed_until.lt.${nowIso}`)
 
-  const stale_candidates: { container_number: string; route: string | null; days_overdue: number; reason: 'no_events' | 'at_destination' }[] = []
+  const stale_candidates: { container_number: string; route: string | null; days_overdue: number; reason: 'no_events' | 'at_destination' | 'tracking_unavailable' }[] = []
   for (const r of (staleRaw ?? []) as any[]) {
     const order      = r.order_id != null ? orderMap.get(r.order_id) : null
     const routeLatin = order?.route_latin ?? null
@@ -499,6 +499,31 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
       route:            routeLatin,
       days_overdue:     Math.floor((Date.now() - new Date(r.planned_destination_date).getTime()) / 86_400_000),
       reason:           noEvents ? 'no_events' : 'at_destination',
+    })
+  }
+
+  // Unavailable containers (FESCO tracking API failing) are likely arrived or abandoned.
+  // Surface them for manual cleanup regardless of consecutive_errors count.
+  const staleCnSet = new Set(stale_candidates.map(c => c.container_number))
+  const { data: unavailRaw } = await supabase
+    .from('fesco_container_tracking_current')
+    .select('container_number, planned_destination_date, order_id, cleanup_dismissed_until')
+    .neq('status', 'completed')
+    .eq('unavailable', true)
+    .or(`cleanup_dismissed_until.is.null,cleanup_dismissed_until.lt.${nowIso}`)
+
+  for (const r of (unavailRaw ?? []) as any[]) {
+    if (staleCnSet.has(r.container_number)) continue
+    const order      = r.order_id != null ? orderMap.get(r.order_id) : null
+    const routeLatin = order?.route_latin ?? null
+    const daysOverdue = r.planned_destination_date
+      ? Math.max(0, Math.floor((Date.now() - new Date(r.planned_destination_date).getTime()) / 86_400_000))
+      : 0
+    stale_candidates.push({
+      container_number: r.container_number,
+      route:            routeLatin,
+      days_overdue:     daysOverdue,
+      reason:           'tracking_unavailable',
     })
   }
 

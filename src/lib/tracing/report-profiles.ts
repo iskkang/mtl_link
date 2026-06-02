@@ -105,10 +105,8 @@ export const PROFILES: ReportProfile[] = [
     greetingLabel: 'FESCO 컨테이너 트래이싱',
     to:            ['mtlrus@mtlb.co.kr'],
     displayCols: [
-      { src: 'owner_ship',               label: '화주' },
       { src: 'bills',                    label: 'B/L' },
       { src: 'container_number',         label: 'CNTR NO.' },
-      { src: 'current_segment_type',     label: 'MODE' },
       { src: 'planned_destination_date', label: 'ETA' },
     ],
   },

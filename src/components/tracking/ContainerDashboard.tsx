@@ -58,7 +58,7 @@ interface StaleCandidateItem {
   container_number: string
   route:            string | null
   days_overdue:     number
-  reason:           'no_events' | 'at_destination'
+  reason:           'no_events' | 'at_destination' | 'tracking_unavailable'
 }
 
 interface DashboardResponse {
