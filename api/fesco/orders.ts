@@ -57,11 +57,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (status) query = query.eq('status', status)
   if (region) query = query.eq('region', region)
   if (q) {
+    const qUp = q.trim().toUpperCase()
+    // containers is a text[] column — use array-contains operator for exact container number lookup.
+    // Other fields use ilike for partial match.
     query = query.or(
       `external_1c_number.ilike.%${q}%,` +
       `route_latin.ilike.%${q}%,` +
       `client_name.ilike.%${q}%,` +
-      `manager.ilike.%${q}%`,
+      `manager.ilike.%${q}%,` +
+      `containers.cs.{"${qUp}"}`,
     )
   }
 

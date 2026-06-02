@@ -104,7 +104,17 @@ function deriveStatus(item: FescoTrackingItem): string {
   const last = segs[segs.length - 1]
   // Completed only when the final segment has an actual arrival date.
   // FESCO can set completed:true on segments that are still inProgress — do NOT rely on it.
-  if (last?.destinationDate) return 'completed'
+  // Cross-check with the latest event's remainingDistance: if > 0, FESCO prematurely
+  // closed the segment (e.g. train breakdown recorded as arrival). Keep as in_progress.
+  if (last?.destinationDate) {
+    const events = item.events?.data ?? []
+    const lastEvent = events.length > 0 ? events[0] : null
+    const remaining = lastEvent?.remainingDistance != null
+      ? parseFloat(String(lastEvent.remainingDistance))
+      : null
+    if (remaining !== null && !isNaN(remaining) && remaining > 0) return 'in_progress'
+    return 'completed'
+  }
   // Active flags override segment.completed.
   if (segs.some(s => s.currentSegment === true || s.inProgress === true)) return 'in_progress'
   if (segs.some(s => s.plan === true)) return 'planned'
@@ -428,12 +438,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
 
-    // ── 1. Query ACTIVE orders with containers ──────────────────────────────
-    console.log('[ctr-sync] step 1: querying active orders')
+    // ── 1. Query ACTIVE + recently COMPLETED orders with containers ─────────
+    // COMPLETED orders within 30 days are included so that FESCO data corrections
+    // (e.g. premature destinationDate removed after train breakdown) are still picked up.
+    console.log('[ctr-sync] step 1: querying active + recent completed orders')
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
     const { data: rawOrders, error: ordersError } = await supabase
       .from('fesco_orders')
       .select('id, external_1c_number, containers')
-      .eq('status', 'ACTIVE')
+      .or(`status.eq.ACTIVE,and(status.eq.COMPLETED,last_synced_at.gte.${thirtyDaysAgo})`)
 
     if (ordersError) {
       return res.status(500).json({ ok: false, error: 'Query failed: ' + ordersError.message })
@@ -443,7 +456,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       o => Array.isArray(o.containers) && (o.containers?.length ?? 0) > 0,
     )
     ordersScanned = orders.length
-    console.log(`[ctr-sync] step 1 OK: ${ordersScanned} active orders with containers`)
+    console.log(`[ctr-sync] step 1 OK: ${ordersScanned} active/recent-completed orders with containers`)
 
     // ── 2. Extract, deduplicate, validate ───────────────────────────────────
     const containerToOrder = new Map<string, { orderId: number; extNum: string | null }>()
