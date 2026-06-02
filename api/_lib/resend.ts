@@ -262,6 +262,169 @@ export async function sendDelayDigestEmail(alerts: DigestAlert[]): Promise<void>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── TCR Digest email ─────────────────────────────────────────────────────────
+
+export interface TcrDigestAlert {
+  containerNo:     string
+  route:           string
+  currentLocation: string
+  severity:        'Critical' | 'Watch'
+  delayReason:     string
+}
+
+export async function sendTcrDelayDigestEmail(alerts: TcrDigestAlert[]): Promise<void> {
+  if (!RESEND_API_KEY || alerts.length === 0) return
+
+  const critical = alerts.filter(a => a.severity === 'Critical')
+  const watch    = alerts.filter(a => a.severity === 'Watch')
+  const total    = alerts.length
+  const now      = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })
+
+  const subject = `[MTL Link] Delay Note for TCR — ${total}건 신규 알림`
+
+  const rowCritical = critical.map(a => `
+    <tr>
+      <td style="padding:10px 14px;font-family:'Courier New',monospace;font-size:13px;font-weight:600;color:#1e293b;border-bottom:1px solid #fee2e2;white-space:nowrap">${a.containerNo}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#64748b;border-bottom:1px solid #fee2e2">${a.route || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#475569;border-bottom:1px solid #fee2e2">${a.currentLocation || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#dc2626;font-weight:500;border-bottom:1px solid #fee2e2">${a.delayReason}</td>
+    </tr>`).join('')
+
+  const rowWatch = watch.map(a => `
+    <tr>
+      <td style="padding:10px 14px;font-family:'Courier New',monospace;font-size:13px;font-weight:600;color:#1e293b;border-bottom:1px solid #fef3c7;white-space:nowrap">${a.containerNo}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#64748b;border-bottom:1px solid #fef3c7">${a.route || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#475569;border-bottom:1px solid #fef3c7">${a.currentLocation || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#d97706;font-weight:500;border-bottom:1px solid #fef3c7">${a.delayReason}</td>
+    </tr>`).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+
+<div style="max-width:640px;margin:32px auto 24px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 60%,#3b82f6 100%);padding:28px 32px 24px">
+    <table style="width:100%;border-collapse:collapse">
+      <tr>
+        <td>
+          <p style="margin:0 0 2px;font-size:11px;font-weight:600;letter-spacing:0.08em;color:#bfdbfe;text-transform:uppercase">MTL Link · TCR 운송 알림</p>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em">Delay Note</h1>
+        </td>
+        <td style="text-align:right;vertical-align:top">
+          <span style="display:inline-block;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:4px 12px;font-size:11px;color:#dbeafe;white-space:nowrap">${now}</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Summary bar -->
+  <div style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:16px 32px">
+    <table style="width:100%;border-collapse:collapse">
+      <tr>
+        <td style="width:33%;text-align:center;border-right:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;color:#94a3b8;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">신규 알림</p>
+          <p style="margin:4px 0 0;font-size:26px;font-weight:700;color:#1e293b">${total}</p>
+        </td>
+        <td style="width:33%;text-align:center;border-right:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;color:#dc2626;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">긴급 (5일+)</p>
+          <p style="margin:4px 0 0;font-size:26px;font-weight:700;color:#dc2626">${critical.length}</p>
+        </td>
+        <td style="width:33%;text-align:center">
+          <p style="margin:0;font-size:11px;color:#d97706;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">주의 (3일+)</p>
+          <p style="margin:4px 0 0;font-size:26px;font-weight:700;color:#d97706">${watch.length}</p>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:24px 32px">
+
+    ${critical.length > 0 ? `
+    <div style="margin-bottom:24px">
+      <div style="margin-bottom:12px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;vertical-align:middle;margin-right:6px"></span>
+        <span style="font-size:13px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em">긴급 조치 필요 (${critical.length}건)</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #fee2e2;border-radius:8px;overflow:hidden">
+        <thead>
+          <tr style="background:#fef2f2">
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#991b1b;letter-spacing:0.05em;text-transform:uppercase">컨테이너</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#991b1b;letter-spacing:0.05em;text-transform:uppercase">노선</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#991b1b;letter-spacing:0.05em;text-transform:uppercase">현재 위치</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#991b1b;letter-spacing:0.05em;text-transform:uppercase">지연 사유</th>
+          </tr>
+        </thead>
+        <tbody>${rowCritical}</tbody>
+      </table>
+    </div>` : ''}
+
+    ${watch.length > 0 ? `
+    <div style="margin-bottom:24px">
+      <div style="margin-bottom:12px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d97706;vertical-align:middle;margin-right:6px"></span>
+        <span style="font-size:13px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em">주의 (${watch.length}건)</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #fde68a;border-radius:8px;overflow:hidden">
+        <thead>
+          <tr style="background:#fffbeb">
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#92400e;letter-spacing:0.05em;text-transform:uppercase">컨테이너</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#92400e;letter-spacing:0.05em;text-transform:uppercase">노선</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#92400e;letter-spacing:0.05em;text-transform:uppercase">현재 위치</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:#92400e;letter-spacing:0.05em;text-transform:uppercase">지연 사유</th>
+          </tr>
+        </thead>
+        <tbody>${rowWatch}</tbody>
+      </table>
+    </div>` : ''}
+
+    <!-- CTA -->
+    <div style="text-align:center;padding:8px 0 4px">
+      <a href="https://link.mtlship.com"
+         style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.01em">
+        MTL Link에서 상세 확인 →
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:14px 32px;border-top:1px solid #f1f5f9;background:#f8fafc">
+    <table style="width:100%;border-collapse:collapse">
+      <tr>
+        <td style="font-size:11px;color:#94a3b8">MTL Link 자동 알림 · 매일 오전 갱신</td>
+        <td style="text-align:right;font-size:11px;color:#94a3b8">수신 거부는 관리자에게 문의</td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+</body></html>`
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        from:    FROM_EMAIL,
+        to:      [ALERT_TO],
+        subject,
+        html,
+      }),
+    })
+  } catch (err) {
+    console.error('[resend] tcr digest email failed:', err)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type ContainerRow = {
   container_number:    string
   current_from:        string | null
