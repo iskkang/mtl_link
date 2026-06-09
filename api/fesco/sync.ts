@@ -181,11 +181,15 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
       throw e
     }
 
-    // 2. Paginate all orders — sequential, no parallelism, 1 s delay between pages
-    console.log('[sync] step 2: fetching orders')
+    // 2. Paginate orders — sequential, no parallelism, 1 s delay between pages.
+    // startOffset/limit query params enable batch splitting across multiple calls
+    // to stay under Cloudflare's 100s proxy timeout (same pattern as container-tracking-sync).
+    const batchStartOffset = Math.max(0, parseInt((req.query.startOffset as string) ?? '0') || 0)
+    const batchLimit = req.query.limit ? Math.max(1, parseInt(req.query.limit as string)) : null
+    console.log('[sync] step 2: fetching orders', { batchStartOffset, batchLimit })
     const allOrders: FescoOrder[] = []
     const pageSize = 10
-    let offset = 0
+    let offset = batchStartOffset
 
     while (true) {
       const url = `https://my.fesco.com/api/v1/orders?offset=${offset}&rows=${pageSize}`
@@ -211,7 +215,10 @@ async function syncHandler(req: VercelRequest, res: VercelResponse) {
         const batch = json.data.data
         allOrders.push(...batch)
         console.log(`[sync] fetched ${batch.length} orders at offset=${offset}, total so far=${allOrders.length}/${total}`)
-        if (allOrders.length >= total || batch.length === 0) break
+        const fetchedUpTo = offset + batch.length
+        const reachedEnd = batch.length === 0 || fetchedUpTo >= total
+        const reachedBatchLimit = batchLimit !== null && allOrders.length >= batchLimit
+        if (reachedEnd || reachedBatchLimit) break
         offset += pageSize
         // Conservative delay between pages — do not flood the FESCO server.
         await new Promise(resolve => setTimeout(resolve, 1000))

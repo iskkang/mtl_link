@@ -11,16 +11,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Call /api/fesco/sync
+      # Split into two batches to stay under Cloudflare's 100s proxy timeout.
+      # 421 orders / 10 per page = 43 pages; batch 1 covers pages 0–20 (~45s), batch 2 covers pages 21–42 (~45s).
+      - name: Orders sync batch 1 (startOffset=0, limit=210)
         run: |
           response=$(curl -sS -X POST -o /tmp/body.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/fesco/sync")
+            "${{ secrets.APP_URL }}/api/fesco/sync?startOffset=0&limit=210")
           echo "HTTP status: $response"
           echo "Response body:"
           cat /tmp/body.json
           if [ "$response" != "200" ]; then
-            echo "Orders sync failed"
+            echo "Orders sync batch 1 failed"
+            exit 1
+          fi
+      - name: Orders sync batch 2 (startOffset=210)
+        run: |
+          response=$(curl -sS -X POST -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/fesco/sync?startOffset=210")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "Orders sync batch 2 failed"
             exit 1
           fi
 
