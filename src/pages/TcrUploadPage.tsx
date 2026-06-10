@@ -164,6 +164,13 @@ function parseTT(v: unknown): number | null {
   return !isNaN(n) && n > 0 ? n : null
 }
 
+// Returns true when cur_raw indicates the container has been delivered/unloaded
+// even if no formal ATA date is recorded (e.g. "Unloaded", "Arived" in status column).
+function isTerminalStatus(raw: string): boolean {
+  const s = raw.trim().toLowerCase()
+  return s === 'unloaded' || s === 'arived' || s === 'arrived'
+}
+
 function readSheetRows(wb: XLSX.WorkBook, hint?: string): unknown[][] {
   let name: string | undefined
   if (hint) {
@@ -245,6 +252,10 @@ function parseKrUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
     const cur_raw     = str(r[28])
     const cur_loc     = normalizeLoc(cur_raw) ?? (ata_final ? destination : null)
 
+    // 컨테이너 번호만 있고 나머지가 모두 비어있으면 진행 전 예정 건 → 스킵
+    const hasData = !!(origin || destination || xlDate(r[18]) || xlDate(r[19]) || xlDate(r[20]) || xlDate(r[21]) || xlDate(r[22]) || xlDate(r[23]) || xlDate(r[24]) || ata_final || cur_raw)
+    if (!hasData) continue
+
     containers.push({
       container_no:      cno,
       origin,
@@ -254,7 +265,7 @@ function parseKrUz(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
       current_location_raw: cur_raw || null,
       eta_final:         xlDate(r[24]),
       ata_final,
-      arrived_yn:        !!ata_final,
+      arrived_yn:        !!ata_final || isTerminalStatus(cur_raw),
       transit_time_days: parseTT(r[26]),
     })
 
@@ -302,6 +313,8 @@ function parseCnUzTcr(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
   const ataIs = headers.reduce<number[]>((a, h, i) => { if (h.toLowerCase().includes('ata')) a.push(i); return a }, [])
 
   const iCno    = col('cntr')
+  const iOrigin = col('pol')
+  const iPodFd  = col('pod')
   const iAtdPol = col('atd pol') !== -1 ? col('atd pol') : (atdIs[0] ?? -1)
   const iAtaTs  = col('ata t/s') !== -1 ? col('ata t/s') : (ataIs[0] ?? -1)
   const iAtdTs  = col('atd/ts')  !== -1 ? col('atd/ts')  : col('atd t/s') !== -1 ? col('atd t/s') : (atdIs[1] ?? -1)
@@ -322,14 +335,14 @@ function parseCnUzTcr(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments
 
     containers.push({
       container_no:         cno,
-      origin:               null,
-      destination:          null,
+      origin:               iOrigin !== -1 ? normalizeLoc(r[iOrigin]) : null,
+      destination:          iPodFd  !== -1 ? normalizeLoc(r[iPodFd])  : null,
       transport_mode:       'Rail',
       current_location:     cur_loc,
       current_location_raw: cur_raw || null,
       eta_final:            iEtaFd !== -1 ? xlDate(r[iEtaFd]) : null,
       ata_final,
-      arrived_yn:           !!ata_final,
+      arrived_yn:           !!ata_final || isTerminalStatus(cur_raw),
       transit_time_days:    iTT !== -1 ? parseTT(r[iTT]) : null,
     })
 
@@ -593,7 +606,7 @@ function parseKrKgBishkekSheet(
       current_location_raw: cur_raw || null,
       eta_final:            null,
       ata_final:            ata_dest,
-      arrived_yn:           !!ata_dest,
+      arrived_yn:           !!ata_dest || isTerminalStatus(cur_raw),
       transit_time_days:    null,
     })
 
@@ -679,7 +692,7 @@ function parseKrKgAlmatySheet(
       current_location_raw: cur_raw || null,
       eta_final:            null,
       ata_final,
-      arrived_yn:           !!ata_final,
+      arrived_yn:           !!ata_final || isTerminalStatus(cur_raw),
       transit_time_days:    null,
     })
 
@@ -789,7 +802,7 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
       current_location_raw: cur_raw || null,
       eta_final:         iEtaMala !== -1 ? xlDate(r[iEtaMala]) : null,
       ata_final,
-      arrived_yn:        !!ata_final,
+      arrived_yn:        !!ata_final || isTerminalStatus(cur_raw),
       transit_time_days: null,
     })
 
