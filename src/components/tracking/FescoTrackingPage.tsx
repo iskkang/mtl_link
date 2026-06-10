@@ -69,6 +69,7 @@ interface ContainerTrackingRow {
   last_error_at:            string | null
   last_error_message:       string | null
   consecutive_errors:       number | null
+  last_event_location:      string | null
 }
 
 interface OrderAlertSummary {
@@ -616,6 +617,11 @@ function MobileFescoView({
                                 {STATUS_LABELS[tr.status ?? ''] ?? (tr.status ?? '—')}
                                 {route ? ` · ${route}` : ''}
                               </div>
+                              {tr.last_event_location && (
+                                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 2 }}>
+                                  📍 {tr.last_event_location}
+                                </div>
+                              )}
                               {tr.alert_reason && (
                                 <div style={{ fontSize: 11, color: ai.color, marginTop: 2 }}>{tr.alert_reason}</div>
                               )}
@@ -1341,6 +1347,12 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
                                 {segType ? ` · ${segType}` : ''}
                                 {route   ? ` · ${route}`   : ''}
                               </div>
+
+                              {tr.last_event_location && (
+                                <div className="text-xs" style={{ color: 'var(--ink-2)', marginBottom: 3 }}>
+                                  📍 {tr.last_event_location}
+                                </div>
+                              )}
 
                               {(tr.departure_date || tr.planned_departure_date || tr.destination_date || tr.planned_destination_date) && (
                                 <div className="text-xs" style={{ color: 'var(--ink-4)', marginBottom: 3 }}>

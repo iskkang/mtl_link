@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'current_segment_type, current_from, current_to, ' +
         'departure_date, planned_departure_date, destination_date, planned_destination_date, ' +
         'transport_name, voyage_number, last_checked_at, ' +
-        'last_success_at, last_error_at, last_error_message, consecutive_errors',
+        'last_success_at, last_error_at, last_error_message, consecutive_errors, events_json',
       )
       .eq('order_id', orderId)
       .order('container_number'),
@@ -76,9 +76,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (trackingResult.error) return res.status(500).json({ ok: false, error: trackingResult.error.message })
   if (alertsResult.error)   return res.status(500).json({ ok: false, error: alertsResult.error.message })
 
+  // Derive last_event_location from events_json[0].locationLatin (newest event is first)
+  const tracking = (trackingResult.data ?? []).map((row: any) => {
+    const ev = Array.isArray(row.events_json) && row.events_json.length > 0 ? row.events_json[0] : null
+    const last_event_location: string | null = typeof ev?.locationLatin === 'string' ? ev.locationLatin : null
+    const { events_json: _drop, ...rest } = row
+    return { ...rest, last_event_location }
+  })
+
   return res.json({
     ok:       true,
-    tracking: trackingResult.data ?? [],
-    alerts:   alertsResult.data   ?? [],
+    tracking,
+    alerts:   alertsResult.data ?? [],
   })
 }
