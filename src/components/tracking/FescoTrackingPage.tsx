@@ -138,8 +138,16 @@ const STALE_WATCH_HOURS = 24
 const STALE_RISK_HOURS  = 48
 
 const STALE_DISPLAY = {
-  watch: { label: 'Stale', color: '#d97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.25)'  },
-  risk:  { label: 'Stale', color: '#dc2626', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.25)'  },
+  watch: { label: '미업데이트', color: '#d97706', bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.25)'  },
+  risk:  { label: '미업데이트', color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.25)' },
+}
+
+function staleLabel(info: { label: string }, lastSuccessAt: string | null): string {
+  if (!lastSuccessAt) return info.label
+  const d = new Date(lastSuccessAt)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${info.label} · ${mm}/${dd}`
 }
 
 function getStaleState(row: ContainerTrackingRow): 'fresh' | 'watch' | 'risk' {
@@ -598,7 +606,7 @@ function MobileFescoView({
                                   {staleInfo && (
                                     <button onClick={() => setExpandedStaleCtr(isExpanded ? null : tr.container_number)}
                                       style={{ fontSize: 10, fontWeight: 600, color: staleInfo.color, background: staleInfo.bg, border: `1px solid ${staleInfo.border}`, borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>
-                                      {staleInfo.label}
+                                      {staleLabel(staleInfo, tr.last_success_at)}
                                     </button>
                                   )}
                                   <span style={{ fontSize: 11, fontWeight: 600, color: ai.color }}>{ai.label}</span>
@@ -1319,7 +1327,7 @@ export function FescoTrackingPage({ onBack }: { onBack?: () => void } = {}) {
                                       className="text-xs font-medium px-1.5 py-0.5 rounded"
                                       style={{ background: staleInfo.bg, color: staleInfo.color, border: `1px solid ${staleInfo.border}`, cursor: 'pointer' }}
                                     >
-                                      {staleInfo.label}
+                                      {staleLabel(staleInfo, tr.last_success_at)}
                                     </button>
                                   )}
                                   <span className="text-xs font-semibold" style={{ color: alertInfo.color }}>
