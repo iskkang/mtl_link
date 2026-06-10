@@ -479,9 +479,11 @@ async function handleList(req: VercelRequest, res: VercelResponse, supabase: Ret
       ? (r.destination      ? locMap.get(r.destination)      : undefined) ??
         (r.current_location ? locMap.get(r.current_location) : undefined) ??
         null
-      // In-transit: current location → segment next-stop fallback
+      // In-transit: current location geo, with segment next-stop fallback only when
+      // current_location is set (but not yet geocoded). Containers with null current_location
+      // get no coordinates and are excluded from the map.
       : (r.current_location ? locMap.get(r.current_location) : undefined) ??
-        (segToName          ? locMap.get(segToName)          : undefined) ??
+        (r.current_location && segToName ? locMap.get(segToName) : undefined) ??
         null
 
     const alerts = alertMap.get(r.container_no) ?? []
