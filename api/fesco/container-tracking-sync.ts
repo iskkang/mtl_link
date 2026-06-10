@@ -236,8 +236,8 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
       const t = new Date(s.planingDestinationDate).getTime()
       if (!isNaN(t)) {
         const overdueDays = Math.floor((now - t) / 86_400_000)
-        if (overdueDays > 3) return { alert_level: 'red',    alert_type: 'planned_arrival_overdue', message: 'Planned arrival date passed by more than 3 days.' }
-        if (overdueDays > 1) return { alert_level: 'yellow', alert_type: 'planned_arrival_watch',   message: 'Planned arrival date has passed.'                }
+        if (overdueDays > 3) return { alert_level: 'red',    alert_type: 'planned_arrival_overdue', message: `Planned arrival date passed by ${overdueDays} days (expected: ${s.planingDestinationDate}).` }
+        if (overdueDays > 1) return { alert_level: 'yellow', alert_type: 'planned_arrival_watch',   message: `Planned arrival date has passed (expected: ${s.planingDestinationDate}).`                }
       }
     }
   }
@@ -249,8 +249,8 @@ function deriveAlert(item: FescoTrackingItem, status: string): AlertResult {
       const t = new Date(s.planingDepartureDate).getTime()
       if (!isNaN(t)) {
         const overdueDays = Math.floor((now - t) / 86_400_000)
-        if (overdueDays > 3) return { alert_level: 'red',    alert_type: 'planned_departure_overdue', message: 'Planned departure date passed by more than 3 days.' }
-        if (overdueDays > 1) return { alert_level: 'yellow', alert_type: 'planned_departure_watch',   message: 'Planned departure date has passed.'                }
+        if (overdueDays > 3) return { alert_level: 'red',    alert_type: 'planned_departure_overdue', message: `Planned departure date passed by ${overdueDays} days (expected: ${s.planingDepartureDate}).` }
+        if (overdueDays > 1) return { alert_level: 'yellow', alert_type: 'planned_departure_watch',   message: `Planned departure date has passed (expected: ${s.planingDepartureDate}).`                }
       }
     }
   }

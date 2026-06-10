@@ -119,6 +119,31 @@ function SegmentIcon({ type, seaLabel, railLabel }: {
   return null
 }
 
+/* ── Parse overdue info from alert_reason or planned_destination_date ── */
+function parseOverdue(alertType: string, alertReason: string | null, plannedDestDate: string | null): { days: number; refDate: string } | null {
+  // Try to extract from alert_reason: "... (expected: 2026-05-15)."
+  const match = alertReason?.match(/\(expected:\s*(\d{4}-\d{2}-\d{2})\)/)
+  if (match) {
+    const d = new Date(match[1])
+    const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    if (days > 0) return { days, refDate: `${mm}/${dd}` }
+  }
+  // Fallback: use planned_destination_date for arrival alerts
+  if (
+    (alertType === 'planned_arrival_overdue' || alertType === 'planned_arrival_watch') &&
+    plannedDestDate
+  ) {
+    const d = new Date(plannedDestDate)
+    const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    if (days > 0) return { days, refDate: `${mm}/${dd}` }
+  }
+  return null
+}
+
 /* ── Segment context row (second line) ───────────────────────────────── */
 function SegmentLine({ c, seaLabel, railLabel }: {
   c:         ContainerItem
@@ -126,8 +151,12 @@ function SegmentLine({ c, seaLabel, railLabel }: {
   railLabel: string
 }) {
   const hasSegment = c.current_segment_type != null
-  const alertLabel = ALERT_KO[c.open_alert_types?.[0] ?? ''] ?? c.alert_reason
+  const alertType  = c.open_alert_types?.[0] ?? ''
+  const alertLabel = ALERT_KO[alertType] ?? c.alert_reason
   const hasReason  = !!alertLabel
+
+  const overdueInfo = alertType ? parseOverdue(alertType, c.alert_reason, c.planned_destination_date) : null
+
   return (
     <div
       className="text-[10px] flex items-center gap-1 overflow-hidden"
@@ -147,6 +176,14 @@ function SegmentLine({ c, seaLabel, railLabel }: {
           <span className="flex-shrink-0" style={{ color: 'var(--ink-300)' }}>·</span>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 2 }}>
             {alertLabel}
+            {overdueInfo && (
+              <>
+                {' · '}
+                <span style={{ color: alertType.includes('overdue') ? 'var(--red)' : '#d97706', fontWeight: 600 }}>+{overdueInfo.days}일</span>
+                {' '}
+                <span style={{ color: 'var(--ink-400)' }}>(예정: {overdueInfo.refDate})</span>
+              </>
+            )}
           </span>
         </>
       )}
