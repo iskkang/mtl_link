@@ -394,41 +394,45 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
     }
   }
 
-  // Step 2: fetch tracking ETA/ATA
+  // Step 2: fetch tracking with segments_json for final-destination ETA/ATA.
+  // planned_destination_date reflects only the CURRENT segment's planned date (often null).
+  // segments_json contains all legs; the last leg with planning dates = final destination.
+  type SegJson = { planingDestinationDate?: string | null; destinationDate?: string | null }
   type FRow = {
-    container_number:         string
-    planned_destination_date: string | null
-    destination_date:         string | null
+    container_number: string
+    segments_json:    SegJson[] | null
   }
   const { data: rows, error } = await supabase
     .from('fesco_container_tracking_current')
-    .select('container_number, planned_destination_date, destination_date')
+    .select('container_number, segments_json')
   if (error) return res.status(500).json({ ok: false, error: error.message })
 
-  // Debug counts (included in response for diagnostics)
-  const trackingTotal   = (rows ?? []).length
-  let withEta           = 0
-  let matchedLane       = 0
+  const trackingTotal = (rows ?? []).length
+  let withEta         = 0
+  let matchedLane     = 0
 
-  // Step 3: compute per-lane delay buckets
   type Bucket = { actual_h: number[]; projected_h: number[]; on_time: number }
   const buckets = new Map<string, Bucket>()
 
   for (const r of (rows ?? []) as FRow[]) {
-    const eta = r.planned_destination_date
+    const segs = r.segments_json ?? []
+    // Walk segments from the end to find the last one with a planning date (= final ETA)
+    const lastWithPlan = [...segs].reverse().find(s => s.planingDestinationDate)
+    const eta = lastWithPlan?.planingDestinationDate ?? null
     if (!eta || eta < cutoffStr) continue
     withEta++
 
-    // Try order-based lane first, fall back to nothing (current_to is too unreliable)
     const laneId = containerLaneMap.get(r.container_number)
     if (!laneId) continue
     matchedLane++
 
+    const ata = lastWithPlan?.destinationDate ?? null  // actual arrival, null if still in transit
+
     const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
 
-    if (r.destination_date) {
-      const dh = (new Date(r.destination_date).getTime() - new Date(eta).getTime()) / 3_600_000
+    if (ata) {
+      const dh = (new Date(ata).getTime() - new Date(eta).getTime()) / 3_600_000
       bucket.actual_h.push(dh)
       if (dh <= 0) bucket.on_time++
     } else if (eta < today) {
