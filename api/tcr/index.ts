@@ -343,6 +343,99 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
   })
 }
 
+// ── FESCO corridor stats (for logisight integration) ─────────────────────────
+// Reads fesco_container_tracking_current, mirrors the TCR corridor-stats shape.
+// All FESCO containers are Korea-origin (MTL account), so prefix is always KR.
+
+function deriveFescoLaneId(currentTo: string | null): string | null {
+  if (!currentTo) return null
+  const dst = currentTo.toLowerCase().trim()
+  if (dst.includes('chukur') || dst.includes('chucur'))              return 'KR-CHUKURSAY'
+  if (dst.includes('almaty'))                                         return 'KR-ALMATY'
+  if (dst.includes('bishkek') || dst.includes('biskek'))             return 'KR-BISHKEK'
+  if (dst.includes('andijan') || dst.includes('andijon'))            return 'KR-ANDIJAN'
+  if (dst.includes('osh') && !dst.includes('khorgos'))               return 'KR-OSH'
+  if (dst.includes('malaszewicze') || dst.includes('małaszewicze'))  return 'KR-MALASZEWICZE'
+  return null
+}
+
+async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  res.setHeader('Access-Control-Allow-Origin', CORRIDOR_ALLOWED_ORIGIN)
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+
+  const apiKey = process.env.LOGISIGHT_API_KEY
+  if (apiKey) {
+    const auth = String(req.headers['authorization'] ?? '').replace(/^Bearer\s+/i, '')
+    if (auth !== apiKey) return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const today     = new Date().toISOString().split('T')[0]
+  const cutoff    = new Date(); cutoff.setMonth(cutoff.getMonth() - 6)
+  const cutoffStr = cutoff.toISOString().split('T')[0]
+
+  type FRow = {
+    current_to:               string | null
+    planned_destination_date: string | null
+    destination_date:         string | null
+    status:                   string | null
+  }
+
+  const { data: rows, error } = await supabase
+    .from('fesco_container_tracking_current')
+    .select('current_to, planned_destination_date, destination_date, status')
+
+  if (error) return res.status(500).json({ ok: false, error: error.message })
+
+  type Bucket = { actual_h: number[]; projected_h: number[]; on_time: number }
+  const buckets = new Map<string, Bucket>()
+  const currentMonth = toMonthYm(today)
+
+  for (const r of (rows ?? []) as FRow[]) {
+    const eta = r.planned_destination_date
+    if (!eta || eta < cutoffStr) continue
+    const laneId = deriveFescoLaneId(r.current_to)
+    if (!laneId) continue
+
+    const key    = `${laneId}|${currentMonth}`
+    const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
+
+    if (r.destination_date) {
+      const dh = (new Date(r.destination_date).getTime() - new Date(eta).getTime()) / 3_600_000
+      bucket.actual_h.push(dh)
+      if (dh <= 0) bucket.on_time++
+    } else if (eta < today) {
+      const dh = (new Date(today).getTime() - new Date(eta).getTime()) / 3_600_000
+      bucket.projected_h.push(dh)
+    }
+    buckets.set(key, bucket)
+  }
+
+  const weekly_stats = Array.from(buckets.entries()).map(([key, b]) => {
+    const [laneId, monthYm] = key.split('|') as [string, string]
+    const all_h             = [...b.actual_h, ...b.projected_h].sort((a, c) => a - c)
+    const sample_count      = all_h.length
+    const has_projected     = b.projected_h.length > 0
+    const on_time_rate      = sample_count > 0
+      ? Math.round((b.on_time / sample_count) * 1000) / 1000
+      : null
+    const base_dq           = dqLevel(sample_count)
+    const data_quality      = has_projected && base_dq === 'confirmed' ? 'provisional' : base_dq
+    return {
+      lane_id:        laneId,
+      week_iso:       monthYm,
+      milestone:      'DEST_ARR',
+      sample_count,
+      median_delay_h: all_h.length ? Math.round(pct(all_h, 50) * 10) / 10 : null,
+      p90_delay_h:    all_h.length ? Math.round(pct(all_h, 90) * 10) / 10 : null,
+      on_time_rate,
+      data_quality,
+    }
+  }).sort((a, b) => a.lane_id.localeCompare(b.lane_id))
+
+  return res.json({ ok: true, computed_at: new Date().toISOString(), weekly_stats })
+}
+
 // ── Weather forecast cache (module-level, 1-hour TTL) ─────────────────────────
 let weatherCache: { data: object; ts: number } | null = null
 const WEATHER_CACHE_TTL = 60 * 60 * 1000
@@ -1148,8 +1241,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const action = String(req.query.action ?? 'list')
 
-  // CORS preflight for public corridor-stats endpoint
-  if (req.method === 'OPTIONS' && action === 'corridor-stats') {
+  // CORS preflight for public corridor-stats endpoints
+  if (req.method === 'OPTIONS' && (action === 'corridor-stats' || action === 'fesco-corridor-stats')) {
     res.setHeader('Access-Control-Allow-Origin', CORRIDOR_ALLOWED_ORIGIN)
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
@@ -1159,7 +1252,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST' && action === 'upsert') return handleUpsert(req, res, supabase)
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
 
-  if (action === 'corridor-stats') return handleCorridorStats(req, res, supabase)
+  if (action === 'corridor-stats')       return handleCorridorStats(req, res, supabase)
+  if (action === 'fesco-corridor-stats') return handleFescoCorridorStats(req, res, supabase)
   if (action === 'upload_log')    return handleUploadLog(req, res, supabase)
   if (action === 'delay-notify')  return handleDelayNotify(req, res, supabase)
   if (action === 'tracing-send')  return handleTracingSend(req, res, supabase)
