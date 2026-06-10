@@ -497,10 +497,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Skip containers already marked completed in tracking whose order is also completed —
+    // no need to re-fetch FESCO data for them, they won't change status.
+    const completedOrderCandidates = [...containerToOrder.entries()]
+      .filter(([, v]) => v.orderCompleted).map(([k]) => k)
+    if (completedOrderCandidates.length > 0) {
+      const { data: alreadyDone } = await supabase
+        .from('fesco_container_tracking_current')
+        .select('container_number')
+        .in('container_number', completedOrderCandidates)
+        .eq('status', 'completed')
+        .neq('manually_excluded', true)
+      for (const row of alreadyDone ?? []) containerToOrder.delete(row.container_number as string)
+    }
+
     const allValid = [...containerToOrder.keys()].sort()
     const toLookup = allValid.slice(offset, offset + limit)
     console.log(
-      `[ctr-sync] step 2 OK: ${validContainers} valid (${containerToOrder.size} unique), ` +
+      `[ctr-sync] step 2 OK: ${validContainers} valid (${containerToOrder.size} unique after skipping already-completed), ` +
       `${invalidContainers} invalid, fetching ${toLookup.length} (offset=${offset}, limit=${limit})`,
     )
 
