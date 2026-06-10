@@ -1,0 +1,25 @@
+name: FESCO Tracking Report
+
+on:
+  schedule:
+    - cron: '0 10 * * *'   # 매일 19:00 KST (UTC 10:00)
+  workflow_dispatch:         # GitHub Actions UI에서 수동 실행
+
+jobs:
+  send-report:
+    name: Send daily FESCO tracking report
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/fesco/tracking-report
+        run: |
+          response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/fesco/tracking-report")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "FESCO tracking report failed"
+            exit 1
+          fi
