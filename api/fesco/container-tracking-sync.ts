@@ -27,6 +27,7 @@ interface ActiveOrder {
   id:                 number
   external_1c_number: string | null
   containers:         string[] | null
+  status:             string | null
 }
 
 interface FescoTrackingTransport {
@@ -83,9 +84,10 @@ interface FescoTrackingResponse {
 }
 
 interface FetchedContainer {
-  ctrNum:  string
-  orderId: number
-  extNum:  string | null
+  ctrNum:         string
+  orderId:        number
+  extNum:         string | null
+  orderCompleted: boolean
   item:    FescoTrackingItem
 }
 
@@ -463,7 +465,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
     const { data: rawOrders, error: ordersError } = await supabase
       .from('fesco_orders')
-      .select('id, external_1c_number, containers')
+      .select('id, external_1c_number, containers, status')
       .or(`status.eq.ACTIVE,and(status.eq.COMPLETED,last_synced_at.gte.${thirtyDaysAgo})`)
 
     if (ordersError) {
@@ -477,8 +479,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`[ctr-sync] step 1 OK: ${ordersScanned} active/recent-completed orders with containers`)
 
     // ── 2. Extract, deduplicate, validate ───────────────────────────────────
-    const containerToOrder = new Map<string, { orderId: number; extNum: string | null }>()
+    const containerToOrder = new Map<string, { orderId: number; extNum: string | null; orderCompleted: boolean }>()
     for (const order of orders) {
+      const orderCompleted = (order.status ?? '').toUpperCase() === 'COMPLETED'
       for (const raw of order.containers ?? []) {
         const ctr = raw.trim().toUpperCase()
         if (!ctr) continue
@@ -489,7 +492,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         validContainers++
         if (!containerToOrder.has(ctr)) {
-          containerToOrder.set(ctr, { orderId: order.id, extNum: order.external_1c_number })
+          containerToOrder.set(ctr, { orderId: order.id, extNum: order.external_1c_number, orderCompleted })
         }
       }
     }
@@ -576,8 +579,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const item of items) {
         const ctrNum = (item.containerNumber ?? '').toUpperCase()
         if (!ctrNum) continue
-        const orderInfo = containerToOrder.get(ctrNum) ?? { orderId: 0, extNum: null }
-        fetched.push({ ctrNum, orderId: orderInfo.orderId, extNum: orderInfo.extNum, item })
+        const orderInfo = containerToOrder.get(ctrNum) ?? { orderId: 0, extNum: null, orderCompleted: false }
+        fetched.push({ ctrNum, orderId: orderInfo.orderId, extNum: orderInfo.extNum, orderCompleted: orderInfo.orderCompleted, item })
         containersFetched++
       }
     }
@@ -613,7 +616,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── 5. Normalize + upsert ───────────────────────────────────────────────
     const now = new Date().toISOString()
 
-    for (const { ctrNum, orderId, extNum, item } of fetched) {
+    for (const { ctrNum, orderId, extNum, orderCompleted, item } of fetched) {
       // Skip manually excluded containers
       const { data: excRow } = await supabase
         .from('fesco_container_tracking_current')
@@ -623,7 +626,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (excRow?.manually_excluded) continue
 
       const segs   = item.segments ?? []
-      const status = deriveStatus(item)
+      // If the parent order is marked COMPLETED in 1C, trust that over the FESCO tracking API
+      // response (which can lag by hours/days before showing remainingDistance=0).
+      const derivedStatus = deriveStatus(item)
+      const status = (orderCompleted && derivedStatus !== 'completed') ? 'completed' : derivedStatus
       const alert  = deriveAlert(item, status)
       // For awaiting_next_leg and completed, use the final segment as curSeg.
       // completed containers may have null-placeholder segs at index 0 — the final seg has the real data.
