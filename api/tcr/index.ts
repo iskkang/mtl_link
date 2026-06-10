@@ -209,7 +209,6 @@ function deriveLaneId(origin: string | null, destination: string | null): string
   if (dst.includes('chukursay') || dst.includes('chucursay'))      return `${prefix}-CHUKURSAY`
   if (dst.includes('almaty'))                                       return `${prefix}-ALMATY`
   if (dst.includes('malaszewicze') || dst.includes('małaszewicze')) return `${prefix}-MALASZEWICZE`
-  if (dst.includes('tashkent'))                                     return `${prefix}-TASHKENT`
   return null
 }
 
