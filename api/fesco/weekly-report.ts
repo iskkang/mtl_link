@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { sendWeeklyReport } from '../_lib/resend.js'
+import { sendWeeklyReport, sendDelayDigestEmail, type DigestAlert } from '../_lib/resend.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const auth = req.headers.authorization ?? ''
+  const auth = (req.headers.authorization ?? '').toString()
   if (auth.replace('Bearer ', '') !== process.env.CRON_SECRET)
     return res.status(401).json({ ok: false, error: 'unauthorized' })
 
@@ -13,6 +13,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     { auth: { persistSession: false } },
   )
 
+  // action=daily-digest: 매일 19:00 KST — 현재 open 알림 전체를 digest 이메일로 발송
+  if (req.query.action === 'daily-digest') {
+    const { data: alertRows, error: alertErr } = await supabase
+      .from('fesco_alerts')
+      .select('container_number, alert_type, severity')
+      .eq('status', 'open')
+      .in('severity', ['red', 'yellow'])
+
+    if (alertErr) return res.status(500).json({ ok: false, error: alertErr.message })
+
+    const containers = (alertRows ?? []).map((a: any) => a.container_number as string)
+
+    const routeMap = new Map<string, string>()
+    if (containers.length > 0) {
+      const { data: trackingRows } = await supabase
+        .from('fesco_container_tracking_current')
+        .select('container_number, current_from, current_to')
+        .in('container_number', containers)
+
+      for (const r of trackingRows ?? []) {
+        const route = [r.current_from, r.current_to].filter(Boolean).join(' → ')
+        routeMap.set(r.container_number as string, route)
+      }
+    }
+
+    const alerts: DigestAlert[] = (alertRows ?? []).map((a: any) => ({
+      containerNumber: a.container_number as string,
+      alertType:       a.alert_type as string,
+      alertLevel:      a.severity as 'red' | 'yellow',
+      route:           routeMap.get(a.container_number as string) ?? '',
+    }))
+
+    if (alerts.length === 0) return res.json({ ok: true, total: 0, emailSent: false })
+
+    await sendDelayDigestEmail(alerts)
+
+    return res.json({
+      ok:        true,
+      total:     alerts.length,
+      red:       alerts.filter(a => a.alertLevel === 'red').length,
+      yellow:    alerts.filter(a => a.alertLevel === 'yellow').length,
+      emailSent: true,
+    })
+  }
+
+  // default: 매주 월요일 주간 리포트
   const { data: containers } = await supabase
     .from('fesco_container_tracking_current')
     .select(

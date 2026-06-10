@@ -15,7 +15,7 @@ jobs:
         run: |
           response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/fesco/tracking-report")
+            "${{ secrets.APP_URL }}/api/fesco/weekly-report?action=daily-digest")
           echo "HTTP status: $response"
           echo "Response body:"
           cat /tmp/body.json
