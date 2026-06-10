@@ -145,6 +145,15 @@ const LOC_MAP: Record<string, string | null> = {
   'ALASHAN KOU':            'Alashankou',
   'KHORGOS':                'Khorgos',
   'Khorgos':                'Khorgos',
+  'YAKELA':                 'Yakela',
+  'Yakela':                 'Yakela',
+  'yakela':                 'Yakela',
+  'EJI':                    'Eji',
+  'Eji':                    'Eji',
+  'eji':                    'Eji',
+  'DINGBIAN':               'Dingbian',
+  'Dingbian':               'Dingbian',
+  'dingbian':               'Dingbian',
 }
 
 function str(v: unknown): string {
