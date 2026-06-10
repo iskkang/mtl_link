@@ -194,6 +194,134 @@ async function syncAutoAlerts(
   ].filter(Boolean))
 }
 
+// ── Corridor stats helpers (for logisight integration) ───────────────────────
+function deriveLaneId(origin: string | null, destination: string | null): string | null {
+  const src = (origin ?? '').toLowerCase()
+  const dst = (destination ?? '').toLowerCase()
+  const prefix =
+    src.includes('korea') || src.includes('busan') || src.includes('incheon') ? 'KR'
+    : src.includes('china') || src.includes('qingdao') || src.includes('tianjin') || src.includes('shenzhen') ? 'CN'
+    : null
+  if (!prefix) return null
+  if (dst.includes('andijan') || dst.includes('andijon'))          return `${prefix}-ANDIJAN`
+  if (dst.includes('osh') && !dst.includes('khorgos'))             return `${prefix}-OSH`
+  if (dst.includes('bishkek'))                                      return `${prefix}-BISHKEK`
+  if (dst.includes('chukursay') || dst.includes('chucursay'))      return `${prefix}-CHUKURSAY`
+  if (dst.includes('almaty'))                                       return `${prefix}-ALMATY`
+  if (dst.includes('malaszewicze') || dst.includes('małaszewicze')) return `${prefix}-MALASZEWICZE`
+  if (dst.includes('tashkent'))                                     return `${prefix}-TASHKENT`
+  return null
+}
+
+function toWeekIso(dateStr: string): string {
+  const d   = new Date(dateStr)
+  const thu = new Date(d)
+  thu.setDate(d.getDate() - (d.getDay() + 6) % 7 + 3)
+  const y      = thu.getFullYear()
+  const firstThu = new Date(y, 0, 4)
+  const week  = 1 + Math.round((thu.getTime() - firstThu.getTime()) / (7 * 86_400_000))
+  return `${y}-W${String(week).padStart(2, '0')}`
+}
+
+function pct(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0
+  if (sorted.length === 1) return sorted[0]
+  const idx = (p / 100) * (sorted.length - 1)
+  const lo  = Math.floor(idx)
+  const hi  = Math.ceil(idx)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
+}
+
+function dqLevel(n: number): 'confirmed' | 'provisional' | 'indicative' {
+  return n >= 5 ? 'confirmed' : n >= 2 ? 'provisional' : 'indicative'
+}
+
+const CORRIDOR_ALLOWED_ORIGIN = 'https://logisight-core-cyan.vercel.app'
+
+async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
+  res.setHeader('Access-Control-Allow-Origin', CORRIDOR_ALLOWED_ORIGIN)
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+
+  const apiKey = process.env.LOGISIGHT_API_KEY
+  if (apiKey) {
+    const auth = String(req.headers['authorization'] ?? '').replace(/^Bearer\s+/i, '')
+    if (auth !== apiKey) return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 26 * 7)
+  const cutoffStr = cutoff.toISOString().split('T')[0]
+
+  type CRow = { origin: string | null; destination: string | null; eta_final: string | null; ata_final: string | null; arrived_yn: boolean; current_location: string | null }
+
+  const [{ data: allRows, error: allErr }, { count: alertCount }] = await Promise.all([
+    supabase
+      .from('tcr_containers_current')
+      .select('origin, destination, eta_final, ata_final, arrived_yn, current_location'),
+    supabase
+      .from('tcr_risk_alerts')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'Open'),
+  ])
+
+  if (allErr) return res.status(500).json({ ok: false, error: allErr.message })
+
+  const rows = (allRows ?? []) as CRow[]
+
+  const total      = rows.length
+  const arrived    = rows.filter(r => r.arrived_yn).length
+  const in_transit = total - arrived
+  const by_destination: Record<string, number> = {}
+  const by_segment: Record<string, number>     = {}
+  for (const r of rows) {
+    if (r.destination)                        by_destination[r.destination]     = (by_destination[r.destination]     ?? 0) + 1
+    if (!r.arrived_yn && r.current_location)  by_segment[r.current_location]   = (by_segment[r.current_location]   ?? 0) + 1
+  }
+
+  // Weekly delay buckets (arrived containers within 26-week lookback)
+  type Bucket = { delays_h: number[]; on_time: number; sample_count: number }
+  const buckets = new Map<string, Bucket>()
+
+  for (const r of rows) {
+    if (!r.ata_final || r.ata_final < cutoffStr) continue
+    const laneId = deriveLaneId(r.origin, r.destination)
+    if (!laneId) continue
+
+    const key    = `${laneId}|${toWeekIso(r.ata_final)}`
+    const bucket = buckets.get(key) ?? { delays_h: [], on_time: 0, sample_count: 0 }
+    bucket.sample_count++
+    if (r.eta_final) {
+      const dh = (new Date(r.ata_final).getTime() - new Date(r.eta_final).getTime()) / 3_600_000
+      bucket.delays_h.push(dh)
+      if (dh <= 0) bucket.on_time++
+    }
+    buckets.set(key, bucket)
+  }
+
+  const weekly_stats = Array.from(buckets.entries()).map(([key, b]) => {
+    const [laneId, weekIso] = key.split('|') as [string, string]
+    const sorted            = [...b.delays_h].sort((a, c) => a - c)
+    return {
+      lane_id:        laneId,
+      week_iso:       weekIso,
+      milestone:      'DEST_ARR',
+      sample_count:   b.sample_count,
+      median_delay_h: sorted.length ? Math.round(pct(sorted, 50) * 10) / 10 : null,
+      p90_delay_h:    sorted.length ? Math.round(pct(sorted, 90) * 10) / 10 : null,
+      on_time_rate:   sorted.length ? Math.round((b.on_time / sorted.length) * 1000) / 1000 : null,
+      data_quality:   dqLevel(b.sample_count),
+    }
+  }).sort((a, b) => b.week_iso.localeCompare(a.week_iso) || a.lane_id.localeCompare(b.lane_id))
+
+  return res.json({
+    ok:          true,
+    computed_at: new Date().toISOString(),
+    snapshot:    { total, in_transit, arrived, alert_count: alertCount ?? 0, by_destination, by_segment },
+    weekly_stats,
+  })
+}
+
 // ── Weather forecast cache (module-level, 1-hour TTL) ─────────────────────────
 let weatherCache: { data: object; ts: number } | null = null
 const WEATHER_CACHE_TTL = 60 * 60 * 1000
@@ -999,9 +1127,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const action = String(req.query.action ?? 'list')
 
+  // CORS preflight for public corridor-stats endpoint
+  if (req.method === 'OPTIONS' && action === 'corridor-stats') {
+    res.setHeader('Access-Control-Allow-Origin', CORRIDOR_ALLOWED_ORIGIN)
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+    return res.status(204).end()
+  }
+
   if (req.method === 'POST' && action === 'upsert') return handleUpsert(req, res, supabase)
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'Method not allowed' })
 
+  if (action === 'corridor-stats') return handleCorridorStats(req, res, supabase)
   if (action === 'upload_log')    return handleUploadLog(req, res, supabase)
   if (action === 'delay-notify')  return handleDelayNotify(req, res, supabase)
   if (action === 'tracing-send')  return handleTracingSend(req, res, supabase)
