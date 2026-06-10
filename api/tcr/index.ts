@@ -344,18 +344,22 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
 }
 
 // ── FESCO corridor stats (for logisight integration) ─────────────────────────
-// Reads fesco_container_tracking_current, mirrors the TCR corridor-stats shape.
-// All FESCO containers are Korea-origin (MTL account), so prefix is always KR.
+// Uses fesco_orders.route_latin for final-destination lane detection,
+// then looks up ETA/ATA from fesco_container_tracking_current.
+// current_to is only an intermediate stop — not suitable for lane matching.
 
-function deriveFescoLaneId(currentTo: string | null): string | null {
-  if (!currentTo) return null
-  const dst = currentTo.toLowerCase().trim()
-  if (dst.includes('chukur') || dst.includes('chucur'))              return 'KR-CHUKURSAY'
-  if (dst.includes('almaty'))                                         return 'KR-ALMATY'
-  if (dst.includes('bishkek') || dst.includes('biskek'))             return 'KR-BISHKEK'
-  if (dst.includes('andijan') || dst.includes('andijon'))            return 'KR-ANDIJAN'
-  if (dst.includes('osh') && !dst.includes('khorgos'))               return 'KR-OSH'
-  if (dst.includes('malaszewicze') || dst.includes('małaszewicze'))  return 'KR-MALASZEWICZE'
+function deriveFescoLaneIdFromRoute(routeLatin: string | null): string | null {
+  if (!routeLatin) return null
+  // Split only by / — hyphens in city names (Alma-Ata) must not be treated as separators
+  const dst = routeLatin.split('/').at(-1)?.trim().toLowerCase() ?? ''
+  if (!dst) return null
+  if (dst.includes('chukur') || dst.includes('chucur'))             return 'KR-CHUKURSAY'
+  if (dst.includes('tashkent') || dst.includes('toshkent'))         return 'KR-CHUKURSAY'
+  if (dst.includes('almaty') || dst.includes('alma'))               return 'KR-ALMATY'
+  if (dst.includes('bishkek') || dst.includes('biskek') || dst.includes('frunze')) return 'KR-BISHKEK'
+  if (dst.includes('andijan') || dst.includes('andijon'))           return 'KR-ANDIJAN'
+  if (dst.includes('osh') && !dst.includes('khorgos'))              return 'KR-OSH'
+  if (dst.includes('malaszewicze') || dst.includes('małaszewicze') || dst.includes('brest')) return 'KR-MALASZEWICZE'
   return null
 }
 
@@ -370,32 +374,55 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
     if (auth !== apiKey) return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
 
-  const today     = new Date().toISOString().split('T')[0]
-  const cutoff    = new Date(); cutoff.setMonth(cutoff.getMonth() - 6)
-  const cutoffStr = cutoff.toISOString().split('T')[0]
+  const today        = new Date().toISOString().split('T')[0]
+  const cutoff       = new Date(); cutoff.setMonth(cutoff.getMonth() - 6)
+  const cutoffStr    = cutoff.toISOString().split('T')[0]
+  const currentMonth = toMonthYm(today)
 
-  type FRow = {
-    current_to:               string | null
-    planned_destination_date: string | null
-    destination_date:         string | null
-    status:                   string | null
+  // Step 1: build container_number → laneId from fesco_orders.route_latin
+  const { data: orderRows, error: orderErr } = await supabase
+    .from('fesco_orders')
+    .select('route_latin, containers')
+  if (orderErr) return res.status(500).json({ ok: false, error: orderErr.message })
+
+  const containerLaneMap = new Map<string, string>()
+  for (const o of (orderRows ?? []) as { route_latin: string | null; containers: string[] | null }[]) {
+    const laneId = deriveFescoLaneIdFromRoute(o.route_latin)
+    if (!laneId || !o.containers) continue
+    for (const cn of o.containers) {
+      if (cn) containerLaneMap.set(cn.trim(), laneId)
+    }
   }
 
+  // Step 2: fetch tracking ETA/ATA
+  type FRow = {
+    container_number:         string
+    planned_destination_date: string | null
+    destination_date:         string | null
+  }
   const { data: rows, error } = await supabase
     .from('fesco_container_tracking_current')
-    .select('current_to, planned_destination_date, destination_date, status')
-
+    .select('container_number, planned_destination_date, destination_date')
   if (error) return res.status(500).json({ ok: false, error: error.message })
 
+  // Debug counts (included in response for diagnostics)
+  const trackingTotal   = (rows ?? []).length
+  let withEta           = 0
+  let matchedLane       = 0
+
+  // Step 3: compute per-lane delay buckets
   type Bucket = { actual_h: number[]; projected_h: number[]; on_time: number }
   const buckets = new Map<string, Bucket>()
-  const currentMonth = toMonthYm(today)
 
   for (const r of (rows ?? []) as FRow[]) {
     const eta = r.planned_destination_date
     if (!eta || eta < cutoffStr) continue
-    const laneId = deriveFescoLaneId(r.current_to)
+    withEta++
+
+    // Try order-based lane first, fall back to nothing (current_to is too unreliable)
+    const laneId = containerLaneMap.get(r.container_number)
     if (!laneId) continue
+    matchedLane++
 
     const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
@@ -433,7 +460,12 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
     }
   }).sort((a, b) => a.lane_id.localeCompare(b.lane_id))
 
-  return res.json({ ok: true, computed_at: new Date().toISOString(), weekly_stats })
+  return res.json({
+    ok:          true,
+    computed_at: new Date().toISOString(),
+    weekly_stats,
+    _debug: { orders: (orderRows ?? []).length, containersMapped: containerLaneMap.size, trackingTotal, withEta, matchedLane },
+  })
 }
 
 // ── Weather forecast cache (module-level, 1-hour TTL) ─────────────────────────
