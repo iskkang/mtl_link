@@ -36,12 +36,14 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/fesco/container-cleanup", "destination": "/api/fesco/container-cleanup.ts" },
-    { "source": "/api/fesco/weekly-report",     "destination": "/api/fesco/weekly-report.ts" },
+    { "source": "/api/fesco/container-cleanup",     "destination": "/api/fesco/container-cleanup.ts" },
+    { "source": "/api/fesco/weekly-report",         "destination": "/api/fesco/weekly-report.ts" },
+    { "source": "/api/fesco/container-tracking-cron", "destination": "/api/fesco/container-tracking-cron.ts" },
     { "source": "/((?!api/|@|src/|node_modules/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/fesco/weekly-report",     "schedule": "0 0 * * 1" },
-    { "path": "/api/tcr?action=delay-notify", "schedule": "0 1 * * *" }
+    { "path": "/api/fesco/weekly-report",           "schedule": "0 0 * * 1" },
+    { "path": "/api/tcr?action=delay-notify",       "schedule": "0 1 * * *" },
+    { "path": "/api/fesco/container-tracking-cron", "schedule": "0 */4 * * *" }
   ]
 }
