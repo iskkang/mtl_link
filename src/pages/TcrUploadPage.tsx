@@ -797,7 +797,7 @@ function parseKrEu(wb: XLSX.WorkBook): { containers: ContainerRow[]; segments: S
   const segments: SegmentRow[] = []
   if (rows.length < 2) return { containers, segments }
 
-  const headers = (rows[0] as unknown[]).map(v => str(v).replace(/\n/g, ' ').trim())
+  const headers = (rows[0] as unknown[]).map(v => str(v).replace(/[\r\n]/g, ' ').trim())
   const col = (name: string) => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()))
 
   const iCno     = col('CONT NO')
