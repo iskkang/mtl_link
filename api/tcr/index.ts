@@ -290,7 +290,10 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     const laneId = deriveLaneId(r.origin, r.destination)
     if (!laneId) continue
 
-    const key    = `${laneId}|${toMonthYm(r.eta_final)}`
+    // All containers go into ONE current-month bucket per lane.
+    // This way overdue in-transit containers (e.g. May ETA, still running in June)
+    // are included in the current snapshot, not hidden in a past month bucket.
+    const key    = `${laneId}|${toMonthYm(today)}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
 
     if (r.ata_final) {
