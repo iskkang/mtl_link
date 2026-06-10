@@ -379,32 +379,30 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
   const cutoffStr    = cutoff.toISOString().split('T')[0]
   const currentMonth = toMonthYm(today)
 
-  // Step 1: build container_number → laneId from fesco_orders.route_latin
+  // Step 1: order_id → laneId via fesco_orders.route_latin (direct FK, no containers array)
   const { data: orderRows, error: orderErr } = await supabase
     .from('fesco_orders')
-    .select('route_latin, containers')
+    .select('id, route_latin')
   if (orderErr) return res.status(500).json({ ok: false, error: orderErr.message })
 
-  const containerLaneMap = new Map<string, string>()
-  for (const o of (orderRows ?? []) as { route_latin: string | null; containers: string[] | null }[]) {
+  const orderLaneMap = new Map<number, string>()
+  for (const o of (orderRows ?? []) as { id: number; route_latin: string | null }[]) {
     const laneId = deriveFescoLaneIdFromRoute(o.route_latin)
-    if (!laneId || !o.containers) continue
-    for (const cn of o.containers) {
-      if (cn) containerLaneMap.set(cn.trim(), laneId)
-    }
+    if (laneId) orderLaneMap.set(o.id, laneId)
   }
 
-  // Step 2: fetch tracking with segments_json for final-destination ETA/ATA.
-  // planned_destination_date reflects only the CURRENT segment's planned date (often null).
-  // segments_json contains all legs; the last leg with planning dates = final destination.
+  // Step 2: fetch tracking using order_id FK + segments_json for final ETA/ATA.
+  // planned_destination_date = current segment only (often null for early-stage containers).
+  // segments_json: walk backwards to the last segment with planingDestinationDate = final ETA.
   type SegJson = { planingDestinationDate?: string | null; destinationDate?: string | null }
   type FRow = {
     container_number: string
+    order_id:         number | null
     segments_json:    SegJson[] | null
   }
   const { data: rows, error } = await supabase
     .from('fesco_container_tracking_current')
-    .select('container_number, segments_json')
+    .select('container_number, order_id, segments_json')
   if (error) return res.status(500).json({ ok: false, error: error.message })
 
   const trackingTotal = (rows ?? []).length
@@ -415,18 +413,17 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
   const buckets = new Map<string, Bucket>()
 
   for (const r of (rows ?? []) as FRow[]) {
+    const laneId = r.order_id != null ? orderLaneMap.get(r.order_id) : null
+    if (!laneId) continue
+
     const segs = r.segments_json ?? []
-    // Walk segments from the end to find the last one with a planning date (= final ETA)
     const lastWithPlan = [...segs].reverse().find(s => s.planingDestinationDate)
     const eta = lastWithPlan?.planingDestinationDate ?? null
     if (!eta || eta < cutoffStr) continue
     withEta++
-
-    const laneId = containerLaneMap.get(r.container_number)
-    if (!laneId) continue
     matchedLane++
 
-    const ata = lastWithPlan?.destinationDate ?? null  // actual arrival, null if still in transit
+    const ata = lastWithPlan?.destinationDate ?? null
 
     const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
