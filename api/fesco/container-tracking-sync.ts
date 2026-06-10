@@ -497,24 +497,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Skip containers already marked completed in tracking whose order is also completed —
-    // no need to re-fetch FESCO data for them, they won't change status.
-    const completedOrderCandidates = [...containerToOrder.entries()]
-      .filter(([, v]) => v.orderCompleted).map(([k]) => k)
-    if (completedOrderCandidates.length > 0) {
-      const { data: alreadyDone } = await supabase
+    // Narrow toLookup to only containers that genuinely need a FESCO API call:
+    //   (a) already completed in tracking → skip regardless of order status
+    //   (b) from a COMPLETED order AND not yet in tracking → historical, never relevant
+    // Keeps: non-completed tracking rows + new containers from still-ACTIVE orders.
+    const allCandidates = [...containerToOrder.keys()]
+    if (allCandidates.length > 0) {
+      const { data: existingRows } = await supabase
         .from('fesco_container_tracking_current')
-        .select('container_number')
-        .in('container_number', completedOrderCandidates)
-        .eq('status', 'completed')
-        .neq('manually_excluded', true)
-      for (const row of alreadyDone ?? []) containerToOrder.delete(row.container_number as string)
+        .select('container_number, status')
+        .in('container_number', allCandidates)
+      const alreadyCompleted = new Set(
+        (existingRows ?? []).filter(r => (r as { status: string }).status === 'completed')
+          .map(r => (r as { container_number: string }).container_number)
+      )
+      const inTracking = new Set((existingRows ?? []).map(r => (r as { container_number: string }).container_number))
+      for (const [cno, { orderCompleted }] of containerToOrder) {
+        if (alreadyCompleted.has(cno)) { containerToOrder.delete(cno); continue }
+        if (orderCompleted && !inTracking.has(cno)) { containerToOrder.delete(cno); continue }
+      }
     }
 
     const allValid = [...containerToOrder.keys()].sort()
     const toLookup = allValid.slice(offset, offset + limit)
     console.log(
-      `[ctr-sync] step 2 OK: ${validContainers} valid (${containerToOrder.size} unique after skipping already-completed), ` +
+      `[ctr-sync] step 2 OK: ${validContainers} valid (${containerToOrder.size} after filter), ` +
       `${invalidContainers} invalid, fetching ${toLookup.length} (offset=${offset}, limit=${limit})`,
     )
 
