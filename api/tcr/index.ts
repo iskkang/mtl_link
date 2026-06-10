@@ -212,14 +212,8 @@ function deriveLaneId(origin: string | null, destination: string | null): string
   return null
 }
 
-function toWeekIso(dateStr: string): string {
-  const d   = new Date(dateStr)
-  const thu = new Date(d)
-  thu.setDate(d.getDate() - (d.getDay() + 6) % 7 + 3)
-  const y      = thu.getFullYear()
-  const firstThu = new Date(y, 0, 4)
-  const week  = 1 + Math.round((thu.getTime() - firstThu.getTime()) / (7 * 86_400_000))
-  return `${y}-W${String(week).padStart(2, '0')}`
+function toMonthYm(dateStr: string): string {
+  return dateStr.slice(0, 7) // "2026-06-10" → "2026-06"
 }
 
 function pct(sorted: number[], p: number): number {
@@ -248,9 +242,11 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     if (auth !== apiKey) return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
 
+  // 6-month lookback based on eta_final
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 26 * 7)
+  cutoff.setMonth(cutoff.getMonth() - 6)
   const cutoffStr = cutoff.toISOString().split('T')[0]
+  const today     = new Date().toISOString().split('T')[0]
 
   type CRow = { origin: string | null; destination: string | null; eta_final: string | null; ata_final: string | null; arrived_yn: boolean; current_location: string | null }
 
@@ -274,42 +270,65 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
   const by_destination: Record<string, number> = {}
   const by_segment: Record<string, number>     = {}
   for (const r of rows) {
-    if (r.destination)                        by_destination[r.destination]     = (by_destination[r.destination]     ?? 0) + 1
-    if (!r.arrived_yn && r.current_location)  by_segment[r.current_location]   = (by_segment[r.current_location]   ?? 0) + 1
+    if (r.destination)                        by_destination[r.destination]    = (by_destination[r.destination]    ?? 0) + 1
+    if (!r.arrived_yn && r.current_location)  by_segment[r.current_location]  = (by_segment[r.current_location]  ?? 0) + 1
   }
 
-  // Weekly delay buckets (arrived containers within 26-week lookback)
-  type Bucket = { delays_h: number[]; on_time: number; sample_count: number }
+  // Monthly delay buckets — grouped by eta_final month.
+  // Includes:
+  //   ① Arrived containers (actual delay = ata_final - eta_final)
+  //   ② In-transit containers past ETA (projected delay = today - eta_final)
+  type Bucket = {
+    actual_h:   number[]  // delays for arrived containers
+    projected_h: number[] // delays for in-transit containers past ETA
+    on_time:    number    // arrived with delay ≤ 0
+  }
   const buckets = new Map<string, Bucket>()
 
   for (const r of rows) {
-    if (!r.ata_final || r.ata_final < cutoffStr) continue
+    if (!r.eta_final || r.eta_final < cutoffStr) continue
     const laneId = deriveLaneId(r.origin, r.destination)
     if (!laneId) continue
 
-    const key    = `${laneId}|${toWeekIso(r.ata_final)}`
-    const bucket = buckets.get(key) ?? { delays_h: [], on_time: 0, sample_count: 0 }
-    bucket.sample_count++
-    if (r.eta_final) {
+    const key    = `${laneId}|${toMonthYm(r.eta_final)}`
+    const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
+
+    if (r.ata_final) {
       const dh = (new Date(r.ata_final).getTime() - new Date(r.eta_final).getTime()) / 3_600_000
-      bucket.delays_h.push(dh)
+      bucket.actual_h.push(dh)
       if (dh <= 0) bucket.on_time++
+    } else if (r.eta_final < today) {
+      // Still in transit, past ETA → projected delay (at minimum this many hours late)
+      const dh = (new Date(today).getTime() - new Date(r.eta_final).getTime()) / 3_600_000
+      bucket.projected_h.push(dh)
     }
     buckets.set(key, bucket)
   }
 
   const weekly_stats = Array.from(buckets.entries()).map(([key, b]) => {
-    const [laneId, weekIso] = key.split('|') as [string, string]
-    const sorted            = [...b.delays_h].sort((a, c) => a - c)
+    const [laneId, monthYm] = key.split('|') as [string, string]
+    const all_h             = [...b.actual_h, ...b.projected_h].sort((a, c) => a - c)
+    const sample_count      = all_h.length
+    const has_projected     = b.projected_h.length > 0
+
+    // on_time_rate counts ALL containers in bucket; projected ones are never on time
+    const on_time_rate = sample_count > 0
+      ? Math.round((b.on_time / sample_count) * 1000) / 1000
+      : null
+
+    // Cap data_quality at provisional when projected delays are included
+    const base_dq    = dqLevel(sample_count)
+    const data_quality = has_projected && base_dq === 'confirmed' ? 'provisional' : base_dq
+
     return {
       lane_id:        laneId,
-      week_iso:       weekIso,
+      week_iso:       monthYm, // stored as "YYYY-MM" in the week_iso field
       milestone:      'DEST_ARR',
-      sample_count:   b.sample_count,
-      median_delay_h: sorted.length ? Math.round(pct(sorted, 50) * 10) / 10 : null,
-      p90_delay_h:    sorted.length ? Math.round(pct(sorted, 90) * 10) / 10 : null,
-      on_time_rate:   sorted.length ? Math.round((b.on_time / sorted.length) * 1000) / 1000 : null,
-      data_quality:   dqLevel(b.sample_count),
+      sample_count,
+      median_delay_h: all_h.length ? Math.round(pct(all_h, 50) * 10) / 10 : null,
+      p90_delay_h:    all_h.length ? Math.round(pct(all_h, 90) * 10) / 10 : null,
+      on_time_rate,
+      data_quality,
     }
   }).sort((a, b) => b.week_iso.localeCompare(a.week_iso) || a.lane_id.localeCompare(b.lane_id))
 
