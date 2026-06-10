@@ -68,6 +68,7 @@ const ROUTE_ORDER: Record<string, number> = {
   'incheon':       0,  'busan':         0,  'korea':         0,
   'qingdao':       10, 'lianyungang':   10,
   "xi'an":         20, 'xian':          20,
+  'linhe':         21,
   'gansu':         22, 'lanzhou':       22,
   'yingshuiqiao':  23,
   'jiayuguan':     25,
