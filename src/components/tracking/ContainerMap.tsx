@@ -11,6 +11,7 @@ export interface ContainerPoint {
 
 export interface ContainerPopupData {
   signal:                   'red' | 'yellow' | 'green' | 'gray' | 'unknown'
+  route_display:            string | null
   current_from:             string | null
   current_to:               string | null
   last_event_location:      string | null
@@ -131,9 +132,10 @@ function buildPopupHtml(
   }
 
   const route     = detail
-    ? (detail.current_from || detail.current_to)
+    ? detail.route_display ??
+      ((detail.current_from || detail.current_to)
         ? `${detail.current_from ?? '—'} → ${detail.current_to ?? '—'}`
-        : '—'
+        : '—')
     : '—'
   const lastEvent = detail?.last_event_location ?? '—'
   const eta       = detail?.planned_destination_date ?? null
@@ -901,4 +903,3 @@ function fitToContainers(map: mapboxgl.Map, containers: ContainerPoint[]): mapbo
   map.fitBounds(bounds, { padding: 40, maxZoom: 10, duration: 600 })
   return bounds
 }
-

@@ -7,6 +7,8 @@ import { ContainerMap, ContainerPopupData } from './ContainerMap'
 interface ContainerItem {
   container_number:         string
   order_number:             string | null
+  route_latin:              string | null
+  route_display:            string | null
   operational_status:       string | null
   origin_city:              string | null
   destination_city:         string | null
@@ -154,6 +156,9 @@ function SegmentLine({ c, seaLabel, railLabel }: {
   const alertType  = c.open_alert_types?.[0] ?? ''
   const alertLabel = ALERT_KO[alertType] ?? c.alert_reason
   const hasReason  = !!alertLabel
+  const segmentText = (c.current_from || c.current_to)
+    ? `${c.current_from ?? '—'} → ${c.current_to ?? '—'}`
+    : c.route_display ?? '—'
 
   const overdueInfo = alertType ? parseOverdue(alertType, c.alert_reason, c.planned_destination_date) : null
 
@@ -163,7 +168,7 @@ function SegmentLine({ c, seaLabel, railLabel }: {
       style={{ color: 'var(--ink-500)' }}
     >
       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
-        {(c.current_from || c.current_to) ? `${c.current_from ?? '—'} → ${c.current_to ?? '—'}` : '—'}
+        {segmentText}
       </span>
       {hasSegment && (
         <>
@@ -706,6 +711,7 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
     for (const c of filteredData) {
       m[c.container_number] = {
         signal:                   c.signal,
+        route_display:            c.route_display,
         current_from:             c.current_from,
         current_to:               c.current_to,
         last_event_location:      c.last_event_location,

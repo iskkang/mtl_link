@@ -28,6 +28,15 @@ function deriveSignal(
   return 'gray'
 }
 
+function formatRouteDisplay(routeLatin: string | null | undefined): string | null {
+  const parts = String(routeLatin ?? '')
+    .split(/\s*-\s*/)
+    .map(s => s.trim())
+    .filter(Boolean)
+  if (parts.length === 0) return null
+  return parts.join(' → ')
+}
+
 // ── Detail handler (was container-detail.ts) ──────────────────────────────────
 async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
   const containerNumber = String(req.query.number ?? '').trim().toUpperCase()
@@ -71,6 +80,16 @@ async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: R
 
   const alerts = (alertRows ?? []) as { severity: string; alert_type: string | null }[]
   const signal = deriveSignal(row, alerts)
+
+  let routeLatin: string | null = null
+  if (row.order_id != null) {
+    const { data: orderRow } = await supabase
+      .from('fesco_orders')
+      .select('route_latin')
+      .eq('id', row.order_id)
+      .maybeSingle()
+    routeLatin = (orderRow as { route_latin: string | null } | null)?.route_latin ?? null
+  }
 
   type RawEvent = {
     location?:          string | null
@@ -164,6 +183,8 @@ async function handleDetail(req: VercelRequest, res: VercelResponse, supabase: R
   return res.json({
     ok:                       true,
     container_number:         row.container_number,
+    route_latin:              routeLatin,
+    route_display:            formatRouteDisplay(routeLatin),
     current_from:             row.current_from,
     current_to:               row.current_to,
     current_from_coord,
@@ -428,6 +449,9 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
     return {
       container_number:          r.container_number,
       order_number:              order?.external_1c_number ?? r.external_1c_number ?? null,
+      route_latin:               order?.route_latin ?? null,
+      route_display:             formatRouteDisplay(order?.route_latin) ??
+                                  ([r.current_from, r.current_to].filter(Boolean).join(' → ') || null),
       operational_status:        r.status,
       origin_city:               parsed.origin      ?? null,
       destination_city:          parsed.destination  ?? null,
@@ -487,6 +511,7 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
   for (const r of (staleRaw ?? []) as any[]) {
     const order      = r.order_id != null ? orderMap.get(r.order_id) : null
     const routeLatin = order?.route_latin ?? null
+    const routeDisplay = formatRouteDisplay(routeLatin)
     const destRaw    = routeLatin ? routeLatin.replace(/^.+-/, '').trim() : null
     const evArr      = Array.isArray(r.events_json) ? r.events_json as any[] : []
     const lastLoc    = evArr[0]?.locationLatin?.toLowerCase() ?? null
@@ -496,7 +521,7 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
     if (!noEvents && !atDest) continue
     stale_candidates.push({
       container_number: r.container_number,
-      route:            routeLatin,
+      route:            routeDisplay ?? routeLatin,
       days_overdue:     Math.floor((Date.now() - new Date(r.planned_destination_date).getTime()) / 86_400_000),
       reason:           noEvents ? 'no_events' : 'at_destination',
     })
@@ -516,12 +541,13 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
     if (staleCnSet.has(r.container_number)) continue
     const order      = r.order_id != null ? orderMap.get(r.order_id) : null
     const routeLatin = order?.route_latin ?? null
+    const routeDisplay = formatRouteDisplay(routeLatin)
     const daysOverdue = r.planned_destination_date
       ? Math.max(0, Math.floor((Date.now() - new Date(r.planned_destination_date).getTime()) / 86_400_000))
       : 0
     stale_candidates.push({
       container_number: r.container_number,
-      route:            routeLatin,
+      route:            routeDisplay ?? routeLatin,
       days_overdue:     daysOverdue,
       reason:           'tracking_unavailable',
     })
@@ -533,6 +559,7 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
   for (const r of rows) {
     const order  = r.order_id != null ? orderMap.get(r.order_id) : null
     const parsed = parseRoute(order?.route_latin)
+    const routeDisplay = formatRouteDisplay(order?.route_latin)
     const alerts = alertMap.get(r.container_number) ?? []
     const sig    = deriveSignal(r, alerts)
     const key    = order?.external_1c_number ?? r.external_1c_number ?? `_${r.container_number}`
@@ -543,7 +570,7 @@ async function handleDashboard(req: VercelRequest, res: VercelResponse, supabase
     } else {
       roMap.set(key, {
         order_number:    order?.external_1c_number ?? r.external_1c_number ?? null,
-        route:           parsed.origin && parsed.destination ? `${parsed.origin} → ${parsed.destination}` : parsed.destination ?? null,
+        route:           routeDisplay ?? (parsed.origin && parsed.destination ? `${parsed.origin} → ${parsed.destination}` : parsed.destination ?? null),
         created_at:      order?.created_at ?? null,
         order_id:        r.order_id,
         container_count: 1,

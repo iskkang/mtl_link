@@ -1061,6 +1061,7 @@ export function TcrTrackingPage() {
     for (const c of filteredData) {
       m[c.container_no] = {
         signal:                   tcrToMapSignal(c.signal),
+        route_display:            [c.origin, c.destination].filter(Boolean).join(' → ') || null,
         current_from:             c.origin,
         current_to:               c.destination,
         last_event_location:      c.current_location,
