@@ -196,17 +196,19 @@ async function syncAutoAlerts(
 
 // ── Corridor stats helpers (for logisight integration) ───────────────────────
 function deriveLaneId(origin: string | null, destination: string | null): string | null {
-  const src = (origin ?? '').toLowerCase()
-  const dst = (destination ?? '').toLowerCase()
+  const src = normalizeFescoText(origin)
+  const dst = normalizeFescoText(destination)
   const prefix =
-    src.includes('korea') || src.includes('busan') || src.includes('incheon') ? 'KR'
-    : src.includes('china') || src.includes('qingdao') || src.includes('tianjin') || src.includes('shenzhen') ? 'CN'
+    src.includes('korea') || src.includes('busan') || src.includes('incheon') || src === 'bus' ? 'KR'
+    : src.includes('china') || src.includes('qingdao') || src.includes('tianjin') || src.includes('shenzhen') ||
+      src.includes('changshu') || src.includes('shenyang') || src.includes('zibo') || src.includes('zhejiang') ||
+      src.includes('chengyang') ? 'CN'
     : null
   if (!prefix) return null
   if (dst.includes('andijan') || dst.includes('andijon'))          return `${prefix}-ANDIJAN`
-  if (dst.includes('osh') && !dst.includes('khorgos'))             return `${prefix}-OSH`
+  if (lastIndexOfAsciiToken(dst, 'osh') >= 0 && !dst.includes('khorgos')) return `${prefix}-OSH`
   if (dst.includes('bishkek'))                                      return `${prefix}-BISHKEK`
-  if (dst.includes('chukursay') || dst.includes('chucursay'))      return `${prefix}-CHUKURSAY`
+  if (dst.includes('chukursay') || dst.includes('chukursaj') || dst.includes('chucursay')) return `${prefix}-CHUKURSAY`
   if (dst.includes('almaty'))                                       return `${prefix}-ALMATY`
   if (dst.includes('malaszewicze') || dst.includes('małaszewicze')) return `${prefix}-MALASZEWICZE`
   return null
@@ -229,6 +231,72 @@ function dqLevel(n: number): 'confirmed' | 'provisional' | 'indicative' {
   return n >= 5 ? 'confirmed' : n >= 2 ? 'provisional' : 'indicative'
 }
 
+type DelayMetric = {
+  delay_h:   number
+  projected: boolean
+}
+
+function hoursDiff(start: string | null | undefined, end: string | null | undefined): number | null {
+  if (!start || !end) return null
+  const startMs = new Date(start).getTime()
+  const endMs   = new Date(end).getTime()
+  if (isNaN(startMs) || isNaN(endMs)) return null
+  return (endMs - startMs) / 3_600_000
+}
+
+function maxDelayMetric(candidates: { delay_h: number | null; projected: boolean }[]): DelayMetric | null {
+  const usable = candidates.filter((c): c is { delay_h: number; projected: boolean } => c.delay_h !== null && !isNaN(c.delay_h))
+  if (usable.length === 0) return null
+
+  const maxRaw = usable.reduce((max, c) => Math.max(max, c.delay_h), Number.NEGATIVE_INFINITY)
+  const top    = usable.find(c => c.delay_h === maxRaw)
+  return {
+    delay_h:   Math.max(0, maxRaw),
+    projected: top?.projected ?? usable.some(c => c.projected),
+  }
+}
+
+function computeTcrDelayMetric(
+  arrived: boolean,
+  seg: { etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
+  currentLocationSince: string | null,
+  today: string,
+): DelayMetric | null {
+  if (arrived) return null
+
+  const candidates: { delay_h: number | null; projected: boolean }[] = []
+  if (seg?.etd) {
+    candidates.push({ delay_h: hoursDiff(seg.etd, seg.atd ?? today), projected: !seg.atd })
+  }
+  if (seg?.eta) {
+    candidates.push({ delay_h: hoursDiff(seg.eta, seg.ata ?? today), projected: !seg.ata })
+  }
+  if (currentLocationSince) {
+    candidates.push({ delay_h: hoursDiff(currentLocationSince, today), projected: true })
+  }
+
+  return maxDelayMetric(candidates)
+}
+
+function computeTcrStatsDelayMetric(
+  arrived: boolean,
+  currentSeg: { etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
+  allSegs: { etd: string | null; atd: string | null; eta: string | null; ata: string | null }[],
+  currentLocationSince: string | null,
+  today: string,
+): DelayMetric | null {
+  if (!arrived) {
+    return computeTcrDelayMetric(false, currentSeg, currentLocationSince, today)
+  }
+
+  const candidates: { delay_h: number | null; projected: boolean }[] = []
+  for (const s of allSegs) {
+    if (s.etd && s.atd) candidates.push({ delay_h: hoursDiff(s.etd, s.atd), projected: false })
+    if (s.eta && s.ata) candidates.push({ delay_h: hoursDiff(s.eta, s.ata), projected: false })
+  }
+  return maxDelayMetric(candidates)
+}
+
 const CORRIDOR_ALLOWED_ORIGIN = 'https://logisight-core-cyan.vercel.app'
 
 async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
@@ -242,18 +310,35 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     if (auth !== apiKey) return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
 
-  // 6-month lookback based on eta_final
-  const cutoff = new Date()
-  cutoff.setMonth(cutoff.getMonth() - 6)
-  const cutoffStr = cutoff.toISOString().split('T')[0]
-  const today     = new Date().toISOString().split('T')[0]
+  const today        = new Date().toISOString().split('T')[0]
+  const currentMonth = toMonthYm(today)
 
-  type CRow = { origin: string | null; destination: string | null; eta_final: string | null; ata_final: string | null; arrived_yn: boolean; current_location: string | null }
+  type CRow = {
+    container_no:            string
+    origin:                  string | null
+    destination:             string | null
+    eta_final:               string | null
+    ata_final:               string | null
+    arrived_yn:              boolean
+    current_location:        string | null
+    current_location_since:  string | null
+  }
+  type SegRow = {
+    container_no: string
+    segment_id:   string
+    segment_no:   number
+    to_location:  string | null
+    etd:          string | null
+    atd:          string | null
+    eta:          string | null
+    ata:          string | null
+  }
 
   const [{ data: allRows, error: allErr }, { count: alertCount }] = await Promise.all([
     supabase
       .from('tcr_containers_current')
-      .select('origin, destination, eta_final, ata_final, arrived_yn, current_location'),
+      .select('container_no, origin, destination, eta_final, ata_final, arrived_yn, current_location, current_location_since')
+      .range(0, 9999),
     supabase
       .from('tcr_risk_alerts')
       .select('id', { count: 'exact', head: true })
@@ -263,47 +348,81 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
   if (allErr) return res.status(500).json({ ok: false, error: allErr.message })
 
   const rows = (allRows ?? []) as CRow[]
+  const containerNos = rows.map(r => r.container_no)
+
+  const segRows: SegRow[] = []
+  if (containerNos.length) {
+    const pageSize = 1000
+    for (let from = 0; ; from += pageSize) {
+      const { data: pageRows, error: segErr } = await supabase
+        .from('tcr_route_segments')
+        .select('container_no, segment_id, segment_no, to_location, etd, atd, eta, ata')
+        .in('container_no', containerNos)
+        .order('segment_no')
+        .range(from, from + pageSize - 1)
+      if (segErr) return res.status(500).json({ ok: false, error: segErr.message })
+      segRows.push(...((pageRows ?? []) as SegRow[]))
+      if (!pageRows || pageRows.length < pageSize) break
+    }
+  }
+
+  const segsByContainer = new Map<string, SegRow[]>()
+  for (const s of segRows) {
+    const arr = segsByContainer.get(s.container_no) ?? []
+    arr.push(s)
+    segsByContainer.set(s.container_no, arr)
+  }
 
   const total      = rows.length
-  const arrived    = rows.filter(r => r.arrived_yn).length
+  const arrivedMap = new Map<string, boolean>()
+  for (const r of rows) {
+    const segs = (segsByContainer.get(r.container_no) ?? []).sort((a, b) => a.segment_no - b.segment_no)
+    arrivedMap.set(r.container_no, isArrived(r, segs))
+  }
+  const arrived    = rows.filter(r => arrivedMap.get(r.container_no) ?? r.arrived_yn).length
   const in_transit = total - arrived
   const by_destination: Record<string, number> = {}
   const by_segment: Record<string, number>     = {}
   for (const r of rows) {
-    if (r.destination)                        by_destination[r.destination]    = (by_destination[r.destination]    ?? 0) + 1
-    if (!r.arrived_yn && r.current_location)  by_segment[r.current_location]  = (by_segment[r.current_location]  ?? 0) + 1
+    const rowArrived = arrivedMap.get(r.container_no) ?? r.arrived_yn
+    if (r.destination)                       by_destination[r.destination]   = (by_destination[r.destination]   ?? 0) + 1
+    if (!rowArrived && r.current_location)   by_segment[r.current_location]  = (by_segment[r.current_location]  ?? 0) + 1
   }
 
-  // Monthly delay buckets — grouped by eta_final month.
-  // Includes:
-  //   ① Arrived containers (actual delay = ata_final - eta_final)
-  //   ② In-transit containers past ETA (projected delay = today - eta_final)
+  // Monthly snapshot buckets based on the same segment/dwell delay used by MTL-Link signals.
   type Bucket = {
-    actual_h:   number[]  // delays for arrived containers
-    projected_h: number[] // delays for in-transit containers past ETA
-    on_time:    number    // arrived with delay ≤ 0
+    actual_h:    number[]
+    projected_h: number[]
+    on_time:    number
   }
   const buckets = new Map<string, Bucket>()
 
   for (const r of rows) {
-    if (!r.eta_final || r.eta_final < cutoffStr) continue
     const laneId = deriveLaneId(r.origin, r.destination)
     if (!laneId) continue
 
-    // All containers go into ONE current-month bucket per lane.
-    // This way overdue in-transit containers (e.g. May ETA, still running in June)
-    // are included in the current snapshot, not hidden in a past month bucket.
-    const key    = `${laneId}|${toMonthYm(today)}`
+    const segs        = (segsByContainer.get(r.container_no) ?? []).sort((a, b) => a.segment_no - b.segment_no)
+    const rowArrived  = arrivedMap.get(r.container_no) ?? r.arrived_yn
+    const curSegId    = rowArrived ? null : computeCurrentSeg(segs, r.current_location, r.destination)
+    const curSeg      = curSegId ? segs.find(s => s.segment_id === curSegId) ?? null : null
+    const metric      = computeTcrStatsDelayMetric(
+      rowArrived,
+      curSeg ? { etd: curSeg.etd, atd: curSeg.atd, eta: curSeg.eta, ata: curSeg.ata } : null,
+      segs,
+      r.current_location_since,
+      today,
+    )
+    if (!metric) continue
+
+    const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
 
-    if (r.ata_final) {
-      const dh = (new Date(r.ata_final).getTime() - new Date(r.eta_final).getTime()) / 3_600_000
-      bucket.actual_h.push(dh)
-      if (dh <= 0) bucket.on_time++
-    } else if (r.eta_final < today) {
-      // Still in transit, past ETA → projected delay (at minimum this many hours late)
-      const dh = (new Date(today).getTime() - new Date(r.eta_final).getTime()) / 3_600_000
-      bucket.projected_h.push(dh)
+    if (!metric.projected) {
+      bucket.actual_h.push(metric.delay_h)
+      if (metric.delay_h <= 0) bucket.on_time++
+    } else {
+      bucket.projected_h.push(metric.delay_h)
+      if (metric.delay_h <= 0) bucket.on_time++
     }
     buckets.set(key, bucket)
   }
@@ -346,23 +465,194 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
 // ── FESCO corridor stats (for logisight integration) ─────────────────────────
 // Uses fesco_orders.route_latin for final-destination lane detection,
 // then looks up ETA/ATA from fesco_container_tracking_current.
-// current_to is only an intermediate stop — not suitable for lane matching.
+// current_to is only a fallback because it can be an intermediate stop.
 
-function deriveFescoLaneIdFromRoute(routeLatin: string | null): string | null {
-  if (!routeLatin) return null
-  // Split only by / — hyphens in city names (Alma-Ata) must not be treated as separators
-  const dst = routeLatin.split('/').at(-1)?.trim().toLowerCase() ?? ''
-  if (!dst) return null
-  if (dst.includes('chukur') || dst.includes('chucur'))             return 'KR-CHUKURSAY'
-  if (dst.includes('tashkent') || dst.includes('toshkent'))         return 'KR-CHUKURSAY'
-  if (dst.includes('almaty') || dst.includes('alma'))               return 'KR-ALMATY'
-  if (dst.includes('bishkek') || dst.includes('biskek') || dst.includes('frunze')) return 'KR-BISHKEK'
-  if (dst.includes('andijan') || dst.includes('andijon'))           return 'KR-ANDIJAN'
-  if (dst.includes('osh') && !dst.includes('khorgos'))              return 'KR-OSH'
-  if (dst.includes('malaszewicze') || dst.includes('małaszewicze') || dst.includes('brest')) return 'KR-MALASZEWICZE'
-  return null
+function normalizeFescoText(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0142/g, 'l')
+    .replace(/\u00c5\u201a/g, 'l')
 }
 
+function lastIndexOfAny(haystack: string, needles: string[]): number {
+  return needles.reduce((max, needle) => Math.max(max, haystack.lastIndexOf(needle)), -1)
+}
+
+function lastIndexOfAsciiToken(haystack: string, token: string): number {
+  const re = new RegExp(`(^|[^a-z])${token}(?=[^a-z]|$)`, 'g')
+  let match: RegExpExecArray | null
+  let last = -1
+  while ((match = re.exec(haystack)) !== null) {
+    last = match.index + match[1].length
+  }
+  return last
+}
+
+function deriveFescoLaneIdFromText(value: unknown): string | null {
+  const text = normalizeFescoText(value)
+  if (!text) return null
+
+  const matches = [
+    {
+      laneId: 'KR-CHUKURSAY',
+      index: lastIndexOfAny(text, [
+        'chukursaj',
+        'chukursay',
+        'chucursay',
+        'chukur',
+        'chucur',
+        'tashkent',
+        'toshkent',
+        '\u0447\u0443\u043a\u0443\u0440\u0441\u0430\u0439',
+        '\u0442\u0430\u0448\u043a\u0435\u043d\u0442',
+      ]),
+    },
+    {
+      laneId: 'KR-ALMATY',
+      index: lastIndexOfAny(text, ['almaty', 'alma-ata', 'alma ata']),
+    },
+    {
+      laneId: 'KR-BISHKEK',
+      index: lastIndexOfAny(text, ['bishkek', 'biskek', 'frunze']),
+    },
+    {
+      laneId: 'KR-ANDIJAN',
+      index: lastIndexOfAny(text, ['andijan', 'andijon']),
+    },
+    {
+      laneId: 'KR-OSH',
+      index: text.includes('khorgos') ? -1 : lastIndexOfAsciiToken(text, 'osh'),
+    },
+    {
+      laneId: 'KR-MALASZEWICZE',
+      index: lastIndexOfAny(text, ['malaszewicze', 'brest']),
+    },
+  ]
+    .filter(m => m.index >= 0)
+    .sort((a, b) => b.index - a.index)
+
+  return matches[0]?.laneId ?? null
+}
+
+type FescoSegmentJson = {
+  planingDestinationDate?: string | null
+  destinationDate?:       string | null
+  destinationLocationEn?: string | null
+  planingDepartureDate?:  string | null
+  departureDate?:         string | null
+  segmentType?:           string | null
+  currentSegment?:        boolean | null
+  completed?:             boolean | null
+  inProgress?:            boolean | null
+}
+
+type FescoEventJson = {
+  date?:              string | null
+  locationLatin?:     string | null
+  remainingDistance?: string | number | null
+}
+
+type FescoTrackingRow = {
+  container_number:          string
+  order_id:                  number | null
+  status:                    string | null
+  current_to:                string | null
+  planned_destination_date:  string | null
+  destination_date:          string | null
+  segments_json:             FescoSegmentJson[] | null
+  events_json:               FescoEventJson[] | null
+}
+
+function getLastFescoDestinationSegment(segs: FescoSegmentJson[]): FescoSegmentJson | null {
+  return [...segs].reverse().find(s => s.planingDestinationDate || s.destinationDate || s.destinationLocationEn) ?? null
+}
+
+function getFescoLaneId(row: FescoTrackingRow, orderLaneMap: Map<number, string>): string | null {
+  const segs             = Array.isArray(row.segments_json) ? row.segments_json : []
+  const finalSeg         = getLastFescoDestinationSegment(segs)
+  const orderLaneId      = row.order_id != null ? orderLaneMap.get(row.order_id) : null
+  const segmentLaneId    = deriveFescoLaneIdFromText(finalSeg?.destinationLocationEn)
+  const currentToLaneId  = deriveFescoLaneIdFromText(row.current_to)
+
+  return orderLaneId ?? segmentLaneId ?? currentToLaneId ?? null
+}
+
+function isFescoCompletedInProgressPlaceholder(seg: FescoSegmentJson): boolean {
+  return !!(seg.completed && seg.inProgress)
+}
+
+function parseFescoRemainingDistance(value: string | number | null | undefined): number | null {
+  if (value == null) return null
+  const n = typeof value === 'number' ? value : parseFloat(String(value))
+  return isNaN(n) ? null : n
+}
+
+function computeFescoDelayMetric(row: FescoTrackingRow, today: string): DelayMetric | null {
+  if (row.status === 'completed') return null
+
+  const segs   = Array.isArray(row.segments_json) ? row.segments_json : []
+  const events = Array.isArray(row.events_json) ? row.events_json : []
+  const latestEvent = events[0] ?? null
+  const remaining = parseFescoRemainingDistance(latestEvent?.remainingDistance)
+  const isPrematureCompletion = remaining !== null && remaining > 0
+
+  const candidates: { delay_h: number | null; projected: boolean }[] = []
+
+  if (row.status === 'awaiting_next_leg') {
+    for (let i = segs.length - 2; i >= 0; i--) {
+      if (segs[i].destinationDate) {
+        candidates.push({ delay_h: hoursDiff(segs[i].destinationDate, today), projected: true })
+        break
+      }
+    }
+  }
+
+  for (const s of segs) {
+    if (isFescoCompletedInProgressPlaceholder(s)) continue
+
+    if (s.planingDestinationDate && (!s.destinationDate || isPrematureCompletion)) {
+      candidates.push({
+        delay_h: hoursDiff(s.planingDestinationDate, isPrematureCompletion ? today : (s.destinationDate ?? today)),
+        projected: !s.destinationDate || isPrematureCompletion,
+      })
+    }
+
+    if (s.planingDepartureDate && !s.departureDate) {
+      candidates.push({
+        delay_h: hoursDiff(s.planingDepartureDate, today),
+        projected: true,
+      })
+    }
+  }
+
+  const isSeaCurrent = segs.some(s => s.currentSegment === true && s.segmentType === 'SEA')
+  if (!isSeaCurrent) {
+    const datedEvents = events
+      .filter((ev): ev is FescoEventJson & { date: string; locationLatin: string } =>
+        typeof ev.date === 'string' && typeof ev.locationLatin === 'string',
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    if (datedEvents.length > 0) {
+      const curLoc = datedEvents[0].locationLatin
+      let stagnantSince = datedEvents[0].date
+      for (const ev of datedEvents) {
+        if (ev.locationLatin !== curLoc) break
+        stagnantSince = ev.date
+      }
+      candidates.push({ delay_h: hoursDiff(stagnantSince, today), projected: true })
+    }
+  }
+
+  return maxDelayMetric(candidates)
+}
+
+function deriveFescoLaneIdFromRoute(routeLatin: string | null): string | null {
+  return deriveFescoLaneIdFromText(routeLatin)
+}
 async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse, supabase: ReturnType<typeof createClient>) {
   res.setHeader('Access-Control-Allow-Origin', CORRIDOR_ALLOWED_ORIGIN)
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
@@ -375,8 +665,6 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
   }
 
   const today        = new Date().toISOString().split('T')[0]
-  const cutoff       = new Date(); cutoff.setMonth(cutoff.getMonth() - 6)
-  const cutoffStr    = cutoff.toISOString().split('T')[0]
   const currentMonth = toMonthYm(today)
 
   // Step 1: order_id → laneId via fesco_orders.route_latin (direct FK, no containers array)
@@ -392,50 +680,46 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
   }
 
   // Step 2: fetch tracking using order_id FK + segments_json for final ETA/ATA.
-  // planned_destination_date = current segment only (often null for early-stage containers).
-  // segments_json: walk backwards to the last segment with planingDestinationDate = final ETA.
-  type SegJson = { planingDestinationDate?: string | null; destinationDate?: string | null }
-  type FRow = {
-    container_number: string
-    order_id:         number | null
-    segments_json:    SegJson[] | null
-  }
+  // planned_destination_date is the current row fallback for older rows with empty segments_json.
   const { data: rows, error } = await supabase
     .from('fesco_container_tracking_current')
-    .select('container_number, order_id, segments_json')
+    .select('container_number, order_id, status, current_to, planned_destination_date, destination_date, segments_json, events_json')
   if (error) return res.status(500).json({ ok: false, error: error.message })
 
   const trackingTotal = (rows ?? []).length
-  let withEta         = 0
+  let withOrderId     = 0
   let matchedLane     = 0
+  let withDelayBasis  = 0
+  let sampleCount     = 0
+  const skipped       = { no_lane: 0, no_delay_basis: 0 }
 
   type Bucket = { actual_h: number[]; projected_h: number[]; on_time: number }
   const buckets = new Map<string, Bucket>()
 
-  for (const r of (rows ?? []) as FRow[]) {
-    const laneId = r.order_id != null ? orderLaneMap.get(r.order_id) : null
-    if (!laneId) continue
+  for (const r of (rows ?? []) as FescoTrackingRow[]) {
+    if (r.order_id != null) withOrderId++
 
-    const segs = r.segments_json ?? []
-    const lastWithPlan = [...segs].reverse().find(s => s.planingDestinationDate)
-    const eta = lastWithPlan?.planingDestinationDate ?? null
-    if (!eta || eta < cutoffStr) continue
-    withEta++
+    const laneId = getFescoLaneId(r, orderLaneMap)
+    if (!laneId) {
+      skipped.no_lane++
+      continue
+    }
     matchedLane++
 
-    const ata = lastWithPlan?.destinationDate ?? null
+    const metric = computeFescoDelayMetric(r, today)
+    if (!metric) {
+      skipped.no_delay_basis++
+      continue
+    }
+    withDelayBasis++
 
     const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
 
-    if (ata) {
-      const dh = (new Date(ata).getTime() - new Date(eta).getTime()) / 3_600_000
-      bucket.actual_h.push(dh)
-      if (dh <= 0) bucket.on_time++
-    } else if (eta < today) {
-      const dh = (new Date(today).getTime() - new Date(eta).getTime()) / 3_600_000
-      bucket.projected_h.push(dh)
-    }
+    if (metric.projected) bucket.projected_h.push(metric.delay_h)
+    else                  bucket.actual_h.push(metric.delay_h)
+    sampleCount++
+    if (metric.delay_h <= 0) bucket.on_time++
     buckets.set(key, bucket)
   }
 
@@ -461,12 +745,26 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
     }
   }).sort((a, b) => a.lane_id.localeCompare(b.lane_id))
 
-  return res.json({
+  const payload: Record<string, unknown> = {
     ok:          true,
     computed_at: new Date().toISOString(),
     weekly_stats,
-    _debug: { orders: (orderRows ?? []).length, containersMapped: containerLaneMap.size, trackingTotal, withEta, matchedLane },
-  })
+  }
+
+  if (String(req.query.debug ?? '') === '1') {
+    payload._debug = {
+      orders:       (orderRows ?? []).length,
+      mappedOrders: orderLaneMap.size,
+      trackingTotal,
+      withOrderId,
+      matchedLane,
+      withDelayBasis,
+      sampleCount,
+      skipped,
+    }
+  }
+
+  return res.json(payload)
 }
 
 // ── Weather forecast cache (module-level, 1-hour TTL) ─────────────────────────
