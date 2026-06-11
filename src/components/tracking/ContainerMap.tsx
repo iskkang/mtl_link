@@ -130,7 +130,11 @@ function buildPopupHtml(
     return new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
-  const route     = detail ? `${detail.current_from ?? '—'} → ${detail.current_to ?? '—'}` : '—'
+  const route     = detail
+    ? (detail.current_from || detail.current_to)
+        ? `${detail.current_from ?? '—'} → ${detail.current_to ?? '—'}`
+        : '—'
+    : '—'
   const lastEvent = detail?.last_event_location ?? '—'
   const eta       = detail?.planned_destination_date ?? null
   const alert     = detail?.alert_reason ?? null

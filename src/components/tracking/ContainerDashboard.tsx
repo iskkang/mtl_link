@@ -163,7 +163,7 @@ function SegmentLine({ c, seaLabel, railLabel }: {
       style={{ color: 'var(--ink-500)' }}
     >
       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
-        {c.current_from ?? '—'} → {c.current_to ?? '—'}
+        {(c.current_from || c.current_to) ? `${c.current_from ?? '—'} → ${c.current_to ?? '—'}` : '—'}
       </span>
       {hasSegment && (
         <>
