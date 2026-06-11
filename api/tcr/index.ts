@@ -497,7 +497,7 @@ function deriveFescoLaneIdFromText(value: unknown): string | null {
 
   const matches = [
     {
-      laneId: 'KR-CHUKURSAY',
+      laneId: 'KR-VLADIVOSTOK-CHUKURSAY',
       index: lastIndexOfAny(text, [
         'chukursaj',
         'chukursay',
@@ -508,6 +508,27 @@ function deriveFescoLaneIdFromText(value: unknown): string | null {
         'toshkent',
         '\u0447\u0443\u043a\u0443\u0440\u0441\u0430\u0439',
         '\u0442\u0430\u0448\u043a\u0435\u043d\u0442',
+      ]),
+    },
+    {
+      laneId: 'KR-VLADIVOSTOK-SILIKATNAJA',
+      index: lastIndexOfAny(text, [
+        'silikatnaja',
+        'silikatnaya',
+        'silikat',
+        '\u0441\u0438\u043b\u0438\u043a\u0430\u0442\u043d\u0430\u044f',
+      ]),
+    },
+    {
+      laneId: 'KR-VLADIVOSTOK-MOSCOW',
+      index: lastIndexOfAny(text, [
+        'moscow',
+        'moskva',
+        'khovrino',
+        'hovrino',
+        'belyj rast',
+        'bely rast',
+        '\u043c\u043e\u0441\u043a\u0432\u0430',
       ]),
     },
     {
