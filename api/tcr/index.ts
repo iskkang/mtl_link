@@ -234,6 +234,29 @@ function dqLevel(n: number): 'confirmed' | 'provisional' | 'indicative' {
 type DelayMetric = {
   delay_h:   number
   projected: boolean
+  segment?:  string | null
+  location?: string | null
+  reason?:   string | null
+}
+
+type CorridorHotspot = {
+  lane_id:                 string
+  segment:                 string
+  location:                string | null
+  reason:                  string
+  severity:                'high' | 'medium' | 'low'
+  delay_contribution_days: number
+  sample_count:            number
+  confidence:              'high' | 'medium' | 'low'
+  source:                  string
+}
+
+type DelayCandidate = {
+  delay_h:   number | null
+  projected: boolean
+  segment?:  string | null
+  location?: string | null
+  reason?:   string | null
 }
 
 function hoursDiff(start: string | null | undefined, end: string | null | undefined): number | null {
@@ -244,8 +267,8 @@ function hoursDiff(start: string | null | undefined, end: string | null | undefi
   return (endMs - startMs) / 3_600_000
 }
 
-function maxDelayMetric(candidates: { delay_h: number | null; projected: boolean }[]): DelayMetric | null {
-  const usable = candidates.filter((c): c is { delay_h: number; projected: boolean } => c.delay_h !== null && !isNaN(c.delay_h))
+function maxDelayMetric(candidates: DelayCandidate[]): DelayMetric | null {
+  const usable = candidates.filter((c): c is DelayCandidate & { delay_h: number } => c.delay_h !== null && !isNaN(c.delay_h))
   if (usable.length === 0) return null
 
   const maxRaw = usable.reduce((max, c) => Math.max(max, c.delay_h), Number.NEGATIVE_INFINITY)
@@ -253,26 +276,130 @@ function maxDelayMetric(candidates: { delay_h: number | null; projected: boolean
   return {
     delay_h:   Math.max(0, maxRaw),
     projected: top?.projected ?? usable.some(c => c.projected),
+    segment:   top?.segment ?? null,
+    location:  top?.location ?? null,
+    reason:    top?.reason ?? null,
   }
+}
+
+function severityFromDelayDays(days: number): 'high' | 'medium' | 'low' {
+  if (days >= 5) return 'high'
+  if (days >= 3) return 'medium'
+  return 'low'
+}
+
+function confidenceFromSampleCount(n: number): 'high' | 'medium' | 'low' {
+  if (n >= 5) return 'high'
+  if (n >= 2) return 'medium'
+  return 'low'
+}
+
+function normalizeOperationalReason(reason: string | null | undefined): string | null {
+  if (!reason) return null
+  if (/no usable tracking dates/i.test(reason)) return null
+  if (/tracking is unavailable/i.test(reason)) return null
+  if (/tracking data has not been refreshed/i.test(reason)) return '추적 데이터 갱신 지연'
+
+  const noMovement = reason.match(/No movement from (.+) for (\d+) days?\.?/i)
+  if (noMovement) return `체류 ${noMovement[2]}일`
+
+  const etaPassed = reason.match(/ETA ([0-9-]+) passed by (\d+) days?\.?/i)
+  if (etaPassed) return `도착 예정일 ${etaPassed[2]}일 초과`
+
+  return reason
+}
+
+type HotspotBucket = {
+  lane_id:  string
+  segment:  string
+  location: string | null
+  reason:   string
+  source:   string
+  delays_h: number[]
+}
+
+function addHotspotCandidate(
+  buckets: Map<string, HotspotBucket>,
+  laneId: string,
+  metric: DelayMetric,
+  source: string,
+) {
+  const delayDays = metric.delay_h / 24
+  if (delayDays < 1) return
+
+  const normalizedReason = normalizeOperationalReason(metric.reason)
+  if (!normalizedReason) return
+
+  const segment  = (metric.segment || metric.location || '구간 확인 필요').trim()
+  const location = metric.location?.trim() || null
+  const reason   = normalizedReason.trim()
+  const key      = `${laneId}|${segment}|${location ?? ''}|${reason}|${source}`
+  const bucket   = buckets.get(key) ?? { lane_id: laneId, segment, location, reason, source, delays_h: [] }
+  bucket.delays_h.push(metric.delay_h)
+  buckets.set(key, bucket)
+}
+
+function buildHotspots(buckets: Map<string, HotspotBucket>): CorridorHotspot[] {
+  return Array.from(buckets.values())
+    .map((b) => {
+      const sorted = [...b.delays_h].sort((a, c) => a - c)
+      const delayDays = Math.round((pct(sorted, 50) / 24) * 10) / 10
+      return {
+        lane_id:                 b.lane_id,
+        segment:                 b.segment,
+        location:                b.location,
+        reason:                  b.reason,
+        severity:                severityFromDelayDays(delayDays),
+        delay_contribution_days: delayDays,
+        sample_count:            sorted.length,
+        confidence:              confidenceFromSampleCount(sorted.length),
+        source:                  b.source,
+      }
+    })
+    .sort((a, b) =>
+      b.delay_contribution_days - a.delay_contribution_days ||
+      b.sample_count - a.sample_count ||
+      a.lane_id.localeCompare(b.lane_id),
+    )
 }
 
 function computeTcrDelayMetric(
   arrived: boolean,
-  seg: { etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
+  seg: { from_location?: string | null; to_location?: string | null; etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
   currentLocationSince: string | null,
+  currentLocation: string | null,
   today: string,
 ): DelayMetric | null {
   if (arrived) return null
 
-  const candidates: { delay_h: number | null; projected: boolean }[] = []
+  const segmentLabel = seg ? [seg.from_location, seg.to_location].filter(Boolean).join(' → ') || seg.to_location || seg.from_location : null
+  const candidates: DelayCandidate[] = []
   if (seg?.etd) {
-    candidates.push({ delay_h: hoursDiff(seg.etd, seg.atd ?? today), projected: !seg.atd })
+    candidates.push({
+      delay_h:   hoursDiff(seg.etd, seg.atd ?? today),
+      projected: !seg.atd,
+      segment:   segmentLabel,
+      location:  seg.from_location ?? currentLocation,
+      reason:    seg.atd ? '출발 지연' : '출발 예정 초과',
+    })
   }
   if (seg?.eta) {
-    candidates.push({ delay_h: hoursDiff(seg.eta, seg.ata ?? today), projected: !seg.ata })
+    candidates.push({
+      delay_h:   hoursDiff(seg.eta, seg.ata ?? today),
+      projected: !seg.ata,
+      segment:   segmentLabel,
+      location:  seg.to_location ?? currentLocation,
+      reason:    seg.ata ? '도착 지연' : '도착 예정 초과',
+    })
   }
   if (currentLocationSince) {
-    candidates.push({ delay_h: hoursDiff(currentLocationSince, today), projected: true })
+    candidates.push({
+      delay_h:   hoursDiff(currentLocationSince, today),
+      projected: true,
+      segment:   currentLocation ?? segmentLabel,
+      location:  currentLocation,
+      reason:    currentLocation ? '현 위치 체류' : '구간 체류',
+    })
   }
 
   return maxDelayMetric(candidates)
@@ -280,19 +407,33 @@ function computeTcrDelayMetric(
 
 function computeTcrStatsDelayMetric(
   arrived: boolean,
-  currentSeg: { etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
-  allSegs: { etd: string | null; atd: string | null; eta: string | null; ata: string | null }[],
+  currentSeg: { from_location?: string | null; to_location?: string | null; etd: string | null; atd: string | null; eta: string | null; ata: string | null } | null,
+  allSegs: { from_location?: string | null; to_location?: string | null; etd: string | null; atd: string | null; eta: string | null; ata: string | null }[],
   currentLocationSince: string | null,
+  currentLocation: string | null,
   today: string,
 ): DelayMetric | null {
   if (!arrived) {
-    return computeTcrDelayMetric(false, currentSeg, currentLocationSince, today)
+    return computeTcrDelayMetric(false, currentSeg, currentLocationSince, currentLocation, today)
   }
 
-  const candidates: { delay_h: number | null; projected: boolean }[] = []
+  const candidates: DelayCandidate[] = []
   for (const s of allSegs) {
-    if (s.etd && s.atd) candidates.push({ delay_h: hoursDiff(s.etd, s.atd), projected: false })
-    if (s.eta && s.ata) candidates.push({ delay_h: hoursDiff(s.eta, s.ata), projected: false })
+    const segmentLabel = [s.from_location, s.to_location].filter(Boolean).join(' → ') || s.to_location || s.from_location
+    if (s.etd && s.atd) candidates.push({
+      delay_h:   hoursDiff(s.etd, s.atd),
+      projected: false,
+      segment:   segmentLabel,
+      location:  s.from_location ?? null,
+      reason:    '출발 지연',
+    })
+    if (s.eta && s.ata) candidates.push({
+      delay_h:   hoursDiff(s.eta, s.ata),
+      projected: false,
+      segment:   segmentLabel,
+      location:  s.to_location ?? null,
+      reason:    '도착 지연',
+    })
   }
   return maxDelayMetric(candidates)
 }
@@ -327,6 +468,7 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     container_no: string
     segment_id:   string
     segment_no:   number
+    from_location:string | null
     to_location:  string | null
     etd:          string | null
     atd:          string | null
@@ -356,7 +498,7 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     for (let from = 0; ; from += pageSize) {
       const { data: pageRows, error: segErr } = await supabase
         .from('tcr_route_segments')
-        .select('container_no, segment_id, segment_no, to_location, etd, atd, eta, ata')
+        .select('container_no, segment_id, segment_no, from_location, to_location, etd, atd, eta, ata')
         .in('container_no', containerNos)
         .order('segment_no')
         .range(from, from + pageSize - 1)
@@ -396,6 +538,7 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     on_time:    number
   }
   const buckets = new Map<string, Bucket>()
+  const hotspotBuckets = new Map<string, HotspotBucket>()
 
   for (const r of rows) {
     const laneId = deriveLaneId(r.origin, r.destination)
@@ -407,12 +550,14 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
     const curSeg      = curSegId ? segs.find(s => s.segment_id === curSegId) ?? null : null
     const metric      = computeTcrStatsDelayMetric(
       rowArrived,
-      curSeg ? { etd: curSeg.etd, atd: curSeg.atd, eta: curSeg.eta, ata: curSeg.ata } : null,
+      curSeg ? { from_location: curSeg.from_location, to_location: curSeg.to_location, etd: curSeg.etd, atd: curSeg.atd, eta: curSeg.eta, ata: curSeg.ata } : null,
       segs,
       r.current_location_since,
+      r.current_location,
       today,
     )
     if (!metric) continue
+    if (!rowArrived) addHotspotCandidate(hotspotBuckets, laneId, metric, 'MTL-Link TCR')
 
     const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
@@ -453,12 +598,14 @@ async function handleCorridorStats(req: VercelRequest, res: VercelResponse, supa
       data_quality,
     }
   }).sort((a, b) => b.week_iso.localeCompare(a.week_iso) || a.lane_id.localeCompare(b.lane_id))
+  const hotspots = buildHotspots(hotspotBuckets)
 
   return res.json({
     ok:          true,
     computed_at: new Date().toISOString(),
     snapshot:    { total, in_transit, arrived, alert_count: alertCount ?? 0, by_destination, by_segment },
     weekly_stats,
+    hotspots,
   })
 }
 
@@ -562,6 +709,7 @@ type FescoSegmentJson = {
   planingDestinationDate?: string | null
   destinationDate?:       string | null
   destinationLocationEn?: string | null
+  departureLocationEn?:   string | null
   planingDepartureDate?:  string | null
   departureDate?:         string | null
   segmentType?:           string | null
@@ -580,11 +728,14 @@ type FescoTrackingRow = {
   container_number:          string
   order_id:                  number | null
   status:                    string | null
+  current_from:              string | null
   current_to:                string | null
   planned_destination_date:  string | null
   destination_date:          string | null
   segments_json:             FescoSegmentJson[] | null
   events_json:               FescoEventJson[] | null
+  alert_level:               string | null
+  alert_reason:              string | null
 }
 
 function getLastFescoDestinationSegment(segs: FescoSegmentJson[]): FescoSegmentJson | null {
@@ -620,12 +771,18 @@ function computeFescoDelayMetric(row: FescoTrackingRow, today: string): DelayMet
   const remaining = parseFescoRemainingDistance(latestEvent?.remainingDistance)
   const isPrematureCompletion = remaining !== null && remaining > 0
 
-  const candidates: { delay_h: number | null; projected: boolean }[] = []
+  const candidates: DelayCandidate[] = []
 
   if (row.status === 'awaiting_next_leg') {
     for (let i = segs.length - 2; i >= 0; i--) {
       if (segs[i].destinationDate) {
-        candidates.push({ delay_h: hoursDiff(segs[i].destinationDate, today), projected: true })
+        candidates.push({
+          delay_h:   hoursDiff(segs[i].destinationDate, today),
+          projected: true,
+          segment:   segs[i].destinationLocationEn ?? row.current_to ?? '다음 구간 대기',
+          location:  segs[i].destinationLocationEn ?? row.current_to,
+          reason:    '다음 구간 대기',
+        })
         break
       }
     }
@@ -633,18 +790,28 @@ function computeFescoDelayMetric(row: FescoTrackingRow, today: string): DelayMet
 
   for (const s of segs) {
     if (isFescoCompletedInProgressPlaceholder(s)) continue
+    const segmentLabel = [s.departureLocationEn, s.destinationLocationEn].filter(Boolean).join(' → ') ||
+      s.destinationLocationEn ||
+      s.departureLocationEn ||
+      null
 
     if (s.planingDestinationDate && (!s.destinationDate || isPrematureCompletion)) {
       candidates.push({
-        delay_h: hoursDiff(s.planingDestinationDate, isPrematureCompletion ? today : (s.destinationDate ?? today)),
+        delay_h:   hoursDiff(s.planingDestinationDate, isPrematureCompletion ? today : (s.destinationDate ?? today)),
         projected: !s.destinationDate || isPrematureCompletion,
+        segment:   segmentLabel,
+        location:  s.destinationLocationEn ?? row.current_to,
+        reason:    s.destinationDate && !isPrematureCompletion ? '도착 지연' : '도착 예정 초과',
       })
     }
 
     if (s.planingDepartureDate && !s.departureDate) {
       candidates.push({
-        delay_h: hoursDiff(s.planingDepartureDate, today),
+        delay_h:   hoursDiff(s.planingDepartureDate, today),
         projected: true,
+        segment:   segmentLabel,
+        location:  s.departureLocationEn ?? row.current_from,
+        reason:    '출발 예정 초과',
       })
     }
   }
@@ -664,7 +831,13 @@ function computeFescoDelayMetric(row: FescoTrackingRow, today: string): DelayMet
         if (ev.locationLatin !== curLoc) break
         stagnantSince = ev.date
       }
-      candidates.push({ delay_h: hoursDiff(stagnantSince, today), projected: true })
+      candidates.push({
+        delay_h:   hoursDiff(stagnantSince, today),
+        projected: true,
+        segment:   curLoc,
+        location:  curLoc,
+        reason:    row.alert_reason || '현 위치 체류',
+      })
     }
   }
 
@@ -704,7 +877,7 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
   // planned_destination_date is the current row fallback for older rows with empty segments_json.
   const { data: rows, error } = await supabase
     .from('fesco_container_tracking_current')
-    .select('container_number, order_id, status, current_to, planned_destination_date, destination_date, segments_json, events_json')
+    .select('container_number, order_id, status, current_from, current_to, planned_destination_date, destination_date, segments_json, events_json, alert_level, alert_reason')
   if (error) return res.status(500).json({ ok: false, error: error.message })
 
   const trackingTotal = (rows ?? []).length
@@ -716,6 +889,7 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
 
   type Bucket = { actual_h: number[]; projected_h: number[]; on_time: number }
   const buckets = new Map<string, Bucket>()
+  const hotspotBuckets = new Map<string, HotspotBucket>()
 
   for (const r of (rows ?? []) as FescoTrackingRow[]) {
     if (r.order_id != null) withOrderId++
@@ -733,6 +907,7 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
       continue
     }
     withDelayBasis++
+    addHotspotCandidate(hotspotBuckets, laneId, metric, 'MTL-Link FESCO')
 
     const key    = `${laneId}|${currentMonth}`
     const bucket = buckets.get(key) ?? { actual_h: [], projected_h: [], on_time: 0 }
@@ -765,11 +940,13 @@ async function handleFescoCorridorStats(req: VercelRequest, res: VercelResponse,
       data_quality,
     }
   }).sort((a, b) => a.lane_id.localeCompare(b.lane_id))
+  const hotspots = buildHotspots(hotspotBuckets)
 
   const payload: Record<string, unknown> = {
     ok:          true,
     computed_at: new Date().toISOString(),
     weekly_stats,
+    hotspots,
   }
 
   if (String(req.query.debug ?? '') === '1') {
