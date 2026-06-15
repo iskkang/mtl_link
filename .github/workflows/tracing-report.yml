@@ -23,3 +23,16 @@ jobs:
             echo "Tracing report send failed"
             exit 1
           fi
+
+      - name: Call /api/tcr?action=delay-notify
+        run: |
+          response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/tcr?action=delay-notify")
+          echo "HTTP status: $response"
+          echo "Response body:"
+          cat /tmp/body.json
+          if [ "$response" != "200" ]; then
+            echo "TCR delay notify failed"
+            exit 1
+          fi
