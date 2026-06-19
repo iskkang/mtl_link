@@ -589,7 +589,7 @@ function MobileContainerDashboard({
   const isAllCountries = ALL_COUNTRIES.every(c => selectedCountries.has(c))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', background: 'var(--chat-bg)', paddingBottom: 64 }}>
+    <div className="fesco-bookings-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', background: 'var(--chat-bg)', paddingBottom: 64 }}>
 
       {/* [1] Header */}
       <div style={{ flexShrink: 0, padding: '12px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
