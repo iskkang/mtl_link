@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, AlertCircle, X, ChevronRight, CheckCircle2, MapPin, Ship, Train } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ContainerMap, ContainerPopupData } from './ContainerMap'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 interface ContainerItem {
@@ -548,6 +549,266 @@ function SignalChip({
   )
 }
 
+/* ── Mobile dashboard view ───────────────────────────────────────────────
+   Rendered when useIsMobile() is true. Mirrors the FescoTrackingPage →
+   MobileFescoView pattern: the main component computes all data/handlers and
+   passes them down here. Desktop render path is untouched. */
+interface MobileDashboardProps {
+  loading:             boolean
+  error:               string | null
+  refreshing:          boolean
+  lastFetch:           string | null
+  fetchData:           (quiet?: boolean) => void
+  totalContainers:     number
+  stats:               { red: number; yellow: number; green: number; unknown: number }
+  totalActive:         number
+  actionNeeded:        ContainerItem[]
+  recentOrders:        RecentOrderItem[]
+  countryCounts:       Record<string, number>
+  selectedCountries:   Set<string>
+  toggleCountry:       (cc: string) => void
+  resetFilter:         () => void
+  mapPoints:           React.ComponentProps<typeof ContainerMap>['containers']
+  allContainerNumbers: string[]
+  containerDetails:    Record<string, ContainerPopupData>
+  onViewBookings:      () => void
+}
+
+function MobileContainerDashboard({
+  loading, error, refreshing, lastFetch, fetchData, totalContainers,
+  stats, totalActive, actionNeeded, recentOrders,
+  countryCounts, selectedCountries, toggleCountry, resetFilter,
+  mapPoints, allContainerNumbers, containerDetails, onViewBookings,
+}: MobileDashboardProps) {
+  const { t } = useTranslation()
+  const seaLabel  = t('tracking.dashboard.segment.sea')
+  const railLabel = t('tracking.dashboard.segment.rail')
+  const [mobileTab, setMobileTab] = useState<'action' | 'recent'>('action')
+  const [showAllAction, setShowAllAction] = useState(false)
+
+  const isAllCountries = ALL_COUNTRIES.every(c => selectedCountries.has(c))
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', background: 'var(--chat-bg)', paddingBottom: 64 }}>
+
+      {/* [1] Header */}
+      <div style={{ flexShrink: 0, padding: '12px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>{t('tracking.dashboard.title')}</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 1 }}>
+            {loading
+              ? 'Loading…'
+              : t('tracking.dashboard.activeContainersSynced', { count: totalContainers, time: fmtRelTime(lastFetch) })}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => fetchData(true)}
+          disabled={loading || refreshing}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, border: '1px solid var(--ink-300)', color: 'var(--ink-500)', background: 'transparent', cursor: 'pointer', flexShrink: 0, opacity: (loading || refreshing) ? 0.4 : 1 }}
+        >
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* [2] Stat pills */}
+      {!loading && totalActive > 0 && (
+        <div style={{ flexShrink: 0, padding: '0 14px 8px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {stats.red    > 0 && <StatPill count={stats.red}    signal="red"    label={t('tracking.dashboard.pill.action')} />}
+          {stats.yellow > 0 && <StatPill count={stats.yellow} signal="yellow" label={t('tracking.dashboard.pill.watch')} />}
+          {stats.green  > 0 && <StatPill count={stats.green}  signal="green"  label={t('tracking.dashboard.pill.onTrack')} />}
+        </div>
+      )}
+
+      {/* Error banner */}
+      {error && (
+        <div style={{ flexShrink: 0, margin: '0 14px 8px', padding: '10px 12px', borderRadius: 10, background: 'var(--signal-red-bg)', border: '1px solid rgba(220,38,38,0.25)', color: 'var(--signal-red)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{error}</span>
+          <button type="button" onClick={() => fetchData()} style={{ fontSize: 12, textDecoration: 'underline', background: 'transparent', border: 'none', color: 'var(--signal-red)', cursor: 'pointer', flexShrink: 0 }}>Retry</button>
+        </div>
+      )}
+
+      {/* Loading skeletons */}
+      {loading && !error && (
+        <div style={{ padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="animate-pulse" style={{ height: 92, borderRadius: 12, background: 'var(--ink-100)' }} />
+          <div className="animate-pulse" style={{ height: 200, borderRadius: 12, background: 'var(--ink-100)' }} />
+          <div className="animate-pulse" style={{ height: 240, borderRadius: 12, background: 'var(--ink-100)' }} />
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {/* [3] Summary card (donut + legend) */}
+          {totalActive > 0 && (
+            <div style={{ flexShrink: 0, margin: '0 14px 8px', background: 'var(--card)', borderRadius: 12, border: '0.5px solid var(--ink-200)', display: 'flex', alignItems: 'center', padding: '12px 14px', gap: 14 }}>
+              <DonutChart green={stats.green} yellow={stats.yellow} red={stats.red} centerLabel={t('tracking.dashboard.center.active')} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
+                <LegendRow color="var(--signal-green)"  label={t('tracking.dashboard.legend.onTrack')} count={stats.green} />
+                <LegendRow color="var(--signal-yellow)" label={t('tracking.dashboard.legend.watch')}   count={stats.yellow} />
+                <LegendRow color="var(--signal-red)"    label={t('tracking.dashboard.legend.action')}  count={stats.red} />
+              </div>
+            </div>
+          )}
+
+          {/* [4] Destination filter chips (horizontal scroll) */}
+          <div style={{ flexShrink: 0, display: 'flex', gap: 6, padding: '0 14px 8px', overflowX: 'auto', scrollbarWidth: 'none', alignItems: 'center' }}>
+            {ALL_COUNTRIES.map(cc => (
+              <CountryChip
+                key={cc}
+                label={t(`tracking.dashboard.country.${cc}`)}
+                count={countryCounts[cc] ?? 0}
+                active={selectedCountries.has(cc)}
+                onClick={() => toggleCountry(cc)}
+              />
+            ))}
+            {!isAllCountries && (
+              <button
+                type="button"
+                onClick={resetFilter}
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, border: '1px solid var(--ink-300)', color: 'var(--ink-500)', background: 'transparent', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                <X size={11} /> {t('tracking.dashboard.filter.clear')}
+              </button>
+            )}
+          </div>
+
+          {/* [5] Tabbed lists */}
+          <div style={{ flexShrink: 0, margin: '0 14px 8px', background: 'var(--card)', borderRadius: 12, border: '0.5px solid var(--ink-200)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flexShrink: 0, display: 'flex', borderBottom: '0.5px solid var(--ink-200)' }}>
+              {([
+                { key: 'action' as const, label: t('tracking.dashboard.panel.actionNeeded'), badge: actionNeeded.length > 0 ? actionNeeded.length : null },
+                { key: 'recent' as const, label: t('tracking.dashboard.panel.recentOrders'), badge: null },
+              ]).map(({ key, label, badge }) => {
+                const isActive = mobileTab === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setMobileTab(key)}
+                    style={{ flex: 1, padding: '10px 4px', fontSize: 12, fontWeight: 600,
+                      borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                      borderBottom: `2px solid ${isActive ? '#0F6E56' : 'transparent'}`,
+                      color: isActive ? '#0F6E56' : 'var(--ink-400)',
+                      background: isActive ? '#E1F5EE30' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {label}
+                    {badge != null && <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 700, color: '#dc2626' }}>{badge}</span>}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {mobileTab === 'action' && (
+                actionNeeded.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '28px 0', color: 'var(--signal-green)' }}>
+                    <CheckCircle2 size={20} />
+                    <span style={{ fontSize: 12 }}>{t('tracking.dashboard.empty.noAction')}</span>
+                  </div>
+                ) : (
+                  <>
+                    {(showAllAction ? actionNeeded : actionNeeded.slice(0, 5)).map(c => {
+                      const isUnknown  = c.signal === 'unknown'
+                      const isAwaiting = !isUnknown && (c.open_alert_types ?? []).some(tp => tp.startsWith('awaiting_next_leg'))
+                      const days = isUnknown
+                        ? daysSince(c.unknown_since ?? c.last_event_date)
+                        : isAwaiting
+                          ? daysSince(c.last_event_date)
+                          : daysSince(c.planned_destination_date ?? c.last_error_at)
+                      const daysColor = isUnknown ? '#475569' : isAwaiting ? 'var(--signal-yellow)' : 'var(--red)'
+                      return (
+                        <div key={c.container_number} style={{ padding: '8px 12px', borderBottom: '1px solid var(--ink-100)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <SignalDot signal={c.signal} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                              <a
+                                href={`https://my.fesco.com/tracking?tab=${c.container_number}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="font-mono"
+                                style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              >
+                                {c.container_number}
+                              </a>
+                              {days > 0 && (
+                                <span className="font-mono" style={{ fontSize: 10, fontWeight: 600, flexShrink: 0, color: daysColor }}>
+                                  {t('tracking.dashboard.actionNeeded.daysOverdue', { days })}
+                                </span>
+                              )}
+                            </div>
+                            <SegmentLine c={c} seaLabel={seaLabel} railLabel={railLabel} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {actionNeeded.length > 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllAction(v => !v)}
+                        style={{ width: '100%', padding: '10px 12px', fontSize: 11, fontWeight: 600, textAlign: 'left', color: 'var(--mint-deep)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                      >
+                        {showAllAction
+                          ? t('tracking.dashboard.actionNeeded.showLess')
+                          : t('tracking.dashboard.actionNeeded.showAll', { count: actionNeeded.length })}
+                      </button>
+                    )}
+                  </>
+                )
+              )}
+
+              {mobileTab === 'recent' && (
+                recentOrders.length === 0 ? (
+                  <div style={{ padding: '28px 0', textAlign: 'center', fontSize: 12, color: 'var(--ink-400)' }}>
+                    {t('tracking.dashboard.empty.noActive')}
+                  </div>
+                ) : (
+                  <>
+                  {recentOrders.map(ord => (
+                    <div key={ord.order_number ?? ord.route ?? ord.created_at ?? ''} style={{ padding: '8px 12px', borderBottom: '1px solid var(--ink-100)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <SignalDot signal={ord.signal} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="font-mono" style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ord.order_number ?? '—'}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--ink-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ord.route ?? '—'}
+                        </div>
+                      </div>
+                      <span className="font-mono" style={{ fontSize: 10, color: 'var(--ink-400)', flexShrink: 0 }}>{ord.container_count}×</span>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={onViewBookings}
+                    style={{ width: '100%', padding: '10px 12px', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, color: 'var(--mint-deep)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  >
+                    {t('tracking.dashboard.panel.viewAll')} <ChevronRight size={12} />
+                  </button>
+                  </>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* [6] Map (collapsed overview, bottom) */}
+          <div style={{ flexShrink: 0, margin: '0 14px', height: 240, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--ink-200)' }}>
+            <ContainerMap
+              containers={mapPoints}
+              allContainerNumbers={allContainerNumbers}
+              containerDetails={containerDetails}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 /* ── Main component ──────────────────────────────────────────────────── */
 const ALL_COUNTRIES = ['RU', 'UZ', 'BY', 'KZ'] as const
 
@@ -742,6 +1003,34 @@ export function ContainerDashboard({ onViewBookings }: { onViewBookings: () => v
   const resetFilter = () => setSelectedCountries(new Set(['RU', 'UZ', 'BY', 'KZ']))
 
   const totalActive = stats.red + stats.yellow + stats.green
+
+  const isMobile = useIsMobile()
+
+  /* ── Mobile branch ──────────────────────────────────────────────────── */
+  if (isMobile) {
+    return (
+      <MobileContainerDashboard
+        loading={loading}
+        error={error}
+        refreshing={refreshing}
+        lastFetch={lastFetch}
+        fetchData={fetchData}
+        totalContainers={data.length}
+        stats={stats}
+        totalActive={totalActive}
+        actionNeeded={actionNeeded}
+        recentOrders={recentOrders}
+        countryCounts={countryCounts}
+        selectedCountries={selectedCountries}
+        toggleCountry={toggleCountry}
+        resetFilter={resetFilter}
+        mapPoints={mapPoints}
+        allContainerNumbers={allContainerNumbers}
+        containerDetails={containerDetails}
+        onViewBookings={onViewBookings}
+      />
+    )
+  }
 
   /* ── Render ─────────────────────────────────────────────────────────── */
   return (
