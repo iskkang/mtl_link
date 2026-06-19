@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Sun, Moon, Bell, BellOff, Globe, KeyRound, LogOut,
-  Megaphone, FolderOpen, Hash, ChevronRight, Settings2, DollarSign,
+  Megaphone, FolderOpen, Hash, ChevronRight, Settings2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -34,7 +34,6 @@ const INFO_ITEMS: { id: Section; Icon: React.ElementType; labelKey: string }[] =
   { id: 'files',         Icon: FolderOpen,  labelKey: 'menuRailFiles'         },
   { id: 'channels',      Icon: Hash,        labelKey: 'menuRailChannels'      },
   { id: 'ai',            Icon: MintIcon,    labelKey: 'menuRailBots'          },
-  { id: 'ratefinder',    Icon: DollarSign,  labelKey: 'menuRailRates'         },
   { id: 'tracking',      Icon: FescoFIcon,  labelKey: 'menuRailTracking'      },
   { id: 'tcr-tracking',  Icon: TcrIcon,     labelKey: 'menuRailTcrTracking'   },
 ]
